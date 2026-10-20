@@ -1,2 +1,35 @@
 <!doctype html>
-<html lang="pl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#102e33"><title>Przystań — symulator manewrów</title></head><body><div id="app"></div><script type="module" src="/src/main.js"></script></body></html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#102e33">
+  <title>Przystań — symulator manewrów</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 3 26 25l-10 4-10-4Z' fill='%232e6052'/%3E%3C/svg%3E">
+  <style>
+    body{margin:0;background:#f6f6f0;color:#234439;font-family:system-ui,sans-serif}
+    .startup{max-width:470px;margin:12vh auto;padding:28px;line-height:1.7}
+    .startup h1{font-size:27px;font-weight:500}.startup p{font-size:14px;color:#667d6d}
+    .startup a{display:inline-block;background:#365c46;color:#fffef5;padding:10px 16px;border-radius:6px;text-decoration:none;font-size:14px}
+    #startup-detail{overflow-wrap:anywhere;font-size:12px}.startup-banner{position:fixed;z-index:9999;left:12px;right:12px;top:12px;background:#fff5df;border:1px solid #c9a16b;padding:16px;border-radius:8px;font-size:13px}
+    @media(max-width:520px){.startup{margin:8vh 15px;padding:20px}}
+  </style>
+  <script>
+    (function(){
+      function report(message){
+        var title=document.getElementById('startup-title');
+        if(title){title.textContent='Nie udało się uruchomić symulatora';document.getElementById('startup-detail').textContent=message;document.getElementById('startup-retry').hidden=false;}
+        else if(!document.getElementById('startup-error')){var banner=document.createElement('div');banner.id='startup-error';banner.className='startup-banner';banner.setAttribute('role','alert');banner.textContent='Wystąpił błąd symulatora: '+message;document.body.appendChild(banner);}
+      }
+      window.addEventListener('error',function(event){if(event.message)report(event.message);},true);
+      window.addEventListener('unhandledrejection',function(event){report(String(event.reason&&event.reason.message||event.reason||'Błąd uruchomienia'));});
+      window.addEventListener('DOMContentLoaded',function(){var link=document.getElementById('startup-retry');if(link){var url=new URL(location.href);url.searchParams.set('reload',String(Date.now()));link.href=url.href;}});
+      window.setTimeout(function(){if(document.getElementById('startup-title'))report('Przeglądarka nie uruchomiła kodu aplikacji. Sprawdź, czy JavaScript jest włączony, lub otwórz stronę ponownie.');},12000);
+    })();
+  </script>
+</head>
+<body>
+  <div id="app"><section class="startup" role="status"><h1 id="startup-title">Uruchamianie przystani…</h1><p>Symulator manewrów motorówką</p><p id="startup-detail">Za chwilę pojawi się jezioro. Jeśli ekran się nie zmienia, sprawdź, czy JavaScript jest włączony dla tej strony w ustawieniach Chrome.</p><a id="startup-retry" href="?reload=1">Otwórz ponownie</a><noscript><p>JavaScript jest wyłączony. Włącz obsługę JavaScript dla tej strony w ustawieniach Chrome.</p></noscript></section></div>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

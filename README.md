@@ -26,7 +26,8 @@ Nie otwieraj źródłowego HTML przez `file://`.
 ```sh
 npm test           # testy fizyki i regresji manewrów
 npm run test:e2e   # rzeczywiste sterowanie w Chromium
-npm run build     # wersja produkcyjna
+npm run build     # samodzielny dist/index.html, z kodem i stylami w środku
+npm run test:production # sprawdzenie gotowego pliku, także bez osobnych zasobów
 ```
 
 E2E używa `/usr/bin/chromium`, alternatywę wskaż przez `CHROMIUM_PATH`.
@@ -97,3 +98,24 @@ falowania prawdziwego jeziora.
 - `src/main.js`, `src/style.css` — panel i Canvas.
 - `tests/` — regresje fizyki oraz przeglądarki.
 - `docs/PHYSICS.md` — źródła i jawne założenia modelu.
+
+## Ładowanie w Chrome
+
+Publikacja jest pojedynczym `dist/index.html` z osadzonym JS i CSS.
+Nie odwołuje się do usuniętych przy aktualizacji plików o starych hashach
+i nie wymaga ładowania modułów z osobnych adresów. Cel kompilacji JS: ES2018.
+Kod produkcyjny jest uruchamiany po utworzeniu elementu aplikacji.
+Komunikat startowy, instrukcja dla wyłączonego JS i diagnostyka błędu
+zastępują pusty ekran, a przycisk ponowienia odświeża adres HTML.
+
+Przy starym ekranie z pamięci Chrome otwórz:
+`https://piothepio.github.io/BoatSimulator/?v=3.0.1`.
+Zrzut białego ekranu nie pozwolił jednoznacznie ustalić przyczyny po stronie
+konkretnej przeglądarki; poprawka usuwa zależność od osobnych zasobów
+i ujawnia ewentualny błąd uruchomienia.
+
+Testy produkcyjne uruchamiają sam wynik publikacji pod `/BoatSimulator/`,
+z brakiem katalogu assets, profilem dotykowym Android Chrome, wyłączonym
+JS oraz celowo wywołanym błędem startu. Wdrożenie GitHub Pages wymaga
+przejścia tych testów. Test z identyfikatorem Androida nadal korzysta
+z Chromium na Linuksie — nie zastępuje sprawdzenia na fizycznym tablecie.

@@ -25,6 +25,14 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run build
+      - name: Verify standalone production startup
+        run: |
+          if command -v google-chrome >/dev/null 2>&1; then
+            export CHROMIUM_PATH="$(command -v google-chrome)"
+          else
+            npx playwright install --with-deps chromium
+          fi
+          npx playwright test --config playwright.production.config.js
       - uses: actions/configure-pages@v5
         with:
           enablement: true

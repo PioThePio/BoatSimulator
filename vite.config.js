@@ -1,4 +1,4 @@
 import {defineConfig} from 'vite';
 
-// Relative assets let the same build work at /BoatSimulator/ and on any static host.
-export default defineConfig({base:'./'});
+// The publication step embeds this one bundle and its CSS into index.html.
+export default defineConfig({base:'./',build:{target:'es2018',modulePreload:false}});
