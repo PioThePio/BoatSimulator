@@ -1,14 +1,15 @@
 // SI, x east / y south. Heading clockwise from east. Physics reference: docs/PHYSICS.md.
 import {clamp,DOCKS,SOLIDS,BOLLARDS,environment,bottomAt,waveAt} from './world.js';
+import {groundContact,propellerContact} from './ground.js';
 import {specification,engineState,updateEngine} from './craft.js';
 import {point,cleat,attachRope,solveRopes,createAnchor,updateAnchor,inverseMass,impulse} from './rigging.js';
 export {clamp,DOCKS,SOLIDS,BOLLARDS,environment,bottomAt,waveAt,point,cleat,attachRope};
 export const MODEL=specification();
 export function createBoat(scenario='approach',options={}){
  const spec=specification(options);
- const starts={approach:[43,37,-2.1],berth:[24.3,22,-Math.PI/2],open:[64,48,-Math.PI/2]};
+ const starts={approach:[43,37,-2.1],berth:[24.3,22,-Math.PI/2],open:[64,48,-Math.PI/2],beach:[8.2,147,Math.PI/2],island:[304,263,Math.PI]};
  const [x,y,a]=starts[scenario]||starts.approach;
- return{x,y,a,vx:0,vy:0,w:0,steer:0,actualSteer:0,throttle:0,throttle2:0,linked:true,spec,
+ return{x,y,a,vx:0,vy:0,w:0,steer:0,actualSteer:0,throttle:0,throttle2:0,linked:true,enginesRaised:false,groundLoad:0,groundMaterial:'sand',spec,
  engines:spec.powers.map((hp,i)=>engineState(hp,spec.engineCount===1?0:(i===0?-1:1)*spec.engineSpacing/2)),
  fenders:true,damage:0,dockDamage:0,ropes:[],anchor:createAnchor(spec),time:0,lastImpact:null,events:[],maxTension:0,
  heave:0,heaveVelocity:0,roll:0,rollVelocity:0,pitch:0,pitchVelocity:0,planing:0,underKeel:bottomAt(x,y).depth-spec.draft,grounded:false,groundEvent:-10,
@@ -64,12 +65,14 @@ export function step(b,e,dt){
  b.engines.forEach((engine,i)=>{
   const x=-S.length*.44,y=engine.y,delta=b.actualSteer;
   const inflow=(u-b.w*y)*Math.cos(delta)-(v+b.w*x)*Math.sin(delta);
-  const thrust=updateEngine(engine,i===0?b.throttle:b.throttle2,inflow,dt,b.damage);
+  propellerContact(b,engine,dt,m=>event(b,m));
+  let thrust=updateEngine(engine,i===0?b.throttle:b.throttle2,inflow,dt,b.damage);
+  if(b.enginesRaised){thrust=0;engine.thrust=0;}
   force(thrust*Math.cos(delta),-thrust*Math.sin(delta),x,y);totalThrust+=thrust;
   // Submerged skeg: flow creates steering even in neutral; stalls at large incidence.
   const lateral=(u-b.w*y)*Math.sin(delta)+(v+b.w*x)*Math.cos(delta);
   const axial=(u-b.w*y)*Math.cos(delta)-(v+b.w*x)*Math.sin(delta);
-  const skeg=-.5*1000*(.022+engine.hp*.00012)*1.1*Math.hypot(axial,lateral)*lateral;
+  const skeg=(b.enginesRaised?0:1)*-.5*1000*(.022+engine.hp*.00012)*1.1*Math.hypot(axial,lateral)*lateral;
   force(skeg*Math.sin(delta),skeg*Math.cos(delta),x,y);
  });
  const ax=env.wind.x-b.vx,ay=env.wind.y-b.vy,au=ax*c+ay*s,av=-ax*s+ay*c;
@@ -83,15 +86,7 @@ export function step(b,e,dt){
  const du=udot-b.w*vr,dv=vdot+b.w*ur;
  b.vx+=(c*du-s*dv)*dt;b.vy+=(s*du+c*dv)*dt;b.w+=rdot*dt;
  solveRopes(b,dt,m=>event(b,m));updateAnchor(b,e,dt,m=>event(b,m));
- // Depth below instantaneous surface, corrected for hull draft and vertical motion.
- let clearance=Infinity;
- for(const x of [-.4*S.length,0,.4*S.length]){const p=point(b,x,0);clearance=Math.min(clearance,bottomAt(p.x,p.y).depth+b.heave-S.draft+x*Math.sin(b.pitch));}
- b.underKeel=clearance;b.grounded=clearance<0;
- if(b.grounded){
-  const damping=Math.exp(-dt*(2+Math.min(12,-clearance*15)));const before=Math.hypot(b.vx,b.vy);
-  b.vx*=damping;b.vy*=damping;b.w*=damping;
-  if(before>.4&&b.time-b.groundEvent>1){b.damage=clamp(b.damage+Math.min(30,before*before*5),0,100);b.groundEvent=b.time;event(b,'Wejście na mieliznę: kontakt kadłuba z dnem.');}
- }
+ groundContact(b,wave,dt,m=>event(b,m));
  b.x+=b.vx*dt;b.y+=b.vy*dt;b.a+=b.w*dt;
  contacts(b,dt);
  if(b.damage>=100){b.throttle=0;b.throttle2=0;}

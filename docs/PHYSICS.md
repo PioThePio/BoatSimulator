@@ -1,4 +1,4 @@
-# Model v2: podstawy, założenia i ograniczenia
+# Model v3: podstawy, założenia i ograniczenia
 
 Model ma odtwarzać **zależności fizyczne w manewrach**, ale nie jest
 zweryfikowanym cyfrowym bliźniakiem konkretnej motorówki. Nie dysponujemy
@@ -177,7 +177,8 @@ z ograniczonym minimalnym współczynnikiem kąta. K dna: 28 piasek,
 a po przekroczeniu nośności wlecze. To **umowny model trzymania**, nie
 potwierdzona siła konkretnej kotwicy, typu dna czy płyty skalnej.
 
-Winda: wydawanie 0,5 m/s, wybieranie 0,25 m/s, uciąg do 2,2 kN.
+Winda: wydawanie do 0,65 m/s, wybieranie do 0,35 m/s, uciąg do 2,2 kN
+i moc mechaniczna do 650 W.
 Przeciążenie zatrzymuje wybieranie. Blisko pionu wybieranie wyrywa kotwicę
 i podnosi ją; przeciążony rode może się zerwać. Nie ma przycisku
 „przenieś łódź do kotwicy”. Pionowy naciąg wpływa w przybliżeniu na
@@ -190,13 +191,13 @@ segmentu. To nie jest pełny solver MoorDyn ani model geotechniczny.
 
 ## Echosonda, fale i kołysanie
 
-Jezioro ma 176 × 106 m wody, ze stopniowymi płyciznami przy brzegach,
+Jezioro ma 600 × 400 m wody, wyspę i plaże, ze stopniowymi płyciznami przy brzegach,
 niecką i mielizną w okolicy `(91,64)`. Dno zmienia materiał: piasek, skała,
 muł. Echosonda pod rufą pokazuje głębokość skorygowaną do bieżącej
 powierzchni, próbkuje co 0,25 s i zachowuje do 60 s historii.
 To idealizowany pomiar bez opóźnienia akustycznego i błędnych ech.
 
-Prześwit pod stępką jest minimum próbek dziobu, środka i rufy, uwzględnia
+Prześwit pod stępką jest minimum próbek całej długości i szerokości kadłuba, uwzględnia
 zanurzenie i ruch pionowy. Ujemny prześwit zwiększa tarcie o dno, może
 zatrzymać jednostkę i powoduje szkody przy ruchu. Nie ma deformacji dna
 ani pełnego kontaktu kil–grunt.
@@ -229,9 +230,9 @@ Start 8 m/s, manetka 50%, po 5 s:
 
 | Koło / silnik | Prędkość końcowa | Obrót |
 | --- | --- | --- |
-| 0 rad | ok. 5,91 m/s | 0 rad/s |
-| 0,15 rad | ok. 5,63 m/s | 0,23 rad/s |
-| 0,50 rad | ok. 4,55 m/s | 0,42 rad/s |
+| 0 rad | ok. 5,81 m/s | 0 rad/s |
+| 0,15 rad | ok. 5,55 m/s | 0,22 rad/s |
+| 0,50 rad | ok. 4,49 m/s | 0,41 rad/s |
 
 Wartości pozwalają wykrywać regresje: nie dowodzą, że konkretny kadłub
 osiągnie takie samo przyspieszenie lub promień skrętu.
@@ -249,3 +250,107 @@ Zachowano dydaktyczne progi v1 (0,15 / 0,30 m/s kontakt bez szkód,
 Nie są rzeczywistymi bezpiecznymi prędkościami. Masa efektywna kontaktu
 uwzględnia teraz parametry wybranego kadłuba i masę dodaną. Zniszczony
 pomost pozostaje przeszkodą.
+
+## Zmiany v3 — brzeg, śruba, sterowanie i wyciąganie kotwicy
+
+Akwen ma teraz **600 × 400 m** i wyspę w środku. Funkcja odległości od
+brzegu opisuje jednocześnie ląd, płyciznę i obrys wyspy. Plaże są na
+północy, zachodzie, południu oraz po południowej stronie wyspy.
+Przykładowe drzewa przy plażach są punktami D1–D8; można wybrać je
+identycznie jak poler. Limit rzutu 6 m nadal liczymy od knagi.
+Zmieniono materiał dna w zatokach i nachylenia, więc opis akwenu v2 powyżej
+jest historyczny — szczegóły poniżej go zastępują.
+
+### Osiadanie kadłuba
+
+Brzeg nie jest już prostokątną ścianą kolizji. Głębokość w pobliżu plaży
+rośnie jak `8,5*(1-exp(-d*0,085/8,5))`, na pozostałym brzegu stosujemy
+stromszy współczynnik 0,24. Na lądzie głębokość jest ujemna, czyli podłoże
+wystaje nad powierzchnię. Położenie elementów i sonda korzystają z tego
+samego dna; obszar narysowanego koloru płytkiej wody jest orientacyjny.
+
+Piętnaście próbek spodu kadłuba (pięć przekrojów × trzy punkty poprzecznie)
+uwzględnia wznios dna kadłuba na końcach i przy burtach oraz aktualne
+przegłębienie/kołysanie. Po wejściu w grunt:
+
+- podłoże podtrzymuje kadłub; heave nie może umieścić dna kadłuba pod gruntem,
+- część ciężaru wcześniej podtrzymywana wyporem przechodzi na dno,
+- każda próbka ma własną siłę tarcia i ramię względem środka ciężkości,
+  więc niesymetryczne osiadanie może obrócić łódź,
+- tarcie działa przeciwnie do lokalnego ruchu, a spadek dna dodaje składową
+  skierowaną ku głębszej wodzie; nie zerujemy skokowo całej prędkości,
+- piasek/muł zwykle dają mniejsze szkody kadłuba niż kamienie.
+
+To aproksymacja sztywnego kadłuba na podłożu, bez deformacji piasku,
+ugniatania, grzęźnięcia i dokładnego kontaktu powierzchniowego. Wartości
+współczynników tarcia i szkód są założeniami szkoleniowymi.
+
+### Osobna śruba każdego silnika
+
+Okrąg śruby jest próbkowany przy rufie, na `x=-0,51*L`, przy odpowiednim
+poprzecznym położeniu silnika. Opuszczona końcówka sięga w modelu o 0,22 m
+niżej niż nominalne zanurzenie kadłuba. Dzięki temu śruba może dotknąć
+płycizny, mimo że kadłub jeszcze pływa.
+
+Piasek nalicza stopniowe ścieranie zależne od zagłębienia, obrotów wału
+i ruchu względem dna; nieruchoma, nieobracająca się śruba nie ściera się
+sama. Kamienie dają oddzielne impulsy uszkodzeń, z przerwą co najmniej
+0,45 s, większe przy obrotach i prędkości. Muł jest mniej ścierny niż piasek.
+To zależności umowne, nie obliczenia naprężeń konkretnego stopu aluminium.
+
+Sprawność przekazywania ciągu maleje jak `(1-uszkodzenia/100)^1,5`.
+Przy 100% dany silnik nie daje ciągu, mimo że może mieć obroty. Dwa silniki
+mają niezależne prześwity i stan śrub. Przełącznik podnoszenia napędów
+wyłącza ciąg i opór skegów oraz usuwa śruby z kontaktu z dnem. Pozwala
+podejść do drzewa dryfem lub na cumie. Nie modeluje pracy silnika na sucho.
+
+### Kotwica: usunięte zacięcie na sztywnym łańcuchu
+
+W v2 krok skrócenia pełnego łańcucha mógł chwilowo wymagać siły wyższej
+niż limit windy. Sterownik zatrzymywał się, zanim geometria i oderwanie
+kotwicy zdążyły się ustalić. Poprawiono kolejność:
+
+1. Solver przewiduje geometrię dla żądanego skrócenia.
+2. Jeśli obciążenie przekroczyłoby 2,2 kN, dobiera mniejsze skrócenie metodą
+   bisekcji, zamiast wykonywać cały krok i dopiero zgłaszać przeciążenie.
+3. Dla osiągalnego naciągu sprawdza wyrwanie kotwicy (kąt > 0,9 rad
+   i pionowa siła większa od przyjętego oporu osadzenia).
+4. Kotwica przechodzi ze stanu „dno” do „podnoszenie”. Zawieszona ma
+   przybliżony tłumiony ruch wahadłowy, a jej głębokość jest ograniczona
+   faktycznie wydaną długością rode.
+5. Dopiero po dojściu do rolki przechodzi na pokład.
+
+Aktualna winda: wydawanie do **0,65 m/s**, wybieranie do **0,35 m/s**,
+mechaniczna moc wybierania do **650 W**, maksymalny uciąg **2,2 kN**.
+Prędkość maleje pod obciążeniem. Pasek i licznik pokazują długość,
+a panel podaje stan oraz faktyczne tempo. Przy rzeczywistym przeciążeniu
+wyświetla „Odciąż rode: podpłyń nad kotwicę”. Nie symulujemy automatycznego
+płynięcia silnikiem do kotwicy; wiatr lub gaz przeciwny do kierunku
+wybierania może nadal uniemożliwić odzyskanie kotwicy.
+
+Regresja sprawdza także kotwicę z 20 m rode po odsunięciu łodzi o 8 m,
+dla motorówki i cięższego kadłuba: można wybrać rode, wyrwać kotwicę i
+podnieść ją bez przekroczenia limitu windy ani zerwania sztywnego łańcucha.
+
+### Manetka, obręcz i woda
+
+Koło chwytamy za obręcz; zmiana położenia jest liczona z różnicy kątów
+wokół środka, z ciągłym przejściem przez ±π. Centrum nie jest miejscem
+chwytu, a poziome przesunięcie myszy nie jest już bezpośrednim poleceniem
+skrętu. Koło nadal nie wraca samoczynnie.
+
+Pojedyncze ↑ / W od luzu wybiera +8% (bieg pełzający), ↓ / S wybiera −8%.
+Przeciwne pojedyncze naciśnięcie najpierw wybiera luz. Przytrzymanie przez
+ponad 0,24 s płynnie zmienia moc. Spacja wybiera oba luzy. Dźwignie są
+pionowe, z krótkim skokiem i zatrzaskiem biegu pełzającego; fizyczny napęd
+zachowuje opóźnienie przekładni i obrotów. Normalizowany stan wału przy
+biegu pełzającym zmierza do 0,23, a wyświetlane obroty do 750 obr/min.
+Przy gazie powyżej zatrzasku obroty rosną płynnie.
+
+Jedna kreska strugi odpowiada niskiemu ciągowi biegu pełzającego, więcej
+kresek wyższym obrotom. Kierunek strugi zmienia się na wstecznym. To
+wskaźnik graficzny, nie dyskretyzacja ciągu w równaniach.
+Ruchy wody przy dziobie, środku i rufie korzystają z prędkości punktów
+`v + ω×r` względem prądu, więc obracający się dziób i rufa mogą pokazywać
+przeciwne kierunki. Krótkie ślady pozostają w układzie jeziora i są unoszone
+prądem. Delikatne nierówne zmarszczki zastąpiły siatkę metrów.

@@ -15,7 +15,7 @@ export function specification(options={}){
  return {...p,profile,length,beam,hullMass,engineCount,powers,mass,inertia,draft:p.draft*(hullMass/p.hullMass)**.32,
   mx:mass*1.08,my:mass*1.65,iz:inertia*1.55,engineSpacing:engineCount===2?beam*.46:0,maxSteer:35*Math.PI/180};
 }
-export function engineState(hp,y=0){return{hp,y,command:0,gear:0,n:0,shift:0,thrust:0,rpm:750};}
+export function engineState(hp,y=0){return{hp,y,command:0,gear:0,n:0,shift:0,thrust:0,rpm:750,propDamage:0,propContact:false,propClearance:10,lastStrike:-10};}
 export function updateEngine(engine,command,inflow,dt,damage=0){
  const cmd=clamp(command,-1,1),desired=Math.abs(cmd)<.035?0:Math.sign(cmd);
  // Shift through neutral: shaft must slow down before the reversing clutch engages.
@@ -23,7 +23,7 @@ export function updateEngine(engine,command,inflow,dt,damage=0){
   engine.n+=(0-engine.n)*(1-Math.exp(-dt/.28));engine.thrust=0;engine.shift+=dt;
   if(Math.abs(engine.n)<.055&&engine.shift>=.65){engine.gear=desired;engine.shift=0;}
  }else{
-  engine.shift=0;const target=desired?(.20+.80*Math.abs(cmd)**.65):0;
+  engine.shift=0;const target=desired?(.23+.77*(clamp((Math.abs(cmd)-.08)/.92,0,1))**.65):0;
   const tau=target>engine.n?.9:.45;
   engine.n+=(target-engine.n)*(1-Math.exp(-dt/tau));
  }
@@ -32,6 +32,6 @@ export function updateEngine(engine,command,inflow,dt,damage=0){
  const advanceFactor=clamp(1-.22*advance/(2+11*n),.12,1.35);
  const bollard=staticThrust*n*n*(gear<0?.58:1)*advanceFactor;
  const powerLimit=.55*engine.hp*735.5*n**3/Math.max(1,Math.abs(inflow));
- engine.thrust=desired===gear?gear*Math.min(bollard,powerLimit)*(1-damage/100):0;
- engine.rpm=750+4750*n;return engine.thrust;
+ engine.thrust=desired===gear?gear*Math.min(bollard,powerLimit)*(1-damage/100)*(1-engine.propDamage/100)**1.5:0;
+ engine.rpm=750+4750*clamp((n-.23)/.77,0,1);return engine.thrust;
 }
