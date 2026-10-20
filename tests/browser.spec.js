@@ -36,7 +36,7 @@ test('custom vessel, independent twin throttles, linking and keyboard selection'
  await expect(page.locator('#gear')).toContainText('NAPRZÓD');await expect(page.locator('#gear2')).toContainText('WSTECZ');
  await page.waitForTimeout(1900);await expect(page.locator('#engine-state')).toContainText('L:');await expect(page.locator('#engine-state')).toContainText('P:');
  await page.locator('#link-engines').check();await expect(page.locator('#throttle2')).toHaveValue('55');
- await page.locator('.wheel-section h2').click();await page.keyboard.press('Space');await expect(page.locator('#gear')).toContainText('LUZ');await expect(page.locator('#gear2')).toContainText('LUZ');
+ await page.locator('.wheel-section>.section-heading h2').click();await page.keyboard.press('Space');await expect(page.locator('#gear')).toContainText('LUZ');await expect(page.locator('#gear2')).toContainText('LUZ');
  await page.keyboard.press('t');await page.keyboard.press('2');await page.keyboard.down('w');await page.waitForTimeout(300);await page.keyboard.up('w');
  await expect(page.locator('#throttle')).toHaveValue('0');expect(+(await page.locator('#throttle2').inputValue())).toBeGreaterThan(0);expect(errors).toEqual([]);
 });

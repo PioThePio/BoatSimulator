@@ -124,7 +124,7 @@ Komunikat startowy, instrukcja dla wyłączonego JS i diagnostyka błędu
 zastępują pusty ekran, a przycisk ponowienia odświeża adres HTML.
 
 Przy starym ekranie z pamięci Chrome otwórz:
-`https://piothepio.github.io/BoatSimulator/?v=4.0.0`.
+`https://piothepio.github.io/BoatSimulator/?v=4.0.1`.
 Zrzut białego ekranu nie pozwolił jednoznacznie ustalić przyczyny po stronie
 konkretnej przeglądarki; poprawka usuwa zależność od osobnych zasobów
 i ujawnia ewentualny błąd uruchomienia.
