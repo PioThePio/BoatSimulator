@@ -159,7 +159,7 @@ function telemetry(){
  for(const r of boat.ropes){$('#rope-'+r.end).textContent=`${BOLLARDS[r.bollard].id} · ${r.length.toFixed(2)} m · ${(r.tension/1000).toFixed(2)} kN${r.targetLength<r.length-.02?(r.blocked?' · za ciężko':' · wybieranie'):r.targetLength>r.length+.02?' · luzowanie':''}`;}
  if(boat.events.length&&boat.events[0]!==lastEvent){lastEvent=boat.events[0];toast(lastEvent.message);}
  $('#engine-state').textContent=boat.engines.map((en,i)=>`${S.engineCount===2?(i===0?'L: ':'P: '):''}${Math.round(en.rpm)} obr/min · ${en.shift>0?'zmiana biegu':en.gear===0?'luz':en.gear>0?'naprzód':'wstecz'} · ${Math.round(en.thrust)} N`).join(' / ')+` · silnik ${Math.round(boat.actualSteer*180/Math.PI)}°`;
- const transducer=point(boat,-S.length*.30,0),bottom=bottomAt(transducer.x,transducer.y),depth=Math.max(0,bottom.depth+boat.heave);
+ const transducer=point(boat,-S.length*.30,0),bottom=bottomAt(transducer.x,transducer.y),depth=Math.max(0,bottom.depth+waveAt(transducer.x,transducer.y,boat.time,env).eta);
  $('#depth').innerHTML=`${depth.toFixed(2)} <small>m</small>`;$('#keel').textContent=`Pod stępką: ${boat.underKeel.toFixed(2)} m`;$('#keel').classList.toggle('danger',boat.underKeel<.3);$('#bottom-material').textContent=`Dno: ${bottom.name}`;
  $('#roll').textContent=(boat.roll*180/Math.PI).toFixed(1)+'°';$('#pitch').textContent=(boat.pitch*180/Math.PI).toFixed(1)+'°';$('#regime').textContent=boat.planing>.55?'Ślizg (przybliżenie)':boat.planing>.1?'Przejście do ślizgu':'Ruch wypornościowy';
  const H=env.autoWaves?Math.min(.55,.004*env.windSpeed**2):env.waveHeight;$('#wave-value').textContent=H.toFixed(2)+' m';

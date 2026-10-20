@@ -63,5 +63,6 @@ test('full-width lake and compact helm, circular rim grab, vertical lever and cr
 });
 test('shore tree mooring, drive raising and world overview work',async({page})=>{
  const errors=[];page.on('pageerror',e=>errors.push(e.message));await page.goto('/');await page.locator('#craft').selectOption('tender');await page.locator('#apply-craft').click();await expect(page.locator('.bottom-note')).toContainText('4.2 × 1.75');await page.locator('[data-start="beach"]').click();await page.locator('#raise-engines').check();await page.locator('#bollard-bow').selectOption('7');await page.locator('[data-rope="bow"][data-action="attach"]').click();await expect(page.locator('#rope-bow')).toContainText('D1');await expect(page.locator('#raise-engines')).toBeChecked();await expect(page.locator('#propeller-health')).toContainText('100%');
+ await page.locator('#craft').selectOption('cruiser');await page.locator('#apply-craft').click();await expect(page.locator('#condition-tag')).toHaveText('NA MIELIŹNIE');expect(parseFloat(await page.locator('#depth').innerText())).toBeLessThan(.5);
  await page.locator('#overview').click();await expect(page.locator('#minimap')).toBeVisible();await page.locator('[data-start="island"]').click();await expect(page.locator('#scene-label')).toHaveText('Wyspa');expect(errors).toEqual([]);
 });
