@@ -1,4 +1,4 @@
-# Model v3: podstawy, założenia i ograniczenia
+# Model v4: podstawy, założenia i ograniczenia
 
 Model ma odtwarzać **zależności fizyczne w manewrach**, ale nie jest
 zweryfikowanym cyfrowym bliźniakiem konkretnej motorówki. Nie dysponujemy
@@ -38,319 +38,223 @@ parametrów rzekomo „potwierdzonych przez RYA / BoatUS”. Ograniczone siłą
 wybieranie, uciąg windy, współczynniki dna i progi szkód poniżej są
 **jawnymi założeniami**, nie wartościami gwarantowanymi przez te poradniki.
 
-## Co było nie tak w v1
+## Stabilność kierunkowa i bezwładność
 
-- Gaz dawał natychmiastowy ciąg proporcjonalny do położenia manetki.
-  Nie było obrotów, narastania ciągu, przerwy zmiany biegu ani limitu mocy.
-- Używano wyłącznie masy sztywnej 900 kg, bez bezwładności otaczającej wody.
-- Opór nie zmieniał reżimu z prędkością i nie uwzględniał opływu skegu.
-- Cuma miała stałą sztywność 4200 N/m niezależną od długości.
-  Kliknięcie skracało ją natychmiast o 25 cm, wykonując pracę bez limitu siły.
-- Wymiarów i napędu nie można było zmieniać; nie było dna, kotwicy i fal.
+Wielkości w SI; świat: x na wschód, y na południe. Kadłub: x do dziobu,
+y do prawej burty; dodatni obrót w prawo. Efektywna macierz bezwładności:
+`diag(1,08*m, 1,65*m, 1,55*Izz)`, gdzie
+`Izz = m*((0,27*L)^2+(0,22*B)^2) + m_paliwa*(0,16*L)^2`.
 
-## Kadłub i napęd
+W v3 niekalibrowany moment Munka `(mx-my)*u*v` wzmacniał znoszenie w obrót
+przy dużej prędkości. W v4 jest kompensowany w równaniu yaw. Podobną
+możliwość korekcji przy niestabilności wskazuje komentarz w modelu Otter
+Fossena (ponownie sprawdzony 20.10.2026). To wybór empiryczny dla tej
+aplikacji; nie pełna identyfikacja pochodnych hydrodynamicznych kadłuba.
 
-Wielkości w SI. Układ świata: x na wschód, y na południe. Układ kadłuba:
-x do dziobu, y do prawej burty. Dodatni obrót w prawo.
+```
+mx*u_dot = X + my*v*r
+my*v_dot = Y - mx*u*r
+Iz*r_dot = N              # po kompensacji momentu Munka
+```
 
-Profile (przed dodaniem silników i 150 kg załogi):
+Pochodne przeliczamy z układu obracającego się do świata. Dziewięć pasów
+kadłuba liczy siły zależne od `v+r*x`, kwadratowy opór poprzeczny oraz
+składnik `|u|*(v+r*x)`. Przy płynięciu naprzód środek działania sił bocznych
+jest przesunięty o 0,1 L ku rufie dla stabilności kierunkowej.
+Dodatkowy empiryczny opór zakrętu wynosi
+`0,5*rho*draft*L*1,8*(v²+(r*L)²)` i działa przeciwnie do u.
+Nie obracamy wektora prędkości natychmiast do osi kadłuba.
 
-| Profil | L × B | Masa kadłuba | Zanurzenie | Domyślny silnik | Typ |
+Testy sprawdzają zanikanie energii bez napędu, brak sztucznych sił przy
+wspólnym ruchu z wodą i powietrzem, większą bezwładność cięższego kadłuba,
+większą utratę prędkości przy ciasnym skręcie i małe znoszenie przy
+wychyleniu silnika o 2° w szybkim ruchu. Nie dowodzi to zgodności z próbami
+morskimi; układ z empiryczną korekcją nie jest pełnym modelem idealnego płynu.
+
+## Profile i napęd
+
+| Profil | L × B [m] | Kadłub [kg] | Zanurzenie bazowe [m] | Moc domyślna [KM] | Zbiornik [l] |
 | --- | --- | --- | --- | --- | --- |
-| Otwarta | 4,2 × 1,75 m | 380 kg | 0,28 m | 25 KM | ślizgowy |
-| Motorówka | 5,5 × 2,15 m | 800 kg | 0,38 m | 60 KM | ślizgowy |
-| Kabinowa | 7,5 × 2,65 m | 2100 kg | 0,55 m | 150 KM | ślizgowy |
-| Wypornościowa | 9 × 3,1 m | 4200 kg | 0,75 m | 90 KM | wypornościowy |
+| Otwarta | 4,2 × 1,75 | 380 | 0,28 | 25 | 45 |
+| Motorówka | 5,5 × 2,15 | 800 | 0,38 | 90 | 100 |
+| Kabinowa | 7,5 × 2,65 | 2100 | 0,55 | 200 | 250 |
+| Wypornościowa | 9 × 3,1 | 4200 | 0,75 | 90 | 400 |
+| Skuter | 3,2 × 1,22 | 310 | 0,20 | 170 | 60 |
 
-Można zmieniać L, B i masę kadłuba. Każdy silnik dodaje szacunkowo
-`28 + 0,62*KM` kg, załoga 150 kg. To nie są katalogowe masy modeli silników.
-Zanurzenie skaluje się potęgą 0,32 masy kadłuba względem profilu, a nie
-pełną hydrostatyką nowych, dowolnie zmienionych kształtów.
+Do masy dodajemy silniki zaburtowe `28+0,62*KM` kg każdy, załogę 150 kg
+(85 kg na skuterze), zbiorniki i paliwo. Masa kadłuba skutera obejmuje jego
+napęd. Można zmieniać wymiary/masę i wybrać 1–2 silniki 10–350 KM każdy;
+skuter ma jeden napęd. Nietypowe konfiguracje nie są oceną dopuszczalnego
+obciążenia pawęży ani rekomendacją montażu.
 
-`Izz = m*((0,27*L)^2 + (0,22*B)^2)`.
-Macierz efektywnej bezwładności: `diag(1,08*m, 1,65*m, 1,55*Izz)`.
-Współczynniki dodanej masy są przybliżone, rozróżniają ruch wzdłużny,
-poprzeczny i obrót. Równania w osiach kadłuba:
+Każdy silnik ma osobne obroty, przekładnię, trym i stan uszkodzeń. Obroty
+narastają ze stałą ok. 0,65–1,3 s, zależną od mocy i obciążenia, opadają
+ze stałą 0,4 s. Ciąg zależy od kwadratu obrotów, limit mocy od sześcianu.
+Zmiana biegu wymaga zwolnienia wału i co najmniej 0,65 s; polecenie
+manetki nie oznacza natychmiastowego ciągu ani zmiany prędkości.
 
-```
-mx * u_dot = X + my*v*r
-my * v_dot = Y - mx*u*r
-Iz * r_dot = N + (mx-my)*u*v
-```
+Ciąg statyczny zaburtowego: `85*KM^0,8 N`, wstecz 58%; sprawność graniczna
+`T*v <= 0,55*P_wału`. Ciąg zależy także od posuwu, szkód i wentylacji.
+Ramię silnika: `-0,44*L`, rozstaw dwóch: `0,46*B`. Sumujemy siły i momenty
+każdego, dlatego przeciwny bieg obraca łódź, a równe wychylenia przeciwnych
+manetek nie równoważą ciągów. Skeg działa także na luzie, gdy opływa go woda.
+Oba zaburtowe skręcają wspólnie, z ograniczeniem szybkości rzeczywistego
+kąta do 0,38 rad/s. Koło wykonuje cztery obroty między oporami i nie wraca do zera.
 
-Do całkowania świata poprawnie przekształcamy pochodne układu obracającego
-się. Opory zależą od prędkości względem wody, wiatr od prędkości względem
-powietrza. Stały prąd nie jest sztuczną stałą siłą pchającą łódź.
+Skuter: inna masa, zanurzenie, bezwładność, kąt dyszy ±28°, ramię `-0,40*L`,
+ciąg statyczny `62*KM^0,8`, sprawność 0,63, deflektor wstecz 34%.
+Nie ma skegu zaburtowego ani regulowanego trymu. Bez strugi ma mały autorytet
+sterowania, zaś gaz wytwarza moment przez skręconą dyszę. Kontakt z dnem
+próbkujemy przy wlocie pod kadłubem. Nie modelujemy konkretnego systemu
+hamowania/iBR, wyrzutu pasażera ani pełnej hydrauliki deflektora.
 
-### Śruba i zmiana kierunku
+## Ślizg, trym i wysokość dziobu
 
-- Obroty mają stan, narastają ze stałą czasową 0,9 s i opadają 0,45 s.
-  Ciąg jest w przybliżeniu proporcjonalny do kwadratu obrotów, moc do sześcianu.
-- Zmiana biegu wymaga spowolnienia wału poniżej progu i co najmniej 0,65 s
-  przejścia przez luz. Redukcja obrotów przy rozłączonej przekładni: 0,28 s.
-  To przyjęta łagodna obsługa przekładni; nie symulujemy jej mechanicznej awarii.
-- Maksymalny statyczny ciąg jednego silnika szacujemy jako `85*KM^0,8 N`.
-  Wstecz: 58% tej wartości. To przybliżenie dla typowej śruby, nie wynik
-  dobierania konkretnej średnicy, skoku i krzywej KT(J).
-- Ciąg spada z dodatnim posuwem, a praca nie przekracza `0,55*P_wału`
-  przy niezerowej prędkości. Na postoju obowiązuje limit statyczny,
-  zamiast nieokreślonego `P/v`.
-- Rzeczywisty kąt silnika podąża za kołem do 0,38 rad/s. Koło zachowuje
-  nastawę, ale nie teleportuje silnika. Oba silniki mają wspólny układ skrętu.
-- Każdy silnik działa na rufie w `x=-0,44*L`; dwa są oddalone o `0,46*B`.
-  Sumujemy osobne siły i `N = x*Fy - y*Fx`.
-- Dlatego lewy naprzód / prawy wstecz daje moment w prawo; układ odwrotny
-  daje moment w lewo. Równe manetki na przeciwnych biegach nie równoważą
-  sił, bo wsteczny ciąg jest mniejszy. Można zrównoważyć je ręcznie.
+Opór zawiera tarcie z przybliżeniem ITTC `Cf=0,075/(log10(Re)-2)^2`, garb
+falowy, opór podpieranego dynamicznie kadłuba i większy opór zanurzonej rufy
+na wstecznym. Udział ślizgu zależy od liczby Froude’a i ilorazu szacowanego
+podparcia dynamicznego do ciężaru. Podparcie zależy od `u²`, długości,
+szerokości i kąta dennego V. Cięższy kadłub wymaga większej prędkości.
+Narastanie udziału ślizgu: 2,8 s; opadanie: 1,4 s. Profil wypornościowy
+nie przechodzi w ślizg.
 
-### Prędkość i skręcanie
+Trym 0–100% odpowiada umownie −4°…18° nachylenia napędu, ze zmianą do
+10 punktów procentowych/s. Wpływa na poziomą składową ciągu, powierzchnię
+zwilżoną, opór podparcia i równowagowe przegłębienie. Zbyt niski trym zwiększa
+zwilżenie; umiarkowany zmniejsza opory w ślizgu. Zbyt wysoki podnosi dziób
+i zwiększa opór, a powyżej 68% przy prędkości i gazie włącza wentylację:
+rosną obroty, maleje obciążenie i ciąg (do 84% utraty).
+Grafika pokazuje spienienie i ostrzeżenie. Jest to wentylacja, a nie szczegółowy
+model kawitacji czy ciśnień przy łopacie.
 
-Opór wzdłużny ma składnik tarcia z linią `Cf=0,075/(log10(Re)-2)^2`,
-opór formy, przybliżony garb falowy zależny od liczby Froude’a oraz
-podparcie dynamiczne dla profili ślizgowych. Udział ślizgu przechodzi płynnie
-z czasem 2,5 s. To funkcja oporu do symulacji szkoleniowej, **nie pełna
-metoda Savitsky’ego** z trymem i kątem dennego V.
+Przegłębienie ma tłumioną dynamikę: fala, garb przejściowy, ślizg, trym,
+przyspieszenie i paliwo przy rufie zmieniają wysokość dziobu. Przechył
+uwzględnia falę, wiatr i pochylenie w zakręcie w ślizgu. To **model empiryczny,
+nie pełny Savitsky, CFD ani sześć w pełni sprzężonych stopni swobody**.
 
-Dziewięć pasów kadłuba liczy opór poprzeczny i jego moment.
-Dodatkowo składnik zależny od `|u|*(v+r*x)` opisuje opływ boczny przy
-prędkości postępowej. Skeg reaguje także na przepływ przy neutralnym napędzie.
-Siły te przeciwstawiają się lokalnej prędkości, więc mocny skręt oddaje
-energię wodzie i zmniejsza prędkość. Nie ma sztucznego mnożenia prędkości
-przez arbitralne „hamowanie w zakręcie”. Wstecz transom/zanurzona rufa
-zwiększa opór, a moment ciągu zmienia znak.
+## Paliwo, rozruch i akumulator
 
-Brakuje danych o prop walk i krzywej śruby przy przepływie przeciwnym.
-Model nie dodaje zmyślonej, jednakowej siły bocznej dla wszystkich napędów.
-Nie symulujemy wentylacji śruby, kawitacji, trymowania napędu ani ostrych
-niestabilności ślizgu (chine walk / spin-out).
+Łódź w aplikacji zaczyna z wyłączonymi silnikami. Sekwencja: Zapłon → Start,
+na luzie. Rozrusznik działa 1,15 s i pobiera 110 A. Brak paliwa/energii
+blokuje start; 0 gasi silnik i wyłącza zapłon. W testach niskopoziomowe
+`createBoat()` domyślnie ma silniki pracujące; aplikacja jawnie używa `coldStart`.
 
-## Cumowanie i wysiłek człowieka
+Pojemność łączna 10–800 l; jeden lub dwa symetryczne zbiorniki przy
+`x=-0,16*L`. Start: 75% pojemności. Gęstość benzyny 0,745 kg/l, masa
+pustych zbiorników `0,08*pojemność + 2*liczba` kg. Zużycie aktualizuje masę,
+środek ciężkości, bezwładność i zanurzenie (przybliżone pole wodnicy
+`0,7*L*B`). Dwa zbiorniki są zużywane proporcjonalnie, bez przelewania
+między nimi i bez swobodnej powierzchni cieczy.
 
-Cumy są jednostronnymi sprężystymi więzami o `k=EA/L`, a nie gumką ze
-stałą sztywnością. EA profili: 80 / 160 / 240 / 330 kN, zerwanie:
-10 / 18 / 28 / 40 kN. Są to przykładowe parametry lin, nie deklaracje
-konkretnego produktu. Przy 220 N i EA=160 kN wydłużenie to ok. 0,14%.
-Naciąg i tłumienie są rozwiązywane niejawnie z efektywną masą punktu
-zaczepienia, aby krótka, sztywna lina nie powodowała eksplozji numerycznej.
+Przyjęte zużycie pracującego silnika w l/h:
+`0,45+0,003*KM+0,29*KM*n³*(0,55+0,45*obciążenie)`.
+Nie jest to mapa spalania konkretnego producenta. Na luzie nadal zużywa
+paliwo. Pusty zbiornik zatrzymuje silnik. Tankowanie w promieniu 6 m od
+stanowiska `(128,68)`, przy prędkości <0,15 m/s i zgaszonych silnikach:
+0,65 l/s. Ruszenie lub rozruch przerywa tankowanie.
 
-Jedna osoba może wybierać:
+Akumulator: 80 Ah, skuter 35 Ah; start 85%. Zapłon 1,2 A,
+alternator pracującego silnika 12–34 A, strumieniowe osobne obciążenie.
+Napięcie zależy od naładowania i spadku pod obciążeniem; podczas ładowania
+13,5–14,4 V. Woltomierz nie jest dokładnym modelem chemii akumulatora.
 
-- do 220 N siły (przyjęty limit do ćwiczenia),
-- do 40 W pracy mechanicznej,
-- do 0,18 m/s prędkości liny; luzowanie do 0,30 m/s.
+Strumieniowe (opcje dziobowy i rufowy) działają tylko przy zapłonie,
+wystarczającym napięciu i energii. Siła boczna 150–850 N zależna od masy,
+ramię ±0,38 L, rozpędzenie ok. 0,22 s. Skuteczność maleje jak
+`1/(1+(u/1,8)^2)`; moc elektryczna szacowana z siły. Mogą przesuwać łódź
+bokiem lub obracać ją, również przy zgaszonych silnikach i włączonym zapłonie.
+Brak modelu nagrzewania i znamionowego czasu pracy tunelu.
 
-Kliknięcie zadaje cel długości ±0,5 m. Algorytm uwzględnia naciąg, tempo
-zmiany długości i tłumienie, zanim pozwoli skrócić linę. Nie dopisuje łodzi
-prędkości ani nie przesuwa jej w stronę pomostu. Przy tej samej sile
-cięższa łódź ma mniejsze przyspieszenie. Knaga utrzymuje obciążenia większe
-niż 220 N — to limit wybierania ręką, nie nośności poprawnie zamocowanej cumy.
+## Cumy i kotwica
 
-Można wybrać dowolny poler z listy lub kliknięciem mapy. Zasięg rzutu
-wynosi 6 m, weryfikowany od właściwej knagi, a wybór poza zasięgiem nie
-jest zastępowany najbliższym. Liny nie owijają się wokół przeszkód; brak
-przewlekania przez półkluzy i pełnej pionowej geometrii cum do pomostu.
+Pięć knag: środek dziobu, lewy/prawy przód i lewa/prawa rufa. Kliknij
+poler, drzewo lub boję, potem knagę. Rzut do 6 m; początkowa długość to
+odległość + 0,35 m. **Samo założenie nie wybiera liny i nie nadaje impulsu.**
+Luźna lina nie ciągnie. Napięta: jednostronny Kelvin–Voigt, `k=EA/L`,
+rozwiązanie niejawne z efektywną masą punktu zaczepienia. EA:
+80/160/240/330/60 kN, zerwanie 10/18/28/40/8 kN według profilu.
+Kolor łagodnie zmienia się ze wzrostem stosunku naciągu do siły zerwania.
 
-## Kotwica, łańcuch, lina, winda
+Ręka wybiera do 220 N / 40 W / 0,18 m/s; luzowanie do 0,3 m/s. Przyciski
+zadają cel ±0,5 m wykonywany stopniowo. Knaga może utrzymać większy naciąg,
+ale człowiek go nie wybierze. Boje są punktami zaczepienia z umownym
+stałym położeniem; nie symulujemy ich całego własnego układu dennego.
+Brak owijania lin o przeszkody i dokładnej geometrii pionowej cum.
 
-Rode to łączny odcinek kotwiczny: od kotwicy wychodzi 6/8/10/14 m łańcucha
-(zależnie od profilu), dalej lina, łącznie do 60 m. Wydawany jest najpierw
-łańcuch, wybierana najpierw lina. Kotwica waży 6/10/16/24 kg.
+Kotwica zachowuje solver v3: ciężki łańcuch i lekka lina, quasi-statyczny
+zwis, odcinek leżący na dnie, opadanie, osadzenie, wleczenie i podnoszenie.
+Dla odcinka: `dV/ds=w`, `dx/ds=H/T`, `dz/ds=V/T`, z wydłużeniem EA.
+Łańcuch: 12 N/m w wodzie, EA 15 MN; lina: 0,08 N/m, EA 180 kN.
+Łącznie do 60 m; łańcuch 6/8/10/14/3 m, kotwica 6/10/16/24/3 kg.
 
-Solver quasi-statyczny dzieli rode na ciężki łańcuch i lekką linę:
+Trzymanie: `m*g*K_dna*(0,18+0,82*osadzenie)*cos(kąt)^3`, K=28 piasek,
+12 muł, 3 skała. Parametry umowne. Winda: wydawanie 0,65 m/s,
+wybieranie do 0,35 m/s / 650 W / 2,2 kN. Sprawdza osiągalny naciąg przed
+skróceniem, wyrywa kotwicę przy stromym rode i podnosi zawieszoną.
+Przeciążona wymaga podpłynięcia nad kotwicę. Profil pokazuje łańcuch/linę;
+skale osi są różne. Nie jest to pełny MoorDyn ani model geotechniczny.
 
-- ciężar łańcucha w wodzie: 12 N/m; EA 15 MN,
-- ciężar liny w wodzie: 0,08 N/m; EA 180 kN,
-- dla każdego odcinka `dV/ds=w`, `dx/ds=H/sqrt(H²+V²)`,
-  `dz/ds=V/sqrt(H²+V²)`, wraz z wydłużeniem od naciągu,
-- solver dobiera H i V0 albo długość leżącą na dnie, aby zamknąć geometrię,
-- luźny zapas może leżeć w zwojach na dnie; profil jest schematem w płaszczyźnie
-  kotwica–dziób, a osie profilu mają niezależne skale.
+## Akwen, głębokość i otoczenie
 
-Nie zastępujemy łańcucha nieważką gumką w rzucie z góry. Przy krótkim
-rode łańcuch się podnosi, rośnie pionowa składowa siły na kotwicy, a kąt
-pogarsza trzymanie. Gdy kotwica jest w toni, nie staje się punktem
-zamocowanym do dna. Opada z limitem 1,1 m/s i ograniczeniem wydanej długości.
+Akwen 600 × 400 m ma nieregularną granicę, większą wyspę (ok. 164 × 128 m),
+przesmyk szerokości ok. 13 m z łagodnymi zakrętami, plaże, cztery mielizny,
+cztery płaty szuwarów, większy port, palce, Y-bomy, boje i pomosty na
+plaży/wyspie. Dno i rysunek korzystają z tej samej funkcji odległości od brzegu.
+Głębokość płynnie rośnie od brzegu; środek przesmyku ma ok. 2 m.
+Piętnaście próbek kadłuba wyznacza podparcie, tarcie i obrót przy osiadaniu.
+Śruby są próbkowane osobno, niżej od kadłuba; trym zmniejsza ich zanurzenie.
+Piasek stopniowo ściera, kamienie powodują znacznie większe uszkodzenia.
+Skuter sprawdza wlot pod kadłubem. Szuwary można przepłynąć, ale zwiększają opór.
 
-Przyjęta nośność kotwicy to `m*g*K_dna*(0,18+0,82*osadzenie)*cos(kąt)^3`,
-z ograniczonym minimalnym współczynnikiem kąta. K dna: 28 piasek,
-12 muł, 3 skała. Kotwica osadza się stopniowo pod niskim kątem ciągnięcia,
-a po przekroczeniu nośności wlecze. To **umowny model trzymania**, nie
-potwierdzona siła konkretnej kotwicy, typu dna czy płyty skalnej.
+Przy włączonych efektach lokalnych: wiatr słabnie za wyspą/pomostami i w
+przesmyku; prąd traci składową normalną przy brzegu, przyspiesza wzdłuż
+przesmyku, zwalnia w śladzie wyspy i dostaje małe zmienne zawirowania przy
+pomostach. Osłona ogranicza wysokość fali. Są to **zadane pola przybliżone,
+nie rozwiązanie równań przepływu**; brak wymuszenia zachowania masy pola
+wody w całym akwenie. Przełącznik umożliwia porównanie z jednorodnym polem.
+Kierunki oznaczają dokąd płynie/wieje, nie meteorologiczne skąd.
 
-Winda: wydawanie do 0,65 m/s, wybieranie do 0,35 m/s, uciąg do 2,2 kN
-i moc mechaniczna do 650 W.
-Przeciążenie zatrzymuje wybieranie. Blisko pionu wybieranie wyrywa kotwicę
-i podnosi ją; przeciążony rode może się zerwać. Nie ma przycisku
-„przenieś łódź do kotwicy”. Pionowy naciąg wpływa w przybliżeniu na
-zanurzenie i przegłębienie dziobu.
+Trzy składowe fal o okresach 2,8/1,9/3,9 s wymuszają ruch orbitalny,
+kołysanie i przegłębienie. Wysokość sumuje składowe, nie jest statystycznym Hs.
+Automatyczna wysokość `min(0,55;0,004*V_wiatru²)` jest założeniem do
+ćwiczeń, bez prognozy rozbiegu i czasu działania wiatru. Brak odbić i pełnego RAO.
 
-Ograniczenia: lokalnie płaskie dno w równaniach zwisu, przybliżony ruch
-wleczenia i zawieszonej kotwicy, brak dynamicznych drgań poszczególnych
-ogniw, tarcia łańcucha o dno, zaczepienia o kamienie i hydrodynamiki każdego
-segmentu. To nie jest pełny solver MoorDyn ani model geotechniczny.
+Zacumowane łodzie, żaglówki i skutery mają masę, moment bezwładności,
+prędkość i więzy z tłumieniem do pozycji postoju. Reagują na wiatr, prąd
+oraz falę; kontakt przenosi impuls między jednostkami. Można je wyłączyć
+wraz z kolizjami. To uproszczone więzy postoju, nie osobna pełna lina
+MoorDyn dla każdego obiektu. Nie są samodzielnie sterowanym ruchem portowym.
 
-## Echosonda, fale i kołysanie
+Echosonda: idealny pomiar dna pod rufą i historia 60 s; fish arches to
+wizualny easter egg, bez symulacji akustyki ani zachowania ryb.
 
-Jezioro ma 600 × 400 m wody, wyspę i plaże, ze stopniowymi płyciznami przy brzegach,
-niecką i mielizną w okolicy `(91,64)`. Dno zmienia materiał: piasek, skała,
-muł. Echosonda pod rufą pokazuje głębokość skorygowaną do bieżącej
-powierzchni, próbkuje co 0,25 s i zachowuje do 60 s historii.
-To idealizowany pomiar bez opóźnienia akustycznego i błędnych ech.
+## Wyniki kontrolne v4
 
-Prześwit pod stępką jest minimum próbek całej długości i szerokości kadłuba, uwzględnia
-zanurzenie i ruch pionowy. Ujemny prześwit zwiększa tarcie o dno, może
-zatrzymać jednostkę i powoduje szkody przy ruchu. Nie ma deformacji dna
-ani pełnego kontaktu kil–grunt.
+Spokojna woda, bez kolizji terenowych (utrzymywanie pozycji testowej),
+krok 1/120 s. To wyniki równań symulatora, **nie dane osiągowe prawdziwej łodzi**.
 
-Trzy harmoniczne fal (okresy 2,8 / 1,9 / 3,9 s) dają powierzchnię,
-nachylenie, orbitalny przepływ i przyspieszenie. Określenie „wysokość”
-oznacza sumę wysokości składowych, nie statystyczne Hs. Głębokość
-referencyjna dyspersji wynosi 3 m; orbitalny ruch uwzględnia lokalną głębokość.
-Reakcja kadłuba: tłumione oscylatory ruchu pionowego, przechyłu
-poprzecznego i przegłębienia oraz siły orbitalnego przepływu w 2D.
-Na mapie widać ruch drobnych grzbietów, zmianę cienia i linii wody
-podczas kołysania; dokładne kąty są też wyświetlane obok echosondy.
+Motorówka domyślna, start 8 m/s, manetka 50%, po 5 s:
 
-Przełącznik „fala zależna od wiatru” ustawia `min(0,55; 0,004*V_wiatru²)` m.
-To przyjęte małe falowanie osłoniętej przystani, **nie prognoza** bez
-znajomości rozbiegu, czasu wiatru i osłony. Nie uwzględnia odbić od pomostu,
-załamań grzbietów, bryzgów, zalewania ani spektrum JONSWAP/RAO.
+| Silnik | Prędkość [m/s] | Obrót [rad/s] | Zniesienie boczne [m/s] |
+| --- | --- | --- | --- |
+| 0° | 6,304 | 0 | 0 |
+| 2° | 6,295 | 0,0062 | −0,018 |
+| 8,6° | 6,153 | 0,0264 | −0,077 |
+| 28,6° | 4,819 | 0,0892 | −0,253 |
 
-## Wyniki kontrolne i co znaczą
-
-Krok 1/120 s. Poniższe pomiary wykonano w spokojnej wodzie, z wyłączonymi
-kolizjami terenowymi przez utrzymywanie pozycji testowej. To porównanie
-zachowania równań, nie pomiary na jeziorze.
-
-Domyślna motorówka: 1015 kg z załogą, jeden silnik 60 KM, pełny gaz od
-postoju: ok. 0,03 / 0,77 / 4,44 / 8,34 m/s po 1 / 2 / 5 / 10 s.
-Wstecz po 5 s: ok. 1,74 m/s, wobec 4,44 m/s naprzód.
-
-Start 8 m/s, manetka 50%, po 5 s:
-
-| Koło / silnik | Prędkość końcowa | Obrót |
-| --- | --- | --- |
-| 0 rad | ok. 5,81 m/s | 0 rad/s |
-| 0,15 rad | ok. 5,55 m/s | 0,22 rad/s |
-| 0,50 rad | ok. 4,49 m/s | 0,41 rad/s |
-
-Wartości pozwalają wykrywać regresje: nie dowodzą, że konkretny kadłub
-osiągnie takie samo przyspieszenie lub promień skrętu.
-
-Automatyczne testy sprawdzają m.in. bilans energii bez napędu, reakcję na
-zmianę biegu, kierunek momentu dwóch silników, większą utratę prędkości
-w ciasnym skręcie, skalowanie bezwładności, limit ręcznego wybierania,
-wybór polera, kontakt z dnem, zwis/naprężenie rode, wydawanie/podnoszenie
-kotwicy i stabilność fal z cumami. Oddzielne testy Chromium sprawdzają UI.
+Ten sam kadłub z 350 KM, pełny gaz po 35 s: trym 10% ok. 19,91 m/s,
+trym 42% ok. 21,47 m/s, trym 100% ok. 7,77 m/s z wentylacją 96%.
+Pokazuje to zależność jakościową, nie poprawny dobór 350 KM do tego kadłuba.
+Testy sprawdzają także start/stop, brak paliwa, masę/zanurzenie zbiorników,
+tankowanie, strumieniowe, skuter, linę z luzem, lokalne pola i postój jednostek.
 
 ## Kolizje
 
-Zachowano dydaktyczne progi v1 (0,15 / 0,30 m/s kontakt bez szkód,
-1,50 / 1,80 m/s zniszczenie), rozróżniając burtowe odbijacze.
-Nie są rzeczywistymi bezpiecznymi prędkościami. Masa efektywna kontaktu
-uwzględnia teraz parametry wybranego kadłuba i masę dodaną. Zniszczony
-pomost pozostaje przeszkodą.
-
-## Zmiany v3 — brzeg, śruba, sterowanie i wyciąganie kotwicy
-
-Akwen ma teraz **600 × 400 m** i wyspę w środku. Funkcja odległości od
-brzegu opisuje jednocześnie ląd, płyciznę i obrys wyspy. Plaże są na
-północy, zachodzie, południu oraz po południowej stronie wyspy.
-Przykładowe drzewa przy plażach są punktami D1–D8; można wybrać je
-identycznie jak poler. Limit rzutu 6 m nadal liczymy od knagi.
-Zmieniono materiał dna w zatokach i nachylenia, więc opis akwenu v2 powyżej
-jest historyczny — szczegóły poniżej go zastępują.
-
-### Osiadanie kadłuba
-
-Brzeg nie jest już prostokątną ścianą kolizji. Głębokość w pobliżu plaży
-rośnie jak `8,5*(1-exp(-d*0,085/8,5))`, na pozostałym brzegu stosujemy
-stromszy współczynnik 0,24. Na lądzie głębokość jest ujemna, czyli podłoże
-wystaje nad powierzchnię. Położenie elementów i sonda korzystają z tego
-samego dna; obszar narysowanego koloru płytkiej wody jest orientacyjny.
-
-Piętnaście próbek spodu kadłuba (pięć przekrojów × trzy punkty poprzecznie)
-uwzględnia wznios dna kadłuba na końcach i przy burtach oraz aktualne
-przegłębienie/kołysanie. Po wejściu w grunt:
-
-- podłoże podtrzymuje kadłub; heave nie może umieścić dna kadłuba pod gruntem,
-- część ciężaru wcześniej podtrzymywana wyporem przechodzi na dno,
-- każda próbka ma własną siłę tarcia i ramię względem środka ciężkości,
-  więc niesymetryczne osiadanie może obrócić łódź,
-- tarcie działa przeciwnie do lokalnego ruchu, a spadek dna dodaje składową
-  skierowaną ku głębszej wodzie; nie zerujemy skokowo całej prędkości,
-- piasek/muł zwykle dają mniejsze szkody kadłuba niż kamienie.
-
-To aproksymacja sztywnego kadłuba na podłożu, bez deformacji piasku,
-ugniatania, grzęźnięcia i dokładnego kontaktu powierzchniowego. Wartości
-współczynników tarcia i szkód są założeniami szkoleniowymi.
-
-### Osobna śruba każdego silnika
-
-Okrąg śruby jest próbkowany przy rufie, na `x=-0,51*L`, przy odpowiednim
-poprzecznym położeniu silnika. Opuszczona końcówka sięga w modelu o 0,22 m
-niżej niż nominalne zanurzenie kadłuba. Dzięki temu śruba może dotknąć
-płycizny, mimo że kadłub jeszcze pływa.
-
-Piasek nalicza stopniowe ścieranie zależne od zagłębienia, obrotów wału
-i ruchu względem dna; nieruchoma, nieobracająca się śruba nie ściera się
-sama. Kamienie dają oddzielne impulsy uszkodzeń, z przerwą co najmniej
-0,45 s, większe przy obrotach i prędkości. Muł jest mniej ścierny niż piasek.
-To zależności umowne, nie obliczenia naprężeń konkretnego stopu aluminium.
-
-Sprawność przekazywania ciągu maleje jak `(1-uszkodzenia/100)^1,5`.
-Przy 100% dany silnik nie daje ciągu, mimo że może mieć obroty. Dwa silniki
-mają niezależne prześwity i stan śrub. Przełącznik podnoszenia napędów
-wyłącza ciąg i opór skegów oraz usuwa śruby z kontaktu z dnem. Pozwala
-podejść do drzewa dryfem lub na cumie. Nie modeluje pracy silnika na sucho.
-
-### Kotwica: usunięte zacięcie na sztywnym łańcuchu
-
-W v2 krok skrócenia pełnego łańcucha mógł chwilowo wymagać siły wyższej
-niż limit windy. Sterownik zatrzymywał się, zanim geometria i oderwanie
-kotwicy zdążyły się ustalić. Poprawiono kolejność:
-
-1. Solver przewiduje geometrię dla żądanego skrócenia.
-2. Jeśli obciążenie przekroczyłoby 2,2 kN, dobiera mniejsze skrócenie metodą
-   bisekcji, zamiast wykonywać cały krok i dopiero zgłaszać przeciążenie.
-3. Dla osiągalnego naciągu sprawdza wyrwanie kotwicy (kąt > 0,9 rad
-   i pionowa siła większa od przyjętego oporu osadzenia).
-4. Kotwica przechodzi ze stanu „dno” do „podnoszenie”. Zawieszona ma
-   przybliżony tłumiony ruch wahadłowy, a jej głębokość jest ograniczona
-   faktycznie wydaną długością rode.
-5. Dopiero po dojściu do rolki przechodzi na pokład.
-
-Aktualna winda: wydawanie do **0,65 m/s**, wybieranie do **0,35 m/s**,
-mechaniczna moc wybierania do **650 W**, maksymalny uciąg **2,2 kN**.
-Prędkość maleje pod obciążeniem. Pasek i licznik pokazują długość,
-a panel podaje stan oraz faktyczne tempo. Przy rzeczywistym przeciążeniu
-wyświetla „Odciąż rode: podpłyń nad kotwicę”. Nie symulujemy automatycznego
-płynięcia silnikiem do kotwicy; wiatr lub gaz przeciwny do kierunku
-wybierania może nadal uniemożliwić odzyskanie kotwicy.
-
-Regresja sprawdza także kotwicę z 20 m rode po odsunięciu łodzi o 8 m,
-dla motorówki i cięższego kadłuba: można wybrać rode, wyrwać kotwicę i
-podnieść ją bez przekroczenia limitu windy ani zerwania sztywnego łańcucha.
-
-### Manetka, obręcz i woda
-
-Koło chwytamy za obręcz; zmiana położenia jest liczona z różnicy kątów
-wokół środka, z ciągłym przejściem przez ±π. Centrum nie jest miejscem
-chwytu, a poziome przesunięcie myszy nie jest już bezpośrednim poleceniem
-skrętu. Koło nadal nie wraca samoczynnie.
-
-Pojedyncze ↑ / W od luzu wybiera +8% (bieg pełzający), ↓ / S wybiera −8%.
-Przeciwne pojedyncze naciśnięcie najpierw wybiera luz. Przytrzymanie przez
-ponad 0,24 s płynnie zmienia moc. Spacja wybiera oba luzy. Dźwignie są
-pionowe, z krótkim skokiem i zatrzaskiem biegu pełzającego; fizyczny napęd
-zachowuje opóźnienie przekładni i obrotów. Normalizowany stan wału przy
-biegu pełzającym zmierza do 0,23, a wyświetlane obroty do 750 obr/min.
-Przy gazie powyżej zatrzasku obroty rosną płynnie.
-
-Jedna kreska strugi odpowiada niskiemu ciągowi biegu pełzającego, więcej
-kresek wyższym obrotom. Kierunek strugi zmienia się na wstecznym. To
-wskaźnik graficzny, nie dyskretyzacja ciągu w równaniach.
-Ruchy wody przy dziobie, środku i rufie korzystają z prędkości punktów
-`v + ω×r` względem prądu, więc obracający się dziób i rufa mogą pokazywać
-przeciwne kierunki. Krótkie ślady pozostają w układzie jeziora i są unoszone
-prądem. Delikatne nierówne zmarszczki zastąpiły siatkę metrów.
+Prędkość normalna punktu kontaktu uwzględnia ruch i obrót; energia
+`0,5*m_ef*v_normalna²`. Zachowano umowne progi dydaktyczne:
+bez szkód do 0,15 m/s, z burtowymi odbijaczami do 0,30 m/s; zniszczenie
+od 1,50 / 1,80 m/s. To nie są potwierdzone bezpieczne prędkości prawdziwej
+łodzi, pomostu ani rzeczywistych odbijaczy. Celem manewru jest kontakt bliski zeru.
+Kolizje z Y-bomami przybliża łańcuch małych prostokątów; z innymi jednostkami
+podłużne kapsuły i impuls. Nie liczymy deformacji materiałów. Zniszczony
+pomost nadal jest przeszkodą.

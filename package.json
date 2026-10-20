@@ -1,6 +1,6 @@
 {
   "name": "boat-simulator",
-  "version": "3.0.1",
+  "version": "4.0.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -12,8 +12,8 @@
     "test:production": "npm run build && playwright test --config playwright.production.config.js"
   },
   "devDependencies": {
-    "vite": "^7.1.12",
-    "@playwright/test": "^1.56.1"
+    "@playwright/test": "^1.56.1",
+    "vite": "^7.1.12"
   },
   "engines": {
     "node": ">=20.19.0"

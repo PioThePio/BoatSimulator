@@ -1,6 +1,7 @@
 import {BOLLARDS,bottomAt,clamp} from './world.js';
 export function point(b,x,y){const c=Math.cos(b.a),s=Math.sin(b.a);return{x:b.x+c*x-s*y,y:b.y+s*x+c*y};}
-export function cleat(b,end){return point(b,(end==='bow'?1:-1)*b.spec.length*.39,0);}
+export const CLEATS={bow:'Dziób',portBow:'Lewy przód',starboardBow:'Prawy przód',portStern:'Lewa rufa',starboardStern:'Prawa rufa'};
+export function cleat(b,end){const front=['bow','portBow','starboardBow'].includes(end),side=end.startsWith('port')?-1:end.startsWith('starboard')?1:0;return point(b,(front?1:-1)*b.spec.length*.39,side*b.spec.beam*.43);}
 export function inverseMass(b,n,arm){
  const c=Math.cos(b.a),s=Math.sin(b.a),u=n.x*c+n.y*s,v=-n.x*s+n.y*c;
  const lever=arm.x*n.y-arm.y*n.x;
@@ -17,8 +18,8 @@ export function attachRope(b,end,bollard=null){
  const q=BOLLARDS[bollard];if(!q)return{ok:false,message:'Wybierz poler na mapie albo z listy.'};
  const d=Math.hypot(p.x-q.x,p.y-q.y);
  if(d>6)return{ok:false,message:`${q.label} jest poza zasięgiem rzutu (6 m od knagi).`};
- b.ropes.push({end,bollard,length:d+.15,targetLength:d+.15,tension:0,hauling:false,blocked:false,rate:0});
- return{ok:true,message:`Cuma ${end==='bow'?'dziobowa':'rufowa'} → ${q.label.toLowerCase()}.`};
+ b.ropes.push({end,bollard,length:d+.35,targetLength:d+.35,tension:0,hauling:false,blocked:false,rate:0});
+ return{ok:true,message:`Cuma ${CLEATS[end]||'rufowa'} → ${q.label.toLowerCase()}.`};
 }
 export function requestHaul(r,delta){r.targetLength=clamp(r.targetLength+delta,.45,15);}
 export function solveRopes(b,dt,notify){
@@ -42,7 +43,7 @@ export function solveRopes(b,dt,notify){
   const closing=separation-r.rate;
   const inv=inverseMass(b,n,arm);
   // Backward-Euler Kelvin-Voigt tension, stable even for short stiff lines.
-  r.tension=extension>0||extension+closing*dt>0?Math.max(0,(k*extension+(damping+k*dt)*closing)/(1+(damping*dt+k*dt*dt)*inv)):0;
+  r.tension=extension>0?Math.max(0,(k*extension+(damping+k*dt)*closing)/(1+(damping*dt+k*dt*dt)*inv)):0;
   if(r.tension>b.spec.lineBreak){notify(`Cuma pękła: przekroczono ${(b.spec.lineBreak/1000).toFixed(0)} kN.`);return false;}
   impulse(b,n,r.tension*dt,arm);b.maxTension=Math.max(b.maxTension,r.tension);return true;
  });

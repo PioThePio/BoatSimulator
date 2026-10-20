@@ -8,9 +8,10 @@ import {engineState,updateEngine} from '../src/craft.js';
 import {throttleStep,angleDelta,rimPosition} from '../src/controls.js';
 import {propWashCount} from '../src/render.js';
 function run(b,t){for(let i=0;i<t*120;i++)step(b,{},1/120);}
-test('expanded lake contains a solid central island and progressively shallow beaches',()=>{
+test('expanded lake contains a central island with a navigable channel and progressively shallow beaches',()=>{
  assert.equal(WORLD.right-WORLD.left,600);assert.equal(WORLD.bottom-WORLD.top,400);
- assert.ok(bottomAt(ISLAND.x,ISLAND.y).depth<0);assert.ok(shoreAt(ISLAND.x,ISLAND.y).land);
+ assert.ok(bottomAt(ISLAND.x,ISLAND.y+25).depth<0);assert.ok(shoreAt(ISLAND.x,ISLAND.y+25).land);
+ assert.ok(bottomAt(ISLAND.x,ISLAND.y).depth>2);assert.ok(!shoreAt(ISLAND.x,ISLAND.y).land);
  assert.ok(islandOutline().length>50);assert.ok(!shoreAt(400,210).land);
  const depths=[5,8,15,30].map(x=>bottomAt(x,150).depth);for(let i=1;i<depths.length;i++)assert.ok(depths[i]>depths[i-1]);
  assert.equal(bottomAt(8,150).material,'sand');assert.equal(bottomAt(80,6).material,'rock');

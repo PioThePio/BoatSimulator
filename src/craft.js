@@ -1,37 +1,75 @@
 import {clamp} from './world.js';
 export const CRAFTS={
- tender:{name:'Łódź otwarta 4,2 m',length:4.2,beam:1.75,hullMass:380,draft:.28,hp:25,maxHp:60,freeboard:.45,planing:true,anchorMass:6,chain:6,lineEA:80000,lineBreak:10000},
- runabout:{name:'Motorówka 5,5 m',length:5.5,beam:2.15,hullMass:800,draft:.38,hp:60,maxHp:150,freeboard:.65,planing:true,anchorMass:10,chain:8,lineEA:160000,lineBreak:18000},
- cabin:{name:'Kabinowa 7,5 m',length:7.5,beam:2.65,hullMass:2100,draft:.55,hp:150,maxHp:250,freeboard:1.15,planing:true,anchorMass:16,chain:10,lineEA:240000,lineBreak:28000},
- cruiser:{name:'Wypornościowa 9 m',length:9,beam:3.1,hullMass:4200,draft:.75,hp:90,maxHp:200,freeboard:1.5,planing:false,anchorMass:24,chain:14,lineEA:330000,lineBreak:40000}
+ tender:{name:'Łódź otwarta 4,2 m',length:4.2,beam:1.75,hullMass:380,draft:.28,hp:25,freeboard:.45,planing:true,deadrise:12,fuel:45,color:'#e8e9cf',anchorMass:6,chain:6,lineEA:80000,lineBreak:10000},
+ runabout:{name:'Motorówka 5,5 m',length:5.5,beam:2.15,hullMass:800,draft:.38,hp:90,freeboard:.65,planing:true,deadrise:20,fuel:100,color:'#f3f1e7',anchorMass:10,chain:8,lineEA:160000,lineBreak:18000},
+ cabin:{name:'Kabinowa 7,5 m',length:7.5,beam:2.65,hullMass:2100,draft:.55,hp:200,freeboard:1.15,planing:true,deadrise:22,fuel:250,color:'#e0eaf0',anchorMass:16,chain:10,lineEA:240000,lineBreak:28000},
+ cruiser:{name:'Wypornościowa 9 m',length:9,beam:3.1,hullMass:4200,draft:.75,hp:90,freeboard:1.5,planing:false,deadrise:8,fuel:400,color:'#d9ded0',anchorMass:24,chain:14,lineEA:330000,lineBreak:40000},
+ pwc:{name:'Skuter wodny 3,2 m',length:3.2,beam:1.22,hullMass:310,draft:.20,hp:170,freeboard:.30,planing:true,deadrise:22,fuel:60,color:'#e5b35c',jet:true,anchorMass:3,chain:3,lineEA:60000,lineBreak:8000}
 };
+for(const p of Object.values(CRAFTS))p.maxHp=350;
 export function specification(options={}){
- const profile=options.profile in CRAFTS?options.profile:'runabout';const p=CRAFTS[profile];
- const length=clamp(Number(options.length)||p.length,3.5,11),beam=clamp(Number(options.beam)||p.beam,1.5,3.8);
- const hullMass=clamp(Number(options.hullMass)||p.hullMass,250,8000),engineCount=options.engineCount===2?2:1;
- const powers=Array.from({length:engineCount},(_,i)=>clamp(Number(options.powers?.[i])||p.hp,10,p.maxHp));
- const mass=hullMass+powers.reduce((sum,hp)=>sum+28+hp*.62,0)+150;
- const inertia=mass*((.27*length)**2+(.22*beam)**2);
- return {...p,profile,length,beam,hullMass,engineCount,powers,mass,inertia,draft:p.draft*(hullMass/p.hullMass)**.32,
-  mx:mass*1.08,my:mass*1.65,iz:inertia*1.55,engineSpacing:engineCount===2?beam*.46:0,maxSteer:35*Math.PI/180};
+ const profile=options.profile in CRAFTS?options.profile:'runabout',p=CRAFTS[profile];
+ const length=clamp(Number(options.length)||p.length,2.8,11),beam=clamp(Number(options.beam)||p.beam,1.1,3.8),hullMass=clamp(Number(options.hullMass)||p.hullMass,200,8000);
+ const engineCount=p.jet?1:options.engineCount===2?2:1;
+ const powers=Array.from({length:engineCount},(_,i)=>clamp(Number(options.powers?.[i])||p.hp,10,350));
+ const fuelCapacity=clamp(Number(options.fuelCapacity)||p.fuel,10,800),tankCount=options.tankCount===2?2:1;
+ const dryMass=hullMass+powers.reduce((sum,hp)=>sum+(p.jet?0:28+hp*.62),0)+(p.jet?85:150)+fuelCapacity*.08+2*tankCount;
+ const mass=dryMass+fuelCapacity*.75*.745;
+ const base={...p,profile,length,beam,hullMass,engineCount,powers,fuelCapacity,tankCount,dryMass,mass,
+  referenceMass:mass,referenceDraft:p.draft*(hullMass/p.hullMass)**.32,draft:p.draft*(hullMass/p.hullMass)**.32,engineSpacing:engineCount===2?beam*.46:0,maxSteer:(p.jet?28:35)*Math.PI/180,
+  engineLever:p.jet?-.40*length:-.44*length,bowThruster:!p.jet&&!!options.bowThruster,sternThruster:!p.jet&&!!options.sternThruster};
+ return updateMass(base,fuelCapacity*.75);
 }
-export function engineState(hp,y=0){return{hp,y,command:0,gear:0,n:0,shift:0,thrust:0,rpm:750,propDamage:0,propContact:false,propClearance:10,lastStrike:-10};}
-export function updateEngine(engine,command,inflow,dt,damage=0){
- const cmd=clamp(command,-1,1),desired=Math.abs(cmd)<.035?0:Math.sign(cmd);
- // Shift through neutral: shaft must slow down before the reversing clutch engages.
- if(desired!==engine.gear){
-  engine.n+=(0-engine.n)*(1-Math.exp(-dt/.28));engine.thrust=0;engine.shift+=dt;
-  if(Math.abs(engine.n)<.055&&engine.shift>=.65){engine.gear=desired;engine.shift=0;}
- }else{
-  engine.shift=0;const target=desired?(.23+.77*(clamp((Math.abs(cmd)-.08)/.92,0,1))**.65):0;
-  const tau=target>engine.n?.9:.45;
-  engine.n+=(target-engine.n)*(1-Math.exp(-dt/tau));
+export function updateMass(spec,fuelLitres){
+ spec.mass=spec.dryMass+Math.max(0,fuelLitres)*.745;
+ spec.draft=Math.max(.08,spec.referenceDraft+(spec.mass-spec.referenceMass)/(1000*spec.length*spec.beam*.7));
+ spec.cgX=-.16*spec.length*fuelLitres*.745/spec.mass;
+ spec.inertia=spec.mass*((.27*spec.length)**2+(.22*spec.beam)**2)+fuelLitres*.745*(spec.length*.16)**2;
+ spec.mx=spec.mass*1.08;spec.my=spec.mass*1.65;spec.iz=spec.inertia*1.55;
+ return spec;
+}
+export function engineState(hp,y=0,coldStart=false){return{hp,y,command:0,gear:0,n:0,shift:0,thrust:0,rpm:coldStart?0:750,propDamage:0,propContact:false,propClearance:10,lastStrike:-10,key:coldStart?'off':'running',startTime:0,trim:.28,trimTarget:.28,ventilation:0,load:0,fuelFlow:0};}
+export function engineKey(b,index,action){
+ const en=b.engines[index];if(!en)return{ok:false,message:'Brak silnika.'};
+ if(action==='off'){en.key='off';en.startTime=0;en.gear=0;en.thrust=0;return{ok:true,message:'Silnik wyłączony.'};}
+ if(action==='ignition'){if(en.key!=='running')en.key='ignition';return{ok:true,message:'Zapłon włączony.'};}
+ if(action==='start'){
+  if(Math.abs(index===0?b.throttle:b.throttle2)>.035)return{ok:false,message:'Przed rozruchem ustaw manetkę na luz.'};
+  if(b.fuel.litres<=0)return{ok:false,message:'Brak paliwa.'};
+  if(b.battery.soc<.08||b.battery.voltage<10)return{ok:false,message:'Akumulator nie pozwala na rozruch.'};
+  if(en.key==='off')return{ok:false,message:'Najpierw włącz zapłon.'};
+  if(en.key!=='running'){en.key='starting';en.startTime=0;}return{ok:true,message:'Rozrusznik pracuje…'};
  }
- const n=engine.n,gear=engine.gear;
- const staticThrust=85*engine.hp**.8,advance=gear*inflow;
+ return{ok:false,message:'Nieznana pozycja stacyjki.'};
+}
+export function updateEngine(en,command,inflow,dt,damage=0,context={}){
+ en.trim+=clamp(en.trimTarget-en.trim,-.10*dt,.10*dt);
+ const cmd=clamp(command,-1,1);en.command=cmd;
+ if(en.key==='starting'){
+  en.startTime+=dt;en.rpm=260;en.thrust=0;en.gear=0;
+  if(en.startTime>1.15)en.key='running';return 0;
+ }
+ if(en.key!=='running'||context.noFuel){en.n*=Math.exp(-dt/.35);en.rpm=en.key==='off'?0:0;en.thrust=0;en.gear=0;if(context.noFuel)en.key='ignition';return 0;}
+ const desired=Math.abs(cmd)<.035?0:Math.sign(cmd);
+ const trimVent=context.jet?0:clamp((en.trim-.68)/.32,0,1)*clamp((Math.abs(inflow)-2)/6,0,1)*(.2+.8*Math.abs(cmd));
+ en.ventilation+=(trimVent-en.ventilation)*(1-Math.exp(-dt/.35));
+ const advanceLoad=clamp(1-Math.abs(inflow)/(4+12*en.n),.15,1);
+ en.load=advanceLoad*(1-en.ventilation);
+ if(desired!==en.gear){en.n*=Math.exp(-dt/.28);en.shift+=dt;if(en.n<.055&&en.shift>=.65){en.gear=desired;en.shift=0;}}
+ else{
+  en.shift=0;const demand=desired?.23+.77*clamp((Math.abs(cmd)-.08)/.92,0,1)**.65:0;
+  const target=clamp(demand*(1-.035*en.load)+en.ventilation*.13,0,1);
+  const tau=target>en.n?.65+.30*(en.hp/350)**.3+.35*en.load:.4;
+  en.n+=(target-en.n)*(1-Math.exp(-dt/tau));
+ }
+ const n=en.n,gear=en.gear;
+ const staticThrust=(context.jet?62:85)*en.hp**.8,advance=gear*inflow;
  const advanceFactor=clamp(1-.22*advance/(2+11*n),.12,1.35);
- const bollard=staticThrust*n*n*(gear<0?.58:1)*advanceFactor;
- const powerLimit=.55*engine.hp*735.5*n**3/Math.max(1,Math.abs(inflow));
- engine.thrust=desired===gear?gear*Math.min(bollard,powerLimit)*(1-damage/100)*(1-engine.propDamage/100)**1.5:0;
- engine.rpm=750+4750*clamp((n-.23)/.77,0,1);return engine.thrust;
+ const reverse=context.jet?.34:.58;
+ const bollard=staticThrust*n*n*(gear<0?reverse:1)*advanceFactor;
+ const powerLimit=(context.jet?.63:.55)*en.hp*735.5*n**3/Math.max(1,Math.abs(inflow));
+ en.thrust=desired===gear?gear*Math.min(bollard,powerLimit)*(1-damage/100)*(1-en.propDamage/100)**1.5*(1-.84*en.ventilation):0;
+ en.rpm=750+4750*clamp((n-.23)/.77,0,1)+en.ventilation*450;
+ en.fuelFlow=.45+.003*en.hp+.29*en.hp*n**3*(.55+.45*en.load);
+ return en.thrust;
 }

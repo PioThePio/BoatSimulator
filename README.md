@@ -1,9 +1,11 @@
-# Przystań — symulator manewrów motorówką v3
+# Przystań — symulator manewrów motorówką v4
 
-Przeglądarkowy symulator z widokiem z góry. Cztery profile kadłuba,
-zmieniane wymiary i masa, jeden lub dwa silniki o wybieranej mocy,
+Przeglądarkowy symulator z widokiem z góry. Pięć profili kadłuba (w tym skuter wodny),
+zmieniane wymiary i masa, jeden lub dwa silniki do 350 KM każdy,
 niezależne/sprzężone pionowe manetki, wiatr, prąd, fale, cumy, kotwica i echosonda.
-Jezioro 600 × 400 m z wyspą, plażami, drzewami do cumowania, osiadaniem
+Nieregularne jezioro 600 × 400 m z większą wyspą i przesmykiem, portem z Y-bomami,
+bojami, stacją paliw, pomostami na plaży i wyspie, szuwarami, mieliznami,
+drzewami do cumowania, osiadaniem
 kadłuba na dnie i osobnymi uszkodzeniami każdej śruby.
 Bez kont i backendu. Aplikacja nie pobiera zewnętrznych zasobów w czasie działania.
 
@@ -42,25 +44,30 @@ Repozytorium musi mieć aktywne Settings → Pages → Source: GitHub Actions.
 | Koło | A/D lub ←/→, chwyt obręczy i prowadzenie po łuku |
 | Wyprostuj | C lub przycisk |
 | Wybrana manetka | Krótko W/S lub ↑/↓: bieg pełzający / luz; przytrzymanie: płynna zmiana gazu; pionowa dźwignia |
-| Wybór lewego/prawego silnika | 1 / 2 lub przyciski |
+| Wybór manetki klawiaturą | 1 / 2; przyciski dotykowe obsługują każdą manetkę bez wyboru |
 | Sprzężenie manetek | T lub przełącznik |
 | Obydwa silniki na luz | Spacja lub „Luz” |
 | Odbijacze | F lub przełącznik |
 | Pauza / nowa próba | P / R lub przyciski |
-| Punkt cumowania | Wybierz knagę, kliknij poler P lub drzewo D na mapie albo wybierz z listy |
-| Założenie cumy | + przy odpowiedniej knadze; rzut do 6 m |
+| Punkt cumowania | Kliknij poler P / Y, boję B lub drzewo D na mapie, następnie wybierz knagę |
+| Założenie cumy | Pięć knag; alternatywnie cel z listy i + przy knadze; rzut do 6 m z 35 cm luzu |
 | Wybieranie / luzowanie | − / + po założeniu: cel ±0,5 m, wykonywany stopniowo |
 | Odczepienie | × przy cumie |
+| Rozruch / gaszenie | Zapłon → Start na luzie; 0 wyłącza silnik i zapłon |
+| Trym napędu | + / − przy każdej manetce; wskaźnik oraz uniesienie dziobu |
+| Strumieniowe | Przytrzymaj ◀ / ▶; Q/E dziób, Z/X rufa; wyposażenie opcjonalne i wymagany zapłon |
+| Paliwo | Tankuj przy ⛽, prędkość <0,15 m/s, silniki zgaszone |
+| Ślad / łodzie portowe | Przycisk Ślad na mapie / przełącznik w warunkach |
 | Kotwica | Ustaw długość rode, „Wydaj”, „Stop”, „Wybierz” |
 
-Koło i manetki nie wracają samoczynnie do zera. Silnik ma osobny rzeczywisty
+Koło ma cztery obroty od oporu do oporu. Koło i manetki nie wracają samoczynnie do zera. Silnik ma osobny rzeczywisty
 kąt, obroty, naciąg i opóźnienie zmiany biegu. Luz nie hamuje łodzi.
 Przy równych przeciwnych manetkach łódź może dryfować podczas obrotu,
 bo wsteczny ciąg jest słabszy. W formularzach strzałki obsługują dane pole.
 
 „Zastosuj” po zmianie kadłuba/napędu rozpoczyna nową próbę. Wymiary i moc
 są ograniczone zakresem formularza. Masa w podsumowaniu obejmuje silniki
-i 150 kg załogi. Pozycja „Przy pomoście” ułatwia ćwiczenie cum, „Jezioro”
+i 150 kg załogi (85 kg na skuterze), masę zbiorników i paliwa. Paliwo zmienia masę, bezwładność i zanurzenie. Zbiorniki: jeden lub dwa, pojemność łączna 10–800 l. Start z 75% paliwa. Pozycja „Przy pomoście” ułatwia ćwiczenie cum, „Jezioro”
 próbę napędu. Akwen ma 600 × 400 m. Przycisk „Cały akwen” pokazuje wyspę i plaże,
 kliknięcie minimapy przesuwa widok, ◎ przywraca śledzenie łodzi.
 Pozycje „Plaża” i „Wyspa” ułatwiają próby cumowania do brzegu.
@@ -90,6 +97,9 @@ falowania prawdziwego jeziora.
 
 - `src/physics.js` — dynamika kadłuba, kolizje i całkowanie.
 - `src/craft.js` — profile, masa i napęd.
+- `src/systems.js` — zbiorniki, tankowanie, akumulator, ładowanie i strumieniowe.
+- `src/cockpit.js` — dotykowe manetki, stacyjki i wskaźniki.
+- `src/traffic.js` — zacumowane jednostki, reakcja na środowisko i kolizje.
 - `src/rigging.js` — cumy, wysiłek człowieka, kotwica i solver rode.
 - `src/world.js` — akwen, wyspa, plaże, drzewa, dno i fale.
 - `src/ground.js` — podparcie i tarcie kadłuba, kontakt i uszkodzenia śrub.
@@ -99,7 +109,12 @@ falowania prawdziwego jeziora.
 - `tests/` — regresje fizyki oraz przeglądarki.
 - `docs/PHYSICS.md` — źródła i jawne założenia modelu.
 
-## Ładowanie w Chrome
+## Zakres wydania v4 i ładowanie w Chrome
+
+Wydanie v4 dodaje wyposażenie i zmienia fizykę. Zgłoszony problem białego ekranu
+na konkretnym urządzeniu użytkownika pozostaje do osobnej diagnozy, zgodnie
+z jego prośbą. Poniższe zabezpieczenia pochodzą z v3.0.1.
+
 
 Publikacja jest pojedynczym `dist/index.html` z osadzonym JS i CSS.
 Nie odwołuje się do usuniętych przy aktualizacji plików o starych hashach
@@ -109,7 +124,7 @@ Komunikat startowy, instrukcja dla wyłączonego JS i diagnostyka błędu
 zastępują pusty ekran, a przycisk ponowienia odświeża adres HTML.
 
 Przy starym ekranie z pamięci Chrome otwórz:
-`https://piothepio.github.io/BoatSimulator/?v=3.0.1`.
+`https://piothepio.github.io/BoatSimulator/?v=4.0.0`.
 Zrzut białego ekranu nie pozwolił jednoznacznie ustalić przyczyny po stronie
 konkretnej przeglądarki; poprawka usuwa zależność od osobnych zasobów
 i ujawnia ewentualny błąd uruchomienia.
