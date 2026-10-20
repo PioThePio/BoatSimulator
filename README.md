@@ -1,113 +1,88 @@
-# Przystań — symulator manewrów motorówką
+# Przystań — symulator manewrów motorówką v2
 
-Aplikacja w przeglądarce, widok z góry. Model sił i momentów, opór wody,
-bezwładność, skrętny silnik zaburtowy, wiatr i prąd. Sprężyste cumy,
-odbijacze burtowe oraz kolizje łodzi z pomostami i brzegiem.
-Interfejs w języku polskim. Bez kont, backendu i zewnętrznych zasobów w czasie działania.
+Przeglądarkowy symulator z widokiem z góry. Cztery profile kadłuba,
+zmieniane wymiary i masa, jeden lub dwa silniki o wybieranej mocy,
+niezależne/sprzężone manetki, wiatr, prąd, fale, cumy, kotwica i echosonda.
+Bez kont i backendu. Aplikacja nie pobiera zewnętrznych zasobów w czasie działania.
+
+**Model szkoleniowy, bez kalibracji dla konkretnego kadłuba.**
+[Podstawy, źródła, wzory, liczby kontrolne i ograniczenia](docs/PHYSICS.md).
 
 ## Uruchomienie
 
-Node.js 20.19+ (zalecane 24) i npm:
+Node.js 20.19+ (zalecane 24), npm:
 
 ```sh
 npm ci --cache /tmp/boat-npm-cache
 npm run dev
 ```
 
-Otwórz port wskazany przez Vite (domyślnie 5173). `npm run build` tworzy
-statyczny katalog `dist`, który można udostępnić dowolnym serwerem HTTP.
-`npm run preview` lokalnie sprawdza tę wersję. Nie otwieraj pliku HTML przez `file://`.
+Otwórz port Vite (domyślnie 5173). `npm run build` tworzy statyczny katalog
+`dist`. Względne adresy zasobów działają także pod `/BoatSimulator/`.
+Nie otwieraj źródłowego HTML przez `file://`.
 
 ```sh
-npm test           # testy sił, dryfu, cum, kolizji i stabilności
-npm run build     # kompilacja produkcyjna
-npm run test:e2e   # testy interfejsu w Chromium
+npm test           # testy fizyki i regresji manewrów
+npm run test:e2e   # rzeczywiste sterowanie w Chromium
+npm run build     # wersja produkcyjna
 ```
 
-Testy E2E wymagają Chromium, domyślnie `/usr/bin/chromium`.
-Inną instalację wskaż zmienną `CHROMIUM_PATH`. Konfiguracja automatycznie
-uruchamia Vite, chyba że serwer już działa na porcie 5173.
+E2E używa `/usr/bin/chromium`, alternatywę wskaż przez `CHROMIUM_PATH`.
+Playwright uruchamia Vite lub używa działającego serwera na 5173.
+Push do `main` uruchamia `.github/workflows/pages.yml` i publikację Pages.
+Repozytorium musi mieć aktywne Settings → Pages → Source: GitHub Actions.
 
-## Sterowanie
+## Obsługa
 
-| Działanie | Klawisze / mysz |
+| Działanie | Klawiatura / mysz |
 | --- | --- |
-| Skręt silnika | A/D lub ←/→, przeciąganie koła w prawo/lewo albo w górę/dół |
-| Wyprostowanie | C lub przycisk „Wyprostuj ster” |
-| Manetka w przód / wstecz | W/S lub ↑/↓, suwak |
-| Luz (bez hamowania) | Spacja lub „Luz” |
+| Koło | A/D lub ←/→, przeciąganie koła |
+| Wyprostuj | C lub przycisk |
+| Wybrana manetka | W/S lub ↑/↓, suwak |
+| Wybór lewego/prawego silnika | 1 / 2 lub przyciski |
+| Sprzężenie manetek | T lub przełącznik |
+| Obydwa silniki na luz | Spacja lub „Luz” |
 | Odbijacze | F lub przełącznik |
 | Pauza / nowa próba | P / R lub przyciski |
-| Cumy | + przy dziobie/rufie, potem −/+ wybiera/luzuje o 0,25 m, × odczepia |
+| Poler | Wybierz knagę, kliknij poler z numerem na mapie lub wybierz z listy |
+| Założenie cumy | + przy odpowiedniej knadze; rzut do 6 m |
+| Wybieranie / luzowanie | − / + po założeniu: cel ±0,5 m, wykonywany stopniowo |
+| Odczepienie | × przy cumie |
+| Kotwica | Ustaw długość rode, „Wydaj”, „Stop”, „Wybierz” |
 
-Koło **nie wraca do zera** po puszczeniu. Manetka też zachowuje ustawienie.
-W polach formularza strzałki obsługują dane pole zamiast łodzi.
-Pomoc otwiera się pod „?”; na czas jej wyświetlania fizyka jest wstrzymana.
-Reset przywraca łódź, cumy i stan pomostu, zachowując wybrane warunki pogodowe.
+Koło i manetki nie wracają samoczynnie do zera. Silnik ma osobny rzeczywisty
+kąt, obroty, naciąg i opóźnienie zmiany biegu. Luz nie hamuje łodzi.
+Przy równych przeciwnych manetkach łódź może dryfować podczas obrotu,
+bo wsteczny ciąg jest słabszy. W formularzach strzałki obsługują dane pole.
 
-Wybierz pozycję „Przy pomoście”, aby szybko przetestować cumowanie. Cuma
-łączy wybraną knagę z najbliższym polerem w zasięgu 6 m. Na mapie polery
-są żółte. Linia jest widoczna, także gdy jest luźna. Porywy zmieniają
-prędkość wiatru deterministycznie; kierunki w panelu oznaczają **dokąd**
-płynie woda / wieje wiatr (nie meteorologiczne „skąd”).
+„Zastosuj” po zmianie kadłuba/napędu rozpoczyna nową próbę. Wymiary i moc
+są ograniczone zakresem formularza. Masa w podsumowaniu obejmuje silniki
+i 150 kg załogi. Pozycja „Przy pomoście” ułatwia ćwiczenie cum, „Jezioro”
+próbę napędu. Akwen rozszerzono do 176 × 106 m; kamera śledzi łódź poza
+początkowym widokiem.
 
-## Model fizyczny
+Przy ręcznym wybieraniu naciąg ogranicza dostępna siła: 220 N, 40 W,
+do 0,18 m/s. Knaga może utrzymać większy naciąg, ale ręka go nie wybierze.
+Luzowanie odbywa się do 0,30 m/s. Echosonda pokazuje zmienne dno pod rufą
+i historię, prześwit pod stępką to minimum dla całej długości kadłuba.
+Uważaj na mieliznę we wschodniej części jeziora.
 
-- Układ SI: metry, sekundy, kilogramy. Oś x na wschód, y na południe.
-- Kadłub 5,5 × 2,1 m, masa 900 kg, moment bezwładności 2600 kg·m².
-- Silnik klasy 40 KM, uproszczony maksymalny ciąg 2400 N naprzód,
-  1300 N wstecz. Kierunek ciągu obracany o ±35° w punkcie 2,4 m za środkiem.
-  Moment ciągu zmienia znak przy zmianie biegu.
-- Opór liniowy i kwadratowy zależy od prędkości względem wody, silniejszy
-  poprzecznie niż wzdłuż kadłuba. Pięć punktów oporu daje tłumienie obrotu.
-- Wiatr działa aerodynamicznie względem powietrza, na środek parcia
-  przesunięty 0,35 m w stronę dziobu. Prąd jest wektorem prędkości wody.
-- Cuma: sprężyna jednostronna 4200 N/m, tłumienie 1200 N·s/m.
-  Luźna nie przenosi siły. Zerwanie powyżej 6500 N; minimalna długość 0,5 m.
-- Krok 1/120 s, półjawny Euler. Kadłub do kontaktów przybliżają trzy koła.
-  Impuls kontaktu uwzględnia prędkość obrotową, ramię siły i masę efektywną.
-- Odbijacze działają wyłącznie przy kontakcie burtowym z pomostem.
-  Brzeg oraz dziób/rufa nie korzystają z ich ochrony.
+Kotwica jest wydawana stopniowo, opada, osadza się i może wlec lub zerwać
+rode. Winda ma limit siły. Łańcuch ma ciężar, lina sprężystość, a profil
+pokazuje zwis i odcinek na dnie. To przybliżenie quasi-statyczne, nie pełna
+dynamika poszczególnych ogniw. Nie istnieje automatyczne „przyciągnij łódź”.
 
-### Umowne progi szkód
+Kierunki wiatru/prądu/fali oznaczają **dokąd**, a nie meteorologiczne „skąd”.
+Wysokość fali może zależeć od wiatru albo być ustawiona ręcznie.
+Kołysanie i przegłębienie są widoczne i mierzone. Parametry nie są prognozą
+falowania prawdziwego jeziora.
 
-Liczy się prędkość punktu kontaktu **prostopadła** do przeszkody,
-a nie sama prędkość łodzi względem brzegu.
+## Pliki
 
-| Wynik | Bez ochrony | Burta z odbijaczami |
-| --- | --- | --- |
-| Łagodny kontakt bez szkód w modelu | ≤ 0,15 m/s (0,29 kn) | ≤ 0,30 m/s (0,58 kn) |
-| Uszkodzenia | > 0,15 i < 1,50 m/s | > 0,30 i < 1,80 m/s |
-| Zniszczenie | ≥ 1,50 m/s (2,92 kn) | ≥ 1,80 m/s (3,50 kn) |
-
-**To założenia symulacji, nie ustalone bezpieczne prędkości prawdziwej łodzi.**
-Nie istnieje uniwersalny próg: znaczenie mają konstrukcja, masa, kąt,
-sztywność pomostu, fala, kształt i jakość odbijaczy. Praktyczny cel to
-prędkość kontaktu bliska zeru.
-
-Energia = ½ m_ef v_normal². Przy uszkadzającym kontakcie model odejmuje
-budżet absorpcji 10 J lub 40 J z odbijaczami i nalicza szkody kadłuba
-według pozostałej energii (9 J/punkt procentowy, minimum 1%, maksimum 75%
-na zarejestrowany kontakt). Pomost ma osobny budżet 80 J i 18 J/punkt.
-Kontakt w kategorii zniszczenia ustawia szkody łodzi i uderzonego pomostu
-na 100%. Brzeg nie zmienia stanu pomostu. Kontakty są rejestrowane z
-odstępem co najmniej 0,65 s. Skumulowane szkody ograniczają ciąg;
-100% wyłącza napęd, ale jednostka dalej dryfuje. Zniszczony pomost
-pozostaje przeszkodą — nie jest symulowane jego rozpadające się drewno.
-
-Nie modelujemy fal, przechyłów, ślizgu, deformacji, wpływu głębokości,
-oddziaływania śruby w bok i zmiany charakterystyki oporu przy ślizgu.
-To model do ćwiczenia manewrów wypornościowych, a nie zweryfikowany
-symulator konkretnego kadłuba. Wartości są jawne w `src/physics.js`.
-
-## Struktura
-
-- `src/physics.js` — niezależna od DOM fizyka i geometria akwenu.
-- `src/main.js` — panel sterowania, wejście, render Canvas i pętla czasu.
-- `src/style.css` — responsywny interfejs.
-- `tests/physics.test.js` — regresje fizyki w Node.
-- `tests/browser.spec.js` — rzeczywiste sterowanie, cumy i widok mobilny.
-
-Projekt powstał według opisu wymagań. Strona referencyjna helmly.space
-była niedostępna z sieci środowiska, więc jej implementacja nie została
-obejrzana ani skopiowana.
+- `src/physics.js` — dynamika kadłuba, kolizje i całkowanie.
+- `src/craft.js` — profile, masa i napęd.
+- `src/rigging.js` — cumy, wysiłek człowieka, kotwica i solver rode.
+- `src/world.js` — akwen, dno, wiatr, prąd i harmoniczne fal.
+- `src/main.js`, `src/style.css` — panel i Canvas.
+- `tests/` — regresje fizyki oraz przeglądarki.
+- `docs/PHYSICS.md` — źródła i jawne założenia modelu.

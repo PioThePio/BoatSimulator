@@ -1,0 +1,153 @@
+import {BOLLARDS,bottomAt,clamp} from './world.js';
+export function point(b,x,y){const c=Math.cos(b.a),s=Math.sin(b.a);return{x:b.x+c*x-s*y,y:b.y+s*x+c*y};}
+export function cleat(b,end){return point(b,(end==='bow'?1:-1)*b.spec.length*.39,0);}
+export function inverseMass(b,n,arm){
+ const c=Math.cos(b.a),s=Math.sin(b.a),u=n.x*c+n.y*s,v=-n.x*s+n.y*c;
+ const lever=arm.x*n.y-arm.y*n.x;
+ return u*u/b.spec.mx+v*v/b.spec.my+lever*lever/b.spec.iz;
+}
+export function impulse(b,n,j,arm){
+ const c=Math.cos(b.a),s=Math.sin(b.a),u=(n.x*c+n.y*s)*j/b.spec.mx,v=(-n.x*s+n.y*c)*j/b.spec.my;
+ b.vx+=c*u-s*v;b.vy+=s*u+c*v;b.w+=(arm.x*n.y-arm.y*n.x)*j/b.spec.iz;
+}
+export function attachRope(b,end,bollard=null){
+ if(b.ropes.some(r=>r.end===end))return{ok:false,message:'Ta knaga ma już cumę.'};
+ const p=cleat(b,end);
+ if(bollard===null){let best=Infinity;BOLLARDS.forEach((q,i)=>{const d=Math.hypot(p.x-q.x,p.y-q.y);if(d<best){best=d;bollard=i;}});}
+ const q=BOLLARDS[bollard];if(!q)return{ok:false,message:'Wybierz poler na mapie albo z listy.'};
+ const d=Math.hypot(p.x-q.x,p.y-q.y);
+ if(d>6)return{ok:false,message:`Poler ${bollard+1} jest poza zasięgiem rzutu (6 m od knagi).`};
+ b.ropes.push({end,bollard,length:d+.15,targetLength:d+.15,tension:0,hauling:false,blocked:false,rate:0});
+ return{ok:true,message:`Cuma ${end==='bow'?'dziobowa':'rufowa'} → poler ${bollard+1}.`};
+}
+export function requestHaul(r,delta){r.targetLength=clamp(r.targetLength+delta,.45,15);}
+export function solveRopes(b,dt,notify){
+ b.maxTension=0;
+ b.ropes=b.ropes.filter(r=>{
+  const p=cleat(b,r.end),q=BOLLARDS[r.bollard],dx=q.x-p.x,dy=q.y-p.y,d=Math.max(.001,Math.hypot(dx,dy));
+  const n={x:dx/d,y:dy/d},arm={x:p.x-b.x,y:p.y-b.y};
+  const separation=-((b.vx-b.w*arm.y)*n.x+(b.vy+b.w*arm.x)*n.y);
+  const k=b.spec.lineEA/Math.max(1,r.length),damping=2*.65*Math.sqrt(k/inverseMass(b,n,arm));
+  r.rate=0;r.blocked=false;
+  if(r.targetLength<r.length-.001){
+   // One person: 220 N and <= 40 W. The knot holds external loads; hauling cannot.
+   const inv=inverseMass(b,n,arm),denominator=1+(damping*dt+k*dt*dt)*inv;
+   const existing=k*(d-r.length)+(damping+k*dt)*separation;
+   const allowance=Math.max(0,(220*denominator-existing)/(2*k+damping/dt));
+   const rate=Math.min(.18,40/Math.max(1,r.tension));
+   const amount=Math.min(rate*dt,r.length-r.targetLength,allowance);
+   r.length-=amount;r.rate=-amount/dt;r.blocked=amount<.00001;
+  }else if(r.targetLength>r.length+.001){const amount=Math.min(.3*dt,r.targetLength-r.length);r.length+=amount;r.rate=amount/dt;}
+  const extension=d-r.length;
+  const closing=separation-r.rate;
+  const inv=inverseMass(b,n,arm);
+  // Backward-Euler Kelvin-Voigt tension, stable even for short stiff lines.
+  r.tension=extension>0||extension+closing*dt>0?Math.max(0,(k*extension+(damping+k*dt)*closing)/(1+(damping*dt+k*dt*dt)*inv)):0;
+  if(r.tension>b.spec.lineBreak){notify(`Cuma pękła: przekroczono ${(b.spec.lineBreak/1000).toFixed(0)} kN.`);return false;}
+  impulse(b,n,r.tension*dt,arm);b.maxTension=Math.max(b.maxTension,r.tension);return true;
+ });
+}
+export function createAnchor(spec){return{mode:'stowed',status:'Na pokładzie',length:0,target:25,reserve:60,chainReserve:spec.chain,mass:spec.anchorMass,x:0,y:0,z:0,set:0,tension:0,horizontal:0,capacity:0,groundLength:0,dragged:0,broken:false,windlassBlocked:false,shape:null};}
+// Elastic, layered quasi-static catenary. Bottom segment = chain, top = rope.
+// Each suspended segment integrates dx/ds=H/T and dz/ds=V/T, dV/ds=w.
+function integrate(H,V,L,w,EA){
+ if(L<=0)return{x:0,z:0,V};
+ const V1=V+w*L,T0=Math.hypot(H,V),T1=Math.hypot(H,V1);
+ return{x:H/w*(Math.asinh(V1/H)-Math.asinh(V/H))+H*L/EA,
+  z:(T1-T0)/w+(V+V1)*.5*L/EA,V:V1};
+}
+function shapeFor(H,height,L,chain){
+ const fullChain=Math.min(L,chain),fullRope=Math.max(0,L-fullChain);
+ const evaluate=(laid,V0)=>{
+  const chainLaid=Math.min(laid,fullChain),ropeLaid=Math.max(0,laid-chainLaid);
+  const a=integrate(H,V0,fullChain-chainLaid,12,1.5e7);
+  const b=integrate(H,a.V,fullRope-ropeLaid,.08,180000);
+  return{x:laid+a.x+b.x,z:a.z+b.z,V:b.V,V0,laid,chainLaid,ropeLaid};
+ };
+ let result=evaluate(0,0);
+ if(result.z>=height){let lo=0,hi=L;for(let i=0;i<19;i++){const mid=(lo+hi)/2,q=evaluate(mid,0);if(q.z>height)lo=mid;else hi=mid;}result=evaluate((lo+hi)/2,0);}
+ else{let lo=0,hi=1e7;for(let i=0;i<27;i++){const mid=(lo+hi)/2,q=evaluate(0,mid);if(q.z<height)lo=mid;else hi=mid;}result=evaluate(0,(lo+hi)/2);}
+ return {...result,H,tension:Math.hypot(H,result.V),anchorTension:Math.hypot(H,result.V0),angle:Math.atan2(result.V0,H)};
+}
+export function catenary(horizontal,height,L,chain=8){
+ if(L<=0)return{H:0,tension:0,anchorTension:0,laid:0,V:0,V0:0,angle:0};
+ height=Math.max(.05,height);horizontal=Math.max(0,horizontal);
+ if(L>=height+horizontal){const laid=L-height,chainLaid=Math.min(chain,laid),ropeLaid=Math.max(0,laid-chainLaid),suspendedChain=Math.max(0,Math.min(chain,L)-chainLaid),weight=suspendedChain*12+(height-suspendedChain)*.08;return{H:0,tension:weight,anchorTension:0,laid,V:weight,V0:0,angle:0,chainLaid,ropeLaid};}
+ let lo=.001,hi=1e6,result;
+ for(let i=0;i<24;i++){const mid=Math.sqrt(lo*hi);result=shapeFor(mid,height,L,chain);if(result.x<horizontal)lo=mid;else hi=mid;}
+ return shapeFor(Math.sqrt(lo*hi),height,L,chain);
+}
+export function anchorProfile(a,b){
+ if(a.mode==='stowed'||a.broken)return[];
+ const p=cleat(b,'bow'),d=Math.hypot(p.x-a.x,p.y-a.y),h=a.z+.65+b.heave;
+ const shape=a.shape??catenary(d,h,Math.max(.01,a.length),a.chainReserve),points=[{x:0,z:0,chain:true}];
+ if(shape.H===0)return [{x:0,z:0,chain:true},{x:d,z:0,chain:(shape.laid??0)<=a.chainReserve},{x:d,z:h,chain:a.length<=a.chainReserve}];
+ const laid=Math.min(a.length,shape.laid??0),lc=Math.min(a.length,a.chainReserve),lr=Math.max(0,a.length-lc);
+ let x=laid,z=0,V=shape.V0??0;
+ points.push({x,z,chain:laid<=lc});
+ for(const [L,w,EA,isChain]of [[Math.max(0,lc-laid),12,1.5e7,true],[Math.max(0,lr-Math.max(0,laid-lc)),.08,180000,false]]){
+  const count=18,ds=L/count;for(let i=0;i<count;i++){const q=integrate(Math.max(.001,shape.H),V,ds,w,EA);x+=q.x;z+=q.z;V=q.V;points.push({x,z,chain:isChain});}
+ }
+ return points;
+}
+export function updateAnchor(b,e,dt,notify){
+ const a=b.anchor;if(a.mode==='stowed'||a.broken)return;
+ const p=cleat(b,'bow'),arm={x:p.x-b.x,y:p.y-b.y};
+ a.windlassBlocked=false;
+ if(a.mode==='lowering'){a.length=Math.min(a.reserve,Math.max(a.length,Math.min(a.target,a.length+.5*dt)));if(a.length>=a.target)a.mode='holding';}
+ if(a.mode==='raising'){
+  const weight=(a.mass+Math.min(a.length,a.chainReserve)*1.4)*9.81;
+  a.windlassBlocked=a.tension+weight>2200;
+  if(!a.windlassBlocked)a.length=Math.max(0,a.length-.25*dt);
+ }
+ const floor=bottomAt(a.x,a.y),height=floor.depth+.65+b.heave;
+ let dx=p.x-a.x,dy=p.y-a.y,d=Math.hypot(dx,dy);
+ if(a.z<floor.depth-.015){
+  a.z=Math.min(floor.depth,a.z+1.1*dt,Math.sqrt(Math.max(0,a.length*a.length-d*d))-.65-b.heave);
+  a.status=a.mode==='raising'?'Podnoszenie':a.mode==='holding'?'Kotwica w toni':'Opuszczanie';
+  a.set=0;
+ }else a.z=floor.depth;
+ if(a.mode==='raising'&&d<Math.max(1.3,height*.45)&&a.length<height+.8){
+  a.set=0;a.z=Math.min(a.z,a.length-.65-b.heave);a.status='Kotwica wyrwana';
+ }
+ const seabed=a.z>=floor.depth-.02;
+ const hangingWeight=(a.mass+Math.min(a.length,a.chainReserve)*1.4)*9.81;
+ const shape=seabed?catenary(d,a.z+.65+b.heave,Math.max(.01,a.length),a.chainReserve):{H:hangingWeight*d/Math.max(.3,a.z+.65+b.heave),tension:hangingWeight,V:hangingWeight,V0:0,laid:0,anchorTension:0,angle:0};
+ a.shape=shape;a.tension=shape.tension;a.horizontal=shape.H;a.groundLength=shape.laid;
+ if(shape.tension>b.spec.lineBreak*1.5){a.broken=true;a.status='Zerwane rode';a.mode='holding';a.shape=null;a.tension=0;a.horizontal=0;notify('Zerwano linę kotwiczną — kotwica utracona.');return;}
+ if(seabed){
+  if(shape.H>15&&shape.angle<.4)a.set=clamp(a.set+dt*.08,0,1);
+  const capacity=a.mass*9.81*floor.holding*(.18+.82*a.set)*Math.max(.06,Math.cos(shape.angle)**3);
+  a.capacity=capacity;
+  const pull=shape.anchorTension;
+  const excess=Math.max(0,pull-capacity);
+  if(excess>0&&d>.01){
+   const speed=Math.min(1.4,excess/(a.mass*110+900));const distance=speed*dt;
+   a.x+=dx/d*distance;a.y+=dy/d*distance;a.dragged+=distance;
+   a.status=shape.angle>.7?'Kotwica wyrywana':'Kotwica wlecze';
+   if(shape.angle>.7)a.set=Math.max(0,a.set-dt*.6);
+  }else a.status=a.set>.45?'Kotwica trzyma':'Kotwica na dnie';
+ }else{
+  // Suspended anchor follows a pendulum under gravity, never a fixed invisible seabed point.
+  if(d>.01){const move=Math.min(d,.9*dt);a.x+=dx/d*move;a.y+=dy/d*move;}
+  a.capacity=0;
+ }
+ if(d>.001&&a.length>.05){
+  const n={x:-dx/d,y:-dy/d};const sep=-((b.vx-b.w*arm.y)*n.x+(b.vy+b.w*arm.x)*n.y);
+  const extra=shape.H>1?Math.max(-shape.H,.15*b.spec.mass*sep):0;
+  const H=clamp(shape.H+extra,0,b.spec.lineBreak*1.5);
+  impulse(b,n,H*dt,arm);
+ }
+ if(a.mode==='raising'&&a.length<.07){b.anchor=createAnchor(b.spec);notify('Kotwica na pokładzie.');}
+}
+export function anchorCommand(b,command,target){
+ const a=b.anchor;if(a.broken)return{ok:false,message:'Utracona kotwica. Rozpocznij nową próbę.'};
+ if(target!==undefined)a.target=clamp(target,1,a.reserve);
+ if(command==='hold'){if(a.mode!=='stowed')a.mode='holding';return{ok:true,message:'Winda zatrzymana; hamulec trzyma rode.'};}
+ if(command==='lower'){
+  if(a.mode==='stowed'){const p=cleat(b,'bow');a.x=p.x;a.y=p.y;a.z=-.65-b.heave;}
+  a.mode='lowering';return{ok:true,message:'Winda wydaje łańcuch, następnie linę: 0,5 m/s.'};
+ }
+ if(command==='raise'&&a.mode!=='stowed'){a.mode='raising';return{ok:true,message:'Winda wybiera do 0,25 m/s, maks. uciąg 2,2 kN.'};}
+ return{ok:false,message:'Kotwica jest na pokładzie.'};
+}

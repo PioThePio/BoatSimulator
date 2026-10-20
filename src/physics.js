@@ -1,83 +1,127 @@
-// Metres, seconds, kilograms; x east, y south; heading clockwise from east.
-export const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
-export const cross=(a,b)=>a.x*b.y-a.y*b.x;
-export const length=v=>Math.hypot(v.x,v.y);
-export const MODEL={mass:900,inertia:2600,length:5.5,beam:2.1,maxThrust:2400,reverseThrust:1300,maxSteer:35*Math.PI/180};
-export const DOCKS=[{x:6,y:10,w:23,h:2.8},{x:17,y:12.8,w:2.8,h:17},{x:29,y:10,w:2.8,h:16}];
-export const SOLIDS=[...DOCKS,{x:-8,y:-8,w:108,h:12},{x:-8,y:4,w:12,h:64},{x:4,y:56,w:96,h:12},{x:88,y:4,w:12,h:52}];
-export const BOLLARDS=[{x:12,y:12.8},{x:17,y:18},{x:17,y:25},{x:19.8,y:28},{x:29,y:17},{x:29,y:23},{x:25,y:12.8}];
-export function point(b,x,y){const c=Math.cos(b.a),s=Math.sin(b.a);return{x:b.x+c*x-s*y,y:b.y+s*x+c*y};}
-export function cleat(b,end){return point(b,end==='bow'?2.05:-2.05,0);}
-export function createBoat(scenario='approach'){
- const starts={approach:[43,37,-2.1],berth:[24.2,22,-Math.PI/2],open:[60,35,-Math.PI/2]};
+// SI, x east / y south. Heading clockwise from east. Physics reference: docs/PHYSICS.md.
+import {clamp,DOCKS,SOLIDS,BOLLARDS,environment,bottomAt,waveAt} from './world.js';
+import {specification,engineState,updateEngine} from './craft.js';
+import {point,cleat,attachRope,solveRopes,createAnchor,updateAnchor,inverseMass,impulse} from './rigging.js';
+export {clamp,DOCKS,SOLIDS,BOLLARDS,environment,bottomAt,waveAt,point,cleat,attachRope};
+export const MODEL=specification();
+export function createBoat(scenario='approach',options={}){
+ const spec=specification(options);
+ const starts={approach:[43,37,-2.1],berth:[24.3,22,-Math.PI/2],open:[64,48,-Math.PI/2]};
  const [x,y,a]=starts[scenario]||starts.approach;
- return {x,y,a,vx:0,vy:0,w:0,steer:0,throttle:0,fenders:true,damage:0,dockDamage:0,ropes:[],time:0,lastImpact:null,events:[],maxTension:0};
+ return{x,y,a,vx:0,vy:0,w:0,steer:0,actualSteer:0,throttle:0,throttle2:0,linked:true,spec,
+ engines:spec.powers.map((hp,i)=>engineState(hp,spec.engineCount===1?0:(i===0?-1:1)*spec.engineSpacing/2)),
+ fenders:true,damage:0,dockDamage:0,ropes:[],anchor:createAnchor(spec),time:0,lastImpact:null,events:[],maxTension:0,
+ heave:0,heaveVelocity:0,roll:0,rollVelocity:0,pitch:0,pitchVelocity:0,planing:0,underKeel:bottomAt(x,y).depth-spec.draft,grounded:false,groundEvent:-10,
+ telemetry:{surge:0,sway:0,thrust:0,drag:0,shaftPower:0}};
 }
-export function environment(t,e){const phase=e.gusts?1+0.28*Math.sin(t*.37)+.12*Math.sin(t*1.13):1;const a=e.windDirection*Math.PI/180;const c=e.currentDirection*Math.PI/180;return {wind:{x:Math.sin(a)*e.windSpeed*phase,y:-Math.cos(a)*e.windSpeed*phase},current:{x:Math.sin(c)*e.currentSpeed,y:-Math.cos(c)*e.currentSpeed}};}
-export function attachRope(b,end){const p=cleat(b,end);let best=null,d=Infinity;BOLLARDS.forEach((q,i)=>{const v=Math.hypot(p.x-q.x,p.y-q.y);if(v<d){d=v;best=i;}});if(d>6)return {ok:false,message:'Podejdź bliżej polera — maksymalny zasięg rzutu to 6 m.'};if(b.ropes.some(r=>r.end===end))return{ok:false,message:'Ta knaga ma już cumę. Najpierw ją odczep.'};b.ropes.push({end,bollard:best,length:d+.35,tension:0});return{ok:true,message:`Założono cumę ${end==='bow'?'dziobową':'rufową'}.`};}
-// Energy budgets are teaching assumptions, not certified damage/safety limits.
-export function impactClass(speed,fender=false){const safe=fender ? .30 : .15, destruction=fender ? 1.8 : 1.5;return speed<=safe?'gentle':speed<destruction?'damage':'destruction';}
-function event(b,message){b.events.unshift({time:b.time,message});b.events=b.events.slice(0,8);}
+export function impactClass(speed,fender=false){const safe=fender?.30:.15,destruction=fender?1.8:1.5;return speed<=safe?'gentle':speed<destruction?'damage':'destruction';}
+function event(b,message){b.events.unshift({time:b.time,message});b.events=b.events.slice(0,12);}
+function oscillator(state,vel,target,omega,zeta,dt,forcing=0){const acc=omega*omega*(target-state)-2*zeta*omega*vel+forcing;vel+=acc*dt;return[state+vel*dt,vel];}
 export function step(b,e,dt){
- b.time+=dt;
- const env=environment(b.time,e), c=Math.cos(b.a),s=Math.sin(b.a);
- let fx=0,fy=0,torque=0;
- const force=(x,y,px=0,py=0)=>{fx+=x;fy+=y;torque+=px*y-py*x;};
- // Distributed transverse water drag produces yaw damping and longitudinal/lateral asymmetry.
- for(const q of [-2,-1,0,1,2]){
-  const rx=c*q,ry=s*q;const vx=b.vx-b.w*ry-env.current.x,vy=b.vy+b.w*rx-env.current.y;
-  const u=vx*c+vy*s,v=-vx*s+vy*c;
-  const fu=-(28*u+22*Math.abs(u)*u)/5,fv=-(330*v+480*Math.abs(v)*v)/5;
-  force(c*fu-s*fv,s*fu+c*fv,rx,ry);
+ b.time+=dt;const S=b.spec,c=Math.cos(b.a),s=Math.sin(b.a);
+ const env=environment(b.time,e),wave=waveAt(b.x,b.y,b.time,e);
+ // Oscillatory orbital flow at draft, with independent restoring heave/roll/pitch.
+ const water={x:env.current.x+wave.vx*.65,y:env.current.y+wave.vy*.65};
+ [b.heave,b.heaveVelocity]=oscillator(b.heave,b.heaveVelocity,wave.eta-(b.anchor.shape?.V??0)/(1000*9.81*S.length*S.beam*.65),4.2,.65,dt);
+ const windSide=-env.wind.x*s+env.wind.y*c;
+ const rollTarget=clamp(Math.atan(-wave.sx*s+wave.sy*c)+windSide*Math.abs(windSide)*S.freeboard/(S.mass*.9),-.16,.16);
+ [b.roll,b.rollVelocity]=oscillator(b.roll,b.rollVelocity,rollTarget,Math.sqrt(9.81/(S.beam*.32)),.28,dt);
+ const pitchTarget=clamp(Math.atan(wave.sx*c+wave.sy*s)-(b.anchor.shape?.V??0)*S.length*.39/(1000*9.81*S.length*S.beam*.65*S.length*S.length/12),-.1,.1);
+ [b.pitch,b.pitchVelocity]=oscillator(b.pitch,b.pitchVelocity,pitchTarget,Math.sqrt(9.81/(S.length*.14)),.4,dt);
+ const ur=(b.vx-env.current.x)*c+(b.vy-env.current.y)*s;
+ const vr=-(b.vx-env.current.x)*s+(b.vy-env.current.y)*c;
+ const u=(b.vx-water.x)*c+(b.vy-water.y)*s;
+ const v=-(b.vx-water.x)*s+(b.vy-water.y)*c;
+ let X=0,Y=0,N=0;
+ const force=(x,y,px=0,py=0)=>{X+=x;Y+=y;N+=px*y-py*x;};
+ const speed=Math.hypot(u,v),fn=Math.abs(u)/Math.sqrt(9.81*S.length);
+ const targetPlaning=S.planing&&u>0?clamp((fn-.55)/.45,0,1):0;
+ b.planing+=(targetPlaning-b.planing)*(1-Math.exp(-dt/2.5));
+ // ITTC-inspired friction + approximate wave-making hump and planing support drag.
+ const re=Math.max(1e5,Math.abs(u)*S.length/1e-6),cf=.075/(Math.log10(re)-2)**2;
+ const wet=S.length*(S.beam*.75+S.draft*1.7)*(1-.65*b.planing);
+ const friction=.5*1000*wet*(cf+.0015)*u*Math.abs(u);
+ const waveDrag=S.mass*9.81*(S.planing?.055:.085)*Math.exp(-(((fn-.43)/.15)**2))*(1-.8*b.planing);
+ const support=S.mass*9.81*(.040+.00035*u*u)*b.planing;
+ const displacementLimit=S.planing?0:S.mass*9.81*.085*Math.max(0,fn-.42)**2*12;
+ const transom=u<0?(.5*1000*S.beam*S.draft*.75*u*u):0;
+ const drag=friction+Math.sign(u)*(waveDrag+support+displacementLimit+transom);
+ force(-drag-S.mass*.009*u,0);
+ // Strip-theory cross-flow + speed-dependent lift. All local forces oppose local motion.
+ const strips=9,dx=S.length/strips;
+ for(let i=0;i<strips;i++){
+  const x=-S.length*.5+(i+.5)*dx,local=v+b.w*x;
+  const shape=.65+.35*Math.cos(x/S.length*Math.PI);
+  const cfDrag=.5*1000*S.draft*1.05*dx*shape*(1-.32*b.planing)*Math.abs(local)*local;
+  const lift=.5*1000*S.draft*dx*.42*Math.abs(u)*local;
+  const linear=S.mass*.028/strips*local;
+  force(0,-cfDrag-lift-linear,x,0);
  }
- // Aerodynamic drag relative to air at a forward centre of pressure.
- const ax=env.wind.x-b.vx,ay=env.wind.y-b.vy;
- const au=ax*c+ay*s,av=-ax*s+ay*c;
- const wu=.5*1.225*.85*2.1*Math.abs(au)*au,wv=.5*1.225*1.05*6*Math.abs(av)*av;
- force(c*wu-s*wv,s*wu+c*wv,.35*c,.35*s);
- // Positive wheel turns right: jet thrust at stern points to port.
- const thrust=b.throttle*(b.throttle>=0?MODEL.maxThrust:MODEL.reverseThrust)*(1-b.damage/100);
- force(thrust*Math.cos(b.a-b.steer),thrust*Math.sin(b.a-b.steer),-2.4*c,-2.4*s);
- b.maxTension=0;
- b.ropes=b.ropes.filter(r=>{
-  const p=cleat(b,r.end),q=BOLLARDS[r.bollard],dx=q.x-p.x,dy=q.y-p.y,d=Math.hypot(dx,dy);
-  const rx=p.x-b.x,ry=p.y-b.y;
-  const speed=d>0?((b.vx-b.w*ry)*dx+(b.vy+b.w*rx)*dy)/d:0;
-  r.tension=d>r.length?Math.max(0,4200*(d-r.length)-1200*speed):0;
-  if(r.tension>6500){event(b,'Cuma pękła: przekroczono 6,5 kN.');return false;}
-  if(d>0)force(r.tension*dx/d,r.tension*dy/d,rx,ry);
-  b.maxTension=Math.max(b.maxTension,r.tension);return true;
+ // Outboards rotate at a finite rate; linked controls copy commands, not engine states.
+ b.actualSteer+=clamp(b.steer-b.actualSteer,-.38*dt,.38*dt);
+ if(b.linked)b.throttle2=b.throttle;
+ let totalThrust=0;
+ b.engines.forEach((engine,i)=>{
+  const x=-S.length*.44,y=engine.y,delta=b.actualSteer;
+  const inflow=(u-b.w*y)*Math.cos(delta)-(v+b.w*x)*Math.sin(delta);
+  const thrust=updateEngine(engine,i===0?b.throttle:b.throttle2,inflow,dt,b.damage);
+  force(thrust*Math.cos(delta),-thrust*Math.sin(delta),x,y);totalThrust+=thrust;
+  // Submerged skeg: flow creates steering even in neutral; stalls at large incidence.
+  const lateral=(u-b.w*y)*Math.sin(delta)+(v+b.w*x)*Math.cos(delta);
+  const axial=(u-b.w*y)*Math.cos(delta)-(v+b.w*x)*Math.sin(delta);
+  const skeg=-.5*1000*(.022+engine.hp*.00012)*1.1*Math.hypot(axial,lateral)*lateral;
+  force(skeg*Math.sin(delta),skeg*Math.cos(delta),x,y);
  });
- b.vx+=fx/MODEL.mass*dt;b.vy+=fy/MODEL.mass*dt;b.w+=torque/MODEL.inertia*dt;
+ const ax=env.wind.x-b.vx,ay=env.wind.y-b.vy,au=ax*c+ay*s,av=-ax*s+ay*c;
+ force(.5*1.225*.85*S.beam*S.freeboard*au*Math.abs(au),.5*1.225*1.05*S.length*S.freeboard*av*Math.abs(av),S.length*.06,0);
+ force(S.mass*.12*(wave.ax*c+wave.ay*s),S.mass*.25*(-wave.ax*s+wave.ay*c));
+ // Diagonal added-mass model in BODY axes, including energy-preserving Coriolis coupling.
+ const udot=(X+S.my*vr*b.w)/S.mx;
+ const vdot=(Y-S.mx*ur*b.w)/S.my;
+ const rdot=(N+(S.mx-S.my)*ur*vr)/S.iz;
+ // Convert body acceleration to world acceleration without double-counting frame rotation.
+ const du=udot-b.w*vr,dv=vdot+b.w*ur;
+ b.vx+=(c*du-s*dv)*dt;b.vy+=(s*du+c*dv)*dt;b.w+=rdot*dt;
+ solveRopes(b,dt,m=>event(b,m));updateAnchor(b,e,dt,m=>event(b,m));
+ // Depth below instantaneous surface, corrected for hull draft and vertical motion.
+ let clearance=Infinity;
+ for(const x of [-.4*S.length,0,.4*S.length]){const p=point(b,x,0);clearance=Math.min(clearance,bottomAt(p.x,p.y).depth+b.heave-S.draft+x*Math.sin(b.pitch));}
+ b.underKeel=clearance;b.grounded=clearance<0;
+ if(b.grounded){
+  const damping=Math.exp(-dt*(2+Math.min(12,-clearance*15)));const before=Math.hypot(b.vx,b.vy);
+  b.vx*=damping;b.vy*=damping;b.w*=damping;
+  if(before>.4&&b.time-b.groundEvent>1){b.damage=clamp(b.damage+Math.min(30,before*before*5),0,100);b.groundEvent=b.time;event(b,'Wejście na mieliznę: kontakt kadłuba z dnem.');}
+ }
  b.x+=b.vx*dt;b.y+=b.vy*dt;b.a+=b.w*dt;
- // Three overlapping hull circles; sequential impulse contacts include angular velocity.
- for(let iteration=0;iteration<3;iteration++)for(const q of [-1.65,0,1.65]){
-  const p=point(b,q,0);const radius=q===0?1.05:.95;
+ contacts(b,dt);
+ if(b.damage>=100){b.throttle=0;b.throttle2=0;}
+ b.telemetry={surge:ur,sway:vr,thrust:totalThrust,drag:Math.abs(drag),shaftPower:b.engines.reduce((sum,en)=>sum+en.hp*735.5*en.n**3,0)};
+}
+function contacts(b,dt){
+ const S=b.spec,radius=S.beam*.48,offset=S.length*.5-radius;
+ const count=Math.max(3,Math.ceil(2*offset/(radius*1.4))+1);
+ for(let iteration=0;iteration<3;iteration++)for(let i=0;i<count;i++){
+  const q=-offset+2*offset*i/(count-1),p=point(b,q,0);
   for(let k=0;k<SOLIDS.length;k++){
-   const rect=SOLIDS[k];const near={x:clamp(p.x,rect.x,rect.x+rect.w),y:clamp(p.y,rect.y,rect.y+rect.h)};
-   let dx=p.x-near.x,dy=p.y-near.y,d=Math.hypot(dx,dy),depth=radius-d;
-   if(depth<=0)continue;
-   let nx,ny;
+   const rect=SOLIDS[k],near={x:clamp(p.x,rect.x,rect.x+rect.w),y:clamp(p.y,rect.y,rect.y+rect.h)};
+   const dx=p.x-near.x,dy=p.y-near.y,d=Math.hypot(dx,dy);let depth=radius-d;
+   if(depth<=0)continue;let nx,ny;
    if(d<1e-8){const sides=[{v:p.x-rect.x,x:-1,y:0},{v:rect.x+rect.w-p.x,x:1,y:0},{v:p.y-rect.y,x:0,y:-1},{v:rect.y+rect.h-p.y,x:0,y:1}].sort((a,b)=>a.v-b.v);nx=sides[0].x;ny=sides[0].y;depth=radius+sides[0].v;}else{nx=dx/d;ny=dy/d;}
-   const rx=q*Math.cos(b.a)-nx*radius,ry=q*Math.sin(b.a)-ny*radius;
-   const vn=(b.vx-b.w*ry)*nx+(b.vy+b.w*rx)*ny;
-   const lever=rx*ny-ry*nx, effective=1/(1/MODEL.mass+lever*lever/MODEL.inertia);
-   const sideContact=Math.abs(nx*(-Math.sin(b.a))+ny*Math.cos(b.a))>.65;
+   const arm={x:q*Math.cos(b.a)-nx*radius,y:q*Math.sin(b.a)-ny*radius},n={x:nx,y:ny};
+   const vn=(b.vx-b.w*arm.y)*nx+(b.vy+b.w*arm.x)*ny,effective=1/inverseMass(b,n,arm);
+   const sideContact=Math.abs(-nx*Math.sin(b.a)+ny*Math.cos(b.a))>.65;
    const protectedContact=b.fenders&&sideContact&&k<DOCKS.length;
    if(vn<0){
-    const speed=-vn,j=-(1.04)*vn*effective;b.vx+=j*nx/MODEL.mass;b.vy+=j*ny/MODEL.mass;b.w+=j*lever/MODEL.inertia;
-    const kind=impactClass(speed,protectedContact);
+    const speed=-vn;impulse(b,n,-1.015*vn*effective,arm);
+    // Wave-scale rubbing is not a fresh damaging impact every frame.
     if(speed>.08&&(!b.lastImpact||b.time-b.lastImpact.time>.65)){
-     const energy=.5*effective*speed*speed,absorbed=protectedContact?40:10;
+     const kind=impactClass(speed,protectedContact),energy=.5*effective*speed*speed,absorbed=protectedContact?40:10;
      const damage=kind==='gentle'?0:kind==='destruction'?100:Math.min(75,Math.max(1,(energy-absorbed)/9));
-     b.damage=clamp(b.damage+damage,0,100);
-     if(k<DOCKS.length)b.dockDamage=clamp(b.dockDamage+(kind==='destruction'?100:Math.max(0,(energy-80)/18)),0,100);
-     b.lastImpact={time:b.time,speed,energy,kind,protectedContact};
-     event(b,`${kind==='gentle'?'Łagodny kontakt':kind==='damage'?'Uszkodzenie':'Silna kolizja'}: ${speed.toFixed(2)} m/s · ${Math.round(energy)} J${protectedContact?' · odbijacze':''}`);
+     b.damage=clamp(b.damage+damage,0,100);if(k<DOCKS.length)b.dockDamage=clamp(b.dockDamage+(kind==='destruction'?100:Math.max(0,(energy-80)/18)),0,100);
+     b.lastImpact={time:b.time,speed,energy,kind,protectedContact};event(b,`${kind==='gentle'?'Łagodny kontakt':kind==='damage'?'Uszkodzenie':'Silna kolizja'}: ${speed.toFixed(2)} m/s · ${Math.round(energy)} J${protectedContact?' · odbijacze':''}`);
     }
    }
-   b.x+=nx*depth*.85;b.y+=ny*depth*.85;
+   b.x+=nx*depth*.8;b.y+=ny*depth*.8;
   }
  }
- if(b.damage>=100)b.throttle=0;
 }
