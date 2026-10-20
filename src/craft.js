@@ -1,3 +1,4 @@
+import {thermalStep} from './thermal.js';
 import {clamp} from './world.js';
 export const CRAFTS={
  tender:{name:'Łódź otwarta 4,2 m',length:4.2,beam:1.75,hullMass:380,draft:.28,hp:25,freeboard:.45,planing:true,deadrise:12,fuel:45,color:'#e8e9cf',anchorMass:6,chain:6,lineEA:80000,lineBreak:10000},
@@ -28,12 +29,15 @@ export function updateMass(spec,fuelLitres){
  spec.mx=spec.mass*1.08;spec.my=spec.mass*1.65;spec.iz=spec.inertia*1.55;
  return spec;
 }
-export function engineState(hp,y=0,coldStart=false){return{hp,y,command:0,gear:0,n:0,shift:0,thrust:0,rpm:coldStart?0:750,propDamage:0,propContact:false,propClearance:10,lastStrike:-10,key:coldStart?'off':'running',startTime:0,trim:.28,trimTarget:.28,ventilation:0,load:0,fuelFlow:0};}
+export function engineState(hp,y=0,coldStart=false){return{hp,y,command:0,gear:0,n:0,shift:0,thrust:0,rpm:coldStart?0:750,propDamage:0,propContact:false,propClearance:10,lastStrike:-10,key:coldStart?'off':'running',startTime:0,trim:.28,trimTarget:.28,ventilation:0,load:0,fuelFlow:0,temperature:18,cooling:0,overheated:false,thermalLimit:1,thermalTrip:false};}
 export function engineKey(b,index,action){
  const en=b.engines[index];if(!en)return{ok:false,message:'Brak silnika.'};
  if(action==='off'){en.key='off';en.startTime=0;en.gear=0;en.thrust=0;return{ok:true,message:'Silnik wyłączony.'};}
- if(action==='ignition'){if(en.key!=='running')en.key='ignition';return{ok:true,message:'Zapłon włączony.'};}
+ if(action==='ignition'){en.key='ignition';en.thrust=0;en.gear=0;return{ok:true,message:'Zapłon włączony.'};}
  if(action==='start'){
+  if(en.key==='running')return{ok:true,message:'Silnik już pracuje.'};
+  if(en.temperature>110)return{ok:false,message:'Silnik przegrzany — poczekaj, aż ostygnie poniżej 110°C.'};
+  en.thermalTrip=false;
   if(Math.abs(index===0?b.throttle:b.throttle2)>.035)return{ok:false,message:'Przed rozruchem ustaw manetkę na luz.'};
   if(b.fuel.litres<=0)return{ok:false,message:'Brak paliwa.'};
   if(b.battery.soc<.08||b.battery.voltage<10)return{ok:false,message:'Akumulator nie pozwala na rozruch.'};
@@ -45,13 +49,15 @@ export function engineKey(b,index,action){
 export function updateEngine(en,command,inflow,dt,damage=0,context={}){
  en.trim+=clamp(en.trimTarget-en.trim,-.10*dt,.10*dt);
  const cmd=clamp(command,-1,1);en.command=cmd;
+ thermalStep(en,dt,context);
  if(en.key==='starting'){
   en.startTime+=dt;en.rpm=260;en.thrust=0;en.gear=0;
   if(en.startTime>1.15)en.key='running';return 0;
  }
  if(en.key!=='running'||context.noFuel){en.n*=Math.exp(-dt/.35);en.rpm=en.key==='off'?0:0;en.thrust=0;en.gear=0;if(context.noFuel)en.key='ignition';return 0;}
  const desired=Math.abs(cmd)<.035?0:Math.sign(cmd);
- const trimVent=context.jet?0:clamp((en.trim-.68)/.32,0,1)*clamp((Math.abs(inflow)-2)/6,0,1)*(.2+.8*Math.abs(cmd));
+ const airExposure=clamp((en.trim-.64)/.36,0,1);
+ const trimVent=context.jet?0:airExposure*(.15+.85*clamp((Math.abs(inflow)-.5)/6,0,1))*clamp(en.n/.5,0,1)*(.2+.8*Math.abs(cmd));
  en.ventilation+=(trimVent-en.ventilation)*(1-Math.exp(-dt/.35));
  const advanceLoad=clamp(1-Math.abs(inflow)/(4+12*en.n),.15,1);
  en.load=advanceLoad*(1-en.ventilation);
@@ -68,7 +74,7 @@ export function updateEngine(en,command,inflow,dt,damage=0,context={}){
  const reverse=context.jet?.34:.58;
  const bollard=staticThrust*n*n*(gear<0?reverse:1)*advanceFactor;
  const powerLimit=(context.jet?.63:.55)*en.hp*735.5*n**3/Math.max(1,Math.abs(inflow));
- en.thrust=desired===gear?gear*Math.min(bollard,powerLimit)*(1-damage/100)*(1-en.propDamage/100)**1.5*(1-.84*en.ventilation):0;
+ en.thrust=desired===gear?gear*Math.min(bollard,powerLimit)*(1-damage/100)*(1-en.propDamage/100)**1.5*(1-.90*en.ventilation)*en.thermalLimit:0;
  en.rpm=750+4750*clamp((n-.23)/.77,0,1)+en.ventilation*450;
  en.fuelFlow=.45+.003*en.hp+.29*en.hp*n**3*(.55+.45*en.load);
  return en.thrust;

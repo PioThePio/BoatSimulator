@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {createBoat,step,attachRope,cleat,BOLLARDS} from '../src/physics.js';
 import {engineKey,CRAFTS,specification,updateMass} from '../src/craft.js';
 import {requestRefuel,systemsStep} from '../src/systems.js';
-import {environment,bottomAt,canalAt,reedDensityAt,YBOOMS} from '../src/world.js';
+import {environment,bottomAt,canalAt,reedDensityAt,YBOOMS,FUEL_STATION} from '../src/world.js';
 function run(b,t,env={},recenter=true){for(let i=0;i<t*120;i++){step(b,env,1/120);if(recenter){b.x=64;b.y=48;}}return b;}
 test('cold engine needs ignition and neutral; starter takes time; off removes propulsion',()=>{
  const b=createBoat('open',{coldStart:true});b.throttle=1;run(b,3);assert.equal(b.engines[0].thrust,0);assert.equal(engineKey(b,0,'start').ok,false);
@@ -14,7 +14,7 @@ test('fuel is consumed, contributes to mass/inertia/draft and empty tank stops e
  assert.equal(b.fuel.tanks.length,2);assert.ok(Math.abs(b.fuel.tanks.reduce((s,t)=>s+t.litres,0)-b.fuel.litres)<1e-9);b.fuel.litres=0;run(b,.1);assert.equal(b.engines[0].key,'ignition');assert.equal(b.engines[0].thrust,0);
 });
 test('refueling requires station, rest and stopped engines, fills gradually and stops when leaving',()=>{
- const b=createBoat('fuel',{coldStart:true});b.fuel.litres=20;assert.ok(requestRefuel(b).ok);systemsStep(b,1);assert.ok(b.fuel.litres>20&&b.fuel.litres<21);b.vx=.4;systemsStep(b,1);assert.equal(b.fuel.refueling,false);assert.equal(requestRefuel(b).ok,false);b.vx=0;b.engines[0].key='running';assert.equal(requestRefuel(b).ok,false);b.engines[0].key='off';b.x=64;assert.equal(requestRefuel(b).ok,false);
+ const b=createBoat('fuel',{coldStart:true});b.fuel.litres=20;assert.ok(requestRefuel(b).ok);systemsStep(b,1);assert.ok(b.fuel.litres>20&&b.fuel.litres<21);b.vx=.4;systemsStep(b,1);assert.equal(b.fuel.refueling,false);assert.equal(requestRefuel(b).ok,false);b.vx=0;b.engines[0].key='running';assert.equal(requestRefuel(b).ok,false);b.engines[0].key='off';b.x=FUEL_STATION.x+FUEL_STATION.radius+1;assert.equal(requestRefuel(b).ok,false);
 });
 test('thrusters require ignition, turn opposite at bow/stern, discharge battery, weaken underway',()=>{
  const off=createBoat('open',{coldStart:true,bowThruster:true});off.thrusters.bow=1;run(off,1);assert.equal(off.thrusters.bowForce,0);assert.equal(off.w,0);
@@ -41,13 +41,13 @@ test('local flow changes behind island, accelerates along channel and reeds are 
  const lee=environment(0,e,402,204),exposed=environment(0,e,180,204),canal=environment(0,e,304,204);assert.ok(lee.wind.x<exposed.wind.x*.8);assert.ok(lee.waveScale<exposed.waveScale);assert.ok(canal.current.x>.5);
  for(const x of [240,270,304,335,365])assert.ok(bottomAt(x,canalAt(x).y).depth>1.8);
  assert.ok(reedDensityAt(25,245)>.9);assert.ok(bottomAt(25,245).depth>0);assert.equal(reedDensityAt(64,48),0);
- assert.ok(BOLLARDS.filter(q=>q.kind==='buoy').length>=4);assert.ok(BOLLARDS.filter(q=>q.kind==='bollard').length>30);assert.ok(YBOOMS.length>=6);
+ assert.ok(BOLLARDS.filter(q=>q.kind==='buoy').length>=4);assert.ok(BOLLARDS.filter(q=>q.kind==='bollard').length>30);assert.equal(YBOOMS.length,3);
 });
 test('moored traffic responds to environment and contact, toggle removes collisions',()=>{
  const b=createBoat('open'),q=b.traffic[0],x=q.x;run(b,8,{traffic:true,windSpeed:10,windDirection:90,waveHeight:.2});assert.ok(Math.abs(q.x-x)>.01&&Math.abs(q.x-x)<2);
- function hit(enabled){const b=createBoat('open');b.x=132;b.y=26;b.a=Math.PI;b.vx=-1;for(let i=0;i<60;i++)step(b,{traffic:enabled},1/120);return b;}
+ function hit(enabled){const b=createBoat('open');b.x=b.traffic[0].x+2;b.y=b.traffic[0].y;b.a=Math.PI;b.vx=-1;for(let i=0;i<60;i++)step(b,{traffic:enabled},1/120);return b;}
  const contact=hit(true),clear=hit(false);assert.ok(contact.traffic[0].vx<-.01||Math.abs(contact.traffic[0].w)>.001);assert.equal(clear.traffic[0].vx,0);assert.ok(Number.isFinite(contact.x));
 });
 test('Y-boom is a physical pier contact, including side fender protection',()=>{
- const b=createBoat('open');b.x=157;b.y=28.5;b.a=0;b.vy=-1;run(b,.5,{},false);assert.ok(b.lastImpact);assert.ok(b.lastImpact.protectedContact);assert.ok(b.y>27.8);assert.ok(Number.isFinite(b.vy));
+ const b=createBoat('open');b.x=76;b.y=21.5;b.a=0;b.vy=-1;run(b,.5,{},false);assert.ok(b.lastImpact);assert.ok(b.lastImpact.protectedContact);assert.ok(b.y>20.8);assert.ok(Number.isFinite(b.vy));
 });

@@ -1,4 +1,4 @@
-# Przystań — symulator manewrów motorówką v4
+# Przystań — symulator manewrów motorówką v5
 
 Przeglądarkowy symulator z widokiem z góry. Pięć profili kadłuba (w tym skuter wodny),
 zmieniane wymiary i masa, jeden lub dwa silniki do 350 KM każdy,
@@ -39,12 +39,21 @@ Repozytorium musi mieć aktywne Settings → Pages → Source: GitHub Actions.
 
 ## Obsługa
 
+Po otwarciu wybierz łódź, wyposażenie i pogodę w menu startowym, następnie
+„Rozpocznij rejs”. Te same formularze pozostają pod konsolą. „Łódź i pogoda”
+ponownie otwiera menu. Kamera zaczyna z łodzią w środku; ◎ centruje ją ponownie.
+Dane ruchu i kompaktowa echosonda są na mapie; echosondę wyłącza przełącznik
+w konsoli. Obok kierownicy są strumieniowe, dalej manetki, wspólne pionowe
+przyciski biegów i trymu, stacyjki oraz wskaźniki. Spalanie jest pod paliwem
+w L/h, a sylwetka pokazuje równocześnie przegłębienie i kąt napędu.
+
+
 | Działanie | Klawiatura / mysz |
 | --- | --- |
-| Koło | A/D lub ←/→, chwyt obręczy i prowadzenie po łuku |
+| Koło | A/D lub ←/→, chwyt obręczy lub pola między ramionami, poza piastą, prowadzenie po łuku |
 | Wyprostuj | C lub przycisk |
 | Wybrana manetka | Krótko W/S lub ↑/↓: bieg pełzający / luz; przytrzymanie: płynna zmiana gazu; pionowa dźwignia |
-| Wybór manetki klawiaturą | 1 / 2; przyciski dotykowe obsługują każdą manetkę bez wyboru |
+| Wybór manetki klawiaturą | 1 / 2 lub kliknięcie manetki; wspólny zestaw ▲ / N / ▼ zmienia wybraną, a przy spięciu obie |
 | Sprzężenie manetek | T lub przełącznik |
 | Obydwa silniki na luz | Spacja lub „Luz” |
 | Odbijacze | F lub przełącznik |
@@ -52,15 +61,15 @@ Repozytorium musi mieć aktywne Settings → Pages → Source: GitHub Actions.
 | Punkt cumowania | Kliknij poler P / Y, boję B lub drzewo D na mapie, następnie wybierz knagę |
 | Założenie cumy | Pięć knag; alternatywnie cel z listy i + przy knadze; rzut do 6 m z 35 cm luzu |
 | Wybieranie / luzowanie | − / + po założeniu: cel ±0,5 m, wykonywany stopniowo |
-| Odczepienie | × przy cumie |
-| Rozruch / gaszenie | Zapłon → Start na luzie; 0 wyłącza silnik i zapłon |
-| Trym napędu | + / − przy każdej manetce; wskaźnik oraz uniesienie dziobu |
+| Odczepienie | × przy cumie w panelu albo przy klikniętym polerze |
+| Rozruch / gaszenie | Graficzna stacyjka w prawo: 0 → I → START na luzie; w lewo: zgaszenie, potem wyłączenie zapłonu |
+| Trym napędu | Wspólne pionowe ▲ / ▼ dla obu silników, niezależnie od spięcia manetek |
 | Strumieniowe | Przytrzymaj ◀ / ▶; Q/E dziób, Z/X rufa; wyposażenie opcjonalne i wymagany zapłon |
 | Paliwo | Tankuj przy ⛽, prędkość <0,15 m/s, silniki zgaszone |
 | Ślad / łodzie portowe | Przycisk Ślad na mapie / przełącznik w warunkach |
-| Kotwica | Ustaw długość rode, „Wydaj”, „Stop”, „Wybierz” |
+| Kotwica | Kliknij dziób łodzi albo przycisk ⚓ w konsoli; długość i „Wydaj”, „Stop”, „Wybierz”; dolny panel też działa |
 
-Koło ma cztery obroty od oporu do oporu. Koło i manetki nie wracają samoczynnie do zera. Silnik ma osobny rzeczywisty
+Koło ma dwa i pół obrotu od oporu do oporu. Koło i manetki nie wracają samoczynnie do zera. Silnik ma osobny rzeczywisty
 kąt, obroty, naciąg i opóźnienie zmiany biegu. Luz nie hamuje łodzi.
 Przy równych przeciwnych manetkach łódź może dryfować podczas obrotu,
 bo wsteczny ciąg jest słabszy. W formularzach strzałki obsługują dane pole.
@@ -93,10 +102,19 @@ Wysokość fali może zależeć od wiatru albo być ustawiona ręcznie.
 Kołysanie i przegłębienie są widoczne i mierzone. Parametry nie są prognozą
 falowania prawdziwego jeziora.
 
+Przy zbyt wysokim trymie pojawia się spieniona struga i spada ciąg.
+Utrata chłodzenia lub długotrwałe pełne obciążenie na cumach/mieliźnie
+podnosi temperaturę. Czerwony alarm i redukcja mocy od 105°C; przy 145°C
+silnik zatrzymuje się. Rozruch możliwy po ostygnięciu poniżej 110°C.
+To umowne progi modelu, nie instrukcja użytkowania konkretnego silnika.
+
 ## Pliki
 
 - `src/physics.js` — dynamika kadłuba, kolizje i całkowanie.
 - `src/craft.js` — profile, masa i napęd.
+- `src/thermal.js` — bilans ciepła, chłodzenie i ochrona termiczna.
+- `src/layout.js` — konsola, mapa, formularze i menu startowe.
+- `src/trail.js` — ślad z odległości, bez powielania punktów na postoju.
 - `src/systems.js` — zbiorniki, tankowanie, akumulator, ładowanie i strumieniowe.
 - `src/cockpit.js` — dotykowe manetki, stacyjki i wskaźniki.
 - `src/traffic.js` — zacumowane jednostki, reakcja na środowisko i kolizje.
@@ -109,9 +127,9 @@ falowania prawdziwego jeziora.
 - `tests/` — regresje fizyki oraz przeglądarki.
 - `docs/PHYSICS.md` — źródła i jawne założenia modelu.
 
-## Zakres wydania v4 i ładowanie w Chrome
+## Zakres wydania v5 i ładowanie w Chrome
 
-Wydanie v4 dodaje wyposażenie i zmienia fizykę. Zgłoszony problem białego ekranu
+Wydanie v5 przebudowuje kokpit, koryguje tłumienie obrotu i dodaje temperaturę silników. Zgłoszony problem białego ekranu
 na konkretnym urządzeniu użytkownika pozostaje do osobnej diagnozy, zgodnie
 z jego prośbą. Poniższe zabezpieczenia pochodzą z v3.0.1.
 
@@ -124,7 +142,7 @@ Komunikat startowy, instrukcja dla wyłączonego JS i diagnostyka błędu
 zastępują pusty ekran, a przycisk ponowienia odświeża adres HTML.
 
 Przy starym ekranie z pamięci Chrome otwórz:
-`https://piothepio.github.io/BoatSimulator/?v=4.0.1`.
+`https://piothepio.github.io/BoatSimulator/?v=5.0.0`.
 Zrzut białego ekranu nie pozwolił jednoznacznie ustalić przyczyny po stronie
 konkretnej przeglądarki; poprawka usuwa zależność od osobnych zasobów
 i ujawnia ewentualny błąd uruchomienia.

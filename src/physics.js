@@ -9,7 +9,7 @@ export {clamp,DOCKS,SOLIDS,BOLLARDS,environment,bottomAt,waveAt,point,cleat,atta
 export const MODEL=specification();
 export function createBoat(scenario='approach',options={}){
  const spec=specification(options);
- const starts={approach:[43,37,-2.1],berth:[24.3,22,-Math.PI/2],open:[64,48,-Math.PI/2],beach:[8.2,147,Math.PI/2],island:[304,278,Math.PI],fuel:[128,68,-Math.PI/2],canal:[304,204,0],harbor:[143,68,-Math.PI/2]};
+ const starts={approach:[43,37,-2.1],berth:[24.3,22,-Math.PI/2],open:[64,48,-Math.PI/2],beach:[8.2,147,Math.PI/2],island:[304,278,Math.PI],fuel:[58,19.5,-Math.PI/2],canal:[304,204,0],harbor:[61,40,-Math.PI/2],lake:[80,110,0]};
  const [x,y,a]=starts[scenario]||starts.approach;
  return{...createSystems(spec,options.coldStart),traffic:createTraffic(),x,y,a,vx:0,vy:0,w:0,steer:0,actualSteer:0,throttle:0,throttle2:0,linked:true,enginesRaised:false,groundLoad:0,groundMaterial:'sand',spec,
  engines:spec.powers.map((hp,i)=>engineState(hp,spec.engineCount===1?0:(i===0?-1:1)*spec.engineSpacing/2,options.coldStart)),
@@ -53,7 +53,7 @@ export function step(b,e,dt){
  const support=S.mass*9.81*(.032+.025*lowTrim+.00022*u*u+.30*(trimAngle-.08)**2)*b.planing;
  const displacementLimit=S.planing?0:S.mass*9.81*.085*Math.max(0,fn-.42)**2*12;
  const transom=u<0?(.5*1000*S.beam*S.draft*.75*u*u):0;
- const turnDrag=.5*1000*S.draft*S.length*1.8*(v*v+(b.w*S.length)**2);
+ const turnDrag=.5*1000*S.draft*S.length*.8*(v*v+(b.w*S.length)**2);
  const drag=friction+Math.sign(u)*turnDrag+Math.sign(u)*(waveDrag+support+displacementLimit+transom);
  force(-drag-S.mass*.009*u,0);
  // Strip-theory cross-flow + speed-dependent lift. All local forces oppose local motion.
@@ -69,12 +69,13 @@ export function step(b,e,dt){
  // Outboards rotate at a finite rate; linked controls copy commands, not engine states.
  b.actualSteer+=clamp(b.steer-b.actualSteer,-.38*dt,.38*dt);
  if(b.linked)b.throttle2=b.throttle;
+ if(b.engines.length===2)b.engines[1].trimTarget=b.engines[0].trimTarget;
  let totalThrust=0;
  b.engines.forEach((engine,i)=>{
   const x=S.engineLever,y=engine.y,delta=b.actualSteer;
   const inflow=(u-b.w*y)*Math.cos(delta)-(v+b.w*x)*Math.sin(delta);
   propellerContact(b,engine,dt,m=>event(b,m));
-  let thrust=updateEngine(engine,i===0?b.throttle:b.throttle2,inflow,dt,b.damage,{noFuel:b.fuel.litres<=0,jet:S.jet});
+  let thrust=updateEngine(engine,i===0?b.throttle:b.throttle2,inflow,dt,b.damage,{noFuel:b.fuel.litres<=0,jet:S.jet,grounded:b.grounded,moored:b.ropes.length>0,raised:b.enginesRaised,speed:Math.hypot(ur,vr)});
   if(b.enginesRaised){thrust=0;engine.thrust=0;}
   thrust*=S.jet?1:Math.cos((-4+22*engine.trim)*Math.PI/180);
   force(thrust*Math.cos(delta),-thrust*Math.sin(delta),x,y);totalThrust+=thrust;
@@ -92,11 +93,12 @@ export function step(b,e,dt){
  force(.5*1.225*.85*S.beam*S.freeboard*au*Math.abs(au),.5*1.225*1.05*S.length*S.freeboard*av*Math.abs(av),S.length*.06,0);
  force(S.mass*.12*(wave.ax*c+wave.ay*s),S.mass*.25*(-wave.ax*s+wave.ay*c));
  // Body-axis added-mass model with an empirical correction of the yaw moment.
- const udot=(X+S.my*vr*b.w)/S.mx;
- const vdot=(Y-S.mx*ur*b.w)/S.my;
+ const udot=(X+S.mass*vr*b.w)/S.mx;
+ const vdot=(Y-S.mass*ur*b.w)/S.my;
  // Empirical hull stability cancels the bare potential-flow Munk moment.
  // Leaving it uncalibrated amplifies sideslip into a spin at planing speed.
- const rdot=N/S.iz;
+ const rotationalDrag=.5*1000*S.beam*S.length**4*.025*b.w*Math.abs(b.w);
+ const rdot=(N-rotationalDrag)/S.iz-(.16+.04*Math.abs(u)/S.length)*b.w;
  // Convert body acceleration to world acceleration without double-counting frame rotation.
  const du=udot-b.w*vr,dv=vdot+b.w*ur;
  b.vx+=(c*du-s*dv)*dt;b.vy+=(s*du+c*dv)*dt;b.w+=rdot*dt;

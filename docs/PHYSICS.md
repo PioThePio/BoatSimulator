@@ -1,4 +1,4 @@
-# Model v4: podstawy, założenia i ograniczenia
+# Model v5: podstawy, założenia i ograniczenia
 
 Model ma odtwarzać **zależności fizyczne w manewrach**, ale nie jest
 zweryfikowanym cyfrowym bliźniakiem konkretnej motorówki. Nie dysponujemy
@@ -52,9 +52,9 @@ Fossena (ponownie sprawdzony 20.10.2026). To wybór empiryczny dla tej
 aplikacji; nie pełna identyfikacja pochodnych hydrodynamicznych kadłuba.
 
 ```
-mx*u_dot = X + my*v*r
-my*v_dot = Y - mx*u*r
-Iz*r_dot = N              # po kompensacji momentu Munka
+mx*u_dot = X + m*v*r
+my*v_dot = Y - m*u*r
+Iz*r_dot = N - D_r*r*abs(r) - Iz*(0,16+0,04*abs(u)/L)*r
 ```
 
 Pochodne przeliczamy z układu obracającego się do świata. Dziewięć pasów
@@ -62,7 +62,15 @@ kadłuba liczy siły zależne od `v+r*x`, kwadratowy opór poprzeczny oraz
 składnik `|u|*(v+r*x)`. Przy płynięciu naprzód środek działania sił bocznych
 jest przesunięty o 0,1 L ku rufie dla stabilności kierunkowej.
 Dodatkowy empiryczny opór zakrętu wynosi
-`0,5*rho*draft*L*1,8*(v²+(r*L)²)` i działa przeciwnie do u.
+`0,5*rho*draft*L*0,8*(v²+(r*L)²)` i działa przeciwnie do u.
+W v5 kompensacja obejmuje również sprzężenia od masy dodanej w osiach u/v,
+pozostawiając symetryczny człon Coriolisa od masy sztywnej m. Dodatkowy
+opór obrotu `D_r=0,5*rho*B*L^4*0,025` ogranicza narastanie obrotu po
+wytraceniu prędkości. Mniejszy opór zakrętu unika wcześniejszego przejścia
+od silnego wyhamowania do obrotu prawie w miejscu. Test oporu zakrętu
+wymaga nadal monotonicznego spadku prędkości i co najmniej 10% różnicy
+w badanej próbie; wcześniejszy arbitralny próg 15% zastąpiono dłuższą
+regresją wymagającą zachowania ruchu postępowego z 350 KM i dużym skrętem.
 Nie obracamy wektora prędkości natychmiast do osi kadłuba.
 
 Testy sprawdzają zanikanie energii bez napędu, brak sztucznych sił przy
@@ -87,7 +95,7 @@ napęd. Można zmieniać wymiary/masę i wybrać 1–2 silniki 10–350 KM każd
 skuter ma jeden napęd. Nietypowe konfiguracje nie są oceną dopuszczalnego
 obciążenia pawęży ani rekomendacją montażu.
 
-Każdy silnik ma osobne obroty, przekładnię, trym i stan uszkodzeń. Obroty
+Każdy silnik ma osobne obroty, przekładnię, trym i stan uszkodzeń oraz temperaturę. Obroty
 narastają ze stałą ok. 0,65–1,3 s, zależną od mocy i obciążenia, opadają
 ze stałą 0,4 s. Ciąg zależy od kwadratu obrotów, limit mocy od sześcianu.
 Zmiana biegu wymaga zwolnienia wału i co najmniej 0,65 s; polecenie
@@ -99,7 +107,7 @@ Ramię silnika: `-0,44*L`, rozstaw dwóch: `0,46*B`. Sumujemy siły i momenty
 każdego, dlatego przeciwny bieg obraca łódź, a równe wychylenia przeciwnych
 manetek nie równoważą ciągów. Skeg działa także na luzie, gdy opływa go woda.
 Oba zaburtowe skręcają wspólnie, z ograniczeniem szybkości rzeczywistego
-kąta do 0,38 rad/s. Koło wykonuje cztery obroty między oporami i nie wraca do zera.
+kąta do 0,38 rad/s. Koło wykonuje dwa i pół obrotu między oporami i nie wraca do zera.
 
 Skuter: inna masa, zanurzenie, bezwładność, kąt dyszy ±28°, ramię `-0,40*L`,
 ciąg statyczny `62*KM^0,8`, sprawność 0,63, deflektor wstecz 34%.
@@ -150,7 +158,7 @@ Przyjęte zużycie pracującego silnika w l/h:
 `0,45+0,003*KM+0,29*KM*n³*(0,55+0,45*obciążenie)`.
 Nie jest to mapa spalania konkretnego producenta. Na luzie nadal zużywa
 paliwo. Pusty zbiornik zatrzymuje silnik. Tankowanie w promieniu 6 m od
-stanowiska `(128,68)`, przy prędkości <0,15 m/s i zgaszonych silnikach:
+stanowiska `(58;19,5)`, przy prędkości <0,15 m/s i zgaszonych silnikach:
 0,65 l/s. Ruszenie lub rozruch przerywa tankowanie.
 
 Akumulator: 80 Ah, skuter 35 Ah; start 85%. Zapłon 1,2 A,
@@ -158,7 +166,7 @@ alternator pracującego silnika 12–34 A, strumieniowe osobne obciążenie.
 Napięcie zależy od naładowania i spadku pod obciążeniem; podczas ładowania
 13,5–14,4 V. Woltomierz nie jest dokładnym modelem chemii akumulatora.
 
-Strumieniowe (opcje dziobowy i rufowy) działają tylko przy zapłonie,
+Strumieniowe przy kierownicy (opcje dziobowy i rufowy) działają tylko przy zapłonie,
 wystarczającym napięciu i energii. Siła boczna 150–850 N zależna od masy,
 ramię ±0,38 L, rozpędzenie ok. 0,22 s. Skuteczność maleje jak
 `1/(1+(u/1,8)^2)`; moc elektryczna szacowana z siły. Mogą przesuwać łódź
@@ -167,6 +175,8 @@ Brak modelu nagrzewania i znamionowego czasu pracy tunelu.
 
 ## Cumy i kotwica
 
+Kliknięty punkt na mapie pozwala też wybierać, luzować i odpinać cumy.
+Kliknięcie dziobu otwiera obsługę kotwicy, współdzieląc stan z dolnym panelem.
 Pięć knag: środek dziobu, lewy/prawy przód i lewa/prawa rufa. Kliknij
 poler, drzewo lub boję, potem knagę. Rzut do 6 m; początkowa długość to
 odległość + 0,35 m. **Samo założenie nie wybiera liny i nie nadaje impulsu.**
@@ -198,7 +208,7 @@ skale osi są różne. Nie jest to pełny MoorDyn ani model geotechniczny.
 
 Akwen 600 × 400 m ma nieregularną granicę, większą wyspę (ok. 164 × 128 m),
 przesmyk szerokości ok. 13 m z łagodnymi zakrętami, plaże, cztery mielizny,
-cztery płaty szuwarów, większy port, palce, Y-bomy, boje i pomosty na
+cztery płaty szuwarów, oryginalny mały port przedłużony o dwa pomosty i pojedynczy Y-bom, boje i pomosty na
 plaży/wyspie. Dno i rysunek korzystają z tej samej funkcji odległości od brzegu.
 Głębokość płynnie rośnie od brzegu; środek przesmyku ma ok. 2 m.
 Piętnaście próbek kadłuba wyznacza podparcie, tarcie i obrót przy osiadaniu.
@@ -228,7 +238,31 @@ MoorDyn dla każdego obiektu. Nie są samodzielnie sterowanym ruchem portowym.
 Echosonda: idealny pomiar dna pod rufą i historia 60 s; fish arches to
 wizualny easter egg, bez symulacji akustyki ani zachowania ryb.
 
-## Wyniki kontrolne v4
+## Temperatura i chłodzenie v5
+
+Bilans skupiony `T_dot = ciepło - chłodzenie` jest modelem szkoleniowym.
+Woda ma 18°C, początkowa temperatura silnika 18°C. Ciepło zależy od
+kwadratu obrotów i obciążenia. Chłodzenie zależy od zanurzenia napędu,
+pompy i otwarcia umownego termostatu od 64°C. Trym powyżej 64% stopniowo
+ogranicza dopływ wody, powyżej 94% praktycznie go usuwa. Podniesiony napęd
+nie jest chłodzony wodą. Mielizna zmniejsza przepływ; przy pełnym obciążeniu
+na cumach lub gruncie dodajemy ciepło i ograniczamy efektywną wymianę wody
+(w tym umowną recyrkulację). Postój na luzie sam w sobie nie powoduje
+przegrzewania. To nie jest teza, że każdy prawdziwy silnik musi się przegrzać
+przy pracy na cumach z prawidłowym chłodzeniem.
+
+Od 105°C czerwony alarm i stopniowa redukcja mocy do 35%. Przy 145°C
+zatrzymanie silnika z pozostawieniem zapłonu; ponowny start wymaga
+ostygnięcia poniżej 110°C. Wyłączenie silnika usuwa produkcję ciepła,
+chłodzenie naturalne jest wolne. W próbie 240 s silnik prawidłowo chłodzony
+w ruchu stabilizuje się około 74°C, a utrata chłodzenia i przeciążenie
+na cumach/gruncie wyzwalają ochronę. Temperatury i czasy nie są danymi
+konkretnego producenta.
+
+Ślad jest próbkowany po przebyciu 0,35 m, a nie co stały czas: drobne
+drgania pozycji na postoju nie tworzą wiązki nakładających się odcinków.
+
+## Wyniki kontrolne v5
 
 Spokojna woda, bez kolizji terenowych (utrzymywanie pozycji testowej),
 krok 1/120 s. To wyniki równań symulatora, **nie dane osiągowe prawdziwej łodzi**.
@@ -238,9 +272,9 @@ Motorówka domyślna, start 8 m/s, manetka 50%, po 5 s:
 | Silnik | Prędkość [m/s] | Obrót [rad/s] | Zniesienie boczne [m/s] |
 | --- | --- | --- | --- |
 | 0° | 6,304 | 0 | 0 |
-| 2° | 6,295 | 0,0062 | −0,018 |
-| 8,6° | 6,153 | 0,0264 | −0,077 |
-| 28,6° | 4,819 | 0,0892 | −0,253 |
+| 2° | 6,298 | 0,0060 | −0,018 |
+| 8,6° | 6,209 | 0,0249 | −0,073 |
+| 28,6° | 5,439 | 0,0747 | −0,226 |
 
 Ten sam kadłub z 350 KM, pełny gaz po 35 s: trym 10% ok. 19,91 m/s,
 trym 42% ok. 21,47 m/s, trym 100% ok. 7,77 m/s z wentylacją 96%.

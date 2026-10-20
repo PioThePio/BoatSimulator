@@ -28,7 +28,7 @@ test('counter-thrust twins yaw; equal ahead twins stay straight',()=>{
 });
 test('tight fast turn dissipates more speed than a shallow turn or straight course',()=>{
  const boats=[0,.15,.5].map(angle=>{const b=createBoat('open');b.a=0;b.vx=8;b.throttle=.5;b.steer=angle;return run(b,5,calm,true);});
- const speeds=boats.map(b=>Math.hypot(b.vx,b.vy));assert.ok(speeds[0]>speeds[1]&&speeds[1]>speeds[2]);assert.ok(speeds[2]<speeds[0]*.85);assert.ok(Math.abs(boats[2].w)>Math.abs(boats[1].w));
+ const speeds=boats.map(b=>Math.hypot(b.vx,b.vy));assert.ok(speeds[0]>speeds[1]&&speeds[1]>speeds[2]);assert.ok(speeds[2]<speeds[0]*.90);assert.ok(Math.abs(boats[2].w)>Math.abs(boats[1].w));
 });
 test('turning response is speed dependent and zero-thrust skeg reacts to water flow',()=>{
  const slow=createBoat('open'),fast=createBoat('open');slow.a=fast.a=0;slow.vx=.2;fast.vx=6;slow.steer=fast.steer=.4;run(slow,1,calm,true);run(fast,1,calm,true);assert.ok(Math.abs(fast.w)>Math.abs(slow.w)*3);assert.equal(fast.engines[0].thrust,0);

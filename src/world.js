@@ -5,14 +5,13 @@ export const ISLAND={x:304,y:204,rx:82,ry:64};
 export function islandRadius(a){return(1+.075*Math.sin(3*a)+.035*Math.cos(5*a))/Math.hypot(Math.cos(a)/ISLAND.rx,Math.sin(a)/ISLAND.ry);}
 export function islandOutline(padding=0){return Array.from({length:120},(_,i)=>{const a=i*Math.PI/60,r=islandRadius(a)+padding;return{x:ISLAND.x+Math.cos(a)*r,y:ISLAND.y+Math.sin(a)*r};});}
 export function canalAt(x){return{y:204+9*Math.sin((x-304)/25),slope:.36*Math.cos((x-304)/25),halfWidth:6.5};}
+// Original small marina, extended along the same shore with two extra piers.
 export const DOCKS=[{x:6,y:10,w:23,h:2.8},{x:17,y:12.8,w:2.8,h:17},{x:29,y:10,w:2.8,h:16},
- {x:6,y:6.2,w:145,h:2.4},{x:120,y:8.6,w:3,h:65},{x:150,y:8.6,w:2,h:53},
- ...[20,32,44,56].map(y=>({x:123,y,w:19,h:1.2})),{x:99,y:76,w:78,h:2},
- {x:4,y:190,w:14,h:1.5},{x:17,y:185,w:1.4,h:13},
- {x:328,y:260,w:1.6,h:25},{x:328,y:283.5,w:15,h:1.6}];
-export const YBOOMS=[...[27,48].flatMap(y=>[{x1:152,y1:y,x2:162,y2:y,width:.8},{x1:162,y1:y,x2:172,y2:y-4,width:.8},{x1:162,y1:y,x2:172,y2:y+4,width:.8}])];
+ {x:31.8,y:10,w:41,h:2.8},{x:49,y:12.8,w:2.8,h:20},{x:70,y:12.8,w:2.8,h:24},{x:51.8,y:26,w:10,h:1.2},
+ {x:4,y:190,w:14,h:1.5},{x:17,y:185,w:1.4,h:13},{x:328,y:260,w:1.6,h:25},{x:328,y:283.5,w:15,h:1.6}];
+export const YBOOMS=[{x1:72.8,y1:20,x2:79,y2:20,width:.7},{x1:79,y1:20,x2:85,y2:17,width:.7},{x1:79,y1:20,x2:85,y2:23,width:.7}];
 export const SOLIDS=[...DOCKS,{x:-45,y:-45,w:700,h:20},{x:-45,y:-25,w:20,h:480},{x:-25,y:434,w:680,h:20},{x:634,y:-25,w:20,h:480}];
-export const FUEL_STATION={x:128,y:68,radius:6,pumpX:121.5,pumpY:68};
+export const FUEL_STATION={x:58,y:19.5,radius:6,pumpX:50.4,pumpY:18};
 export const BEACHES=[{edge:'north',from:105,to:190,name:'Plaża Północna'},{edge:'west',from:125,to:205,name:'Plaża Sosnowa'},{edge:'south',from:420,to:520,name:'Plaża Południowa'}];
 export const REEDS=[{x:25,y:245,r:10},{x:190,y:375,r:13},{x:550,y:345,r:12},{x:278,y:268,r:9}];
 export const SHOALS=[{x:91,y:64,rx:16,ry:12,drop:7.1},{x:440,y:285,rx:42,ry:26,drop:7.8},{x:420,y:120,rx:25,ry:19,drop:7.6},{x:115,y:290,rx:24,ry:17,drop:7.4}];
@@ -22,8 +21,10 @@ export const BOLLARDS=[...[[12,12.8],[17,18],[17,25],[19.8,28],[29,17],[29,23],[
  ...[{x:2.8,y:147},{x:2.6,y:173},{x:132,y:6.8},{x:165,y:6},islandTree(1.0),islandTree(1.65),{x:452,y:405.2},{x:489,y:405.2}].map((p,i)=>({...p,kind:'tree',id:`D${i+1}`,label:`Drzewo ${i+1}`})),
  ...docksPoints.map((p,i)=>({...p,kind:'bollard',id:`P${i+8}`,label:`Poler ${i+8}`})),
  ...YBOOMS.filter((_,i)=>i%3!==0).map((l,i)=>({x:l.x2,y:l.y2,kind:'bollard',id:`Y${i+1}`,label:`Y-bom ${i+1}`})),
- ...[[44,23],[45,38],[140,68],[173,35],[173,57]].map(([x,y],i)=>({x,y,kind:'buoy',id:`B${i+1}`,label:`Boja ${i+1}`}))];
-export const TRAFFIC=[...['motor','sail','motor','pwc','sail','motor'].map((type,i)=>({id:i,type,x:130+(i%2)*8,y:26+Math.floor(i/2)*12,a:-Math.PI/2,length:type==='pwc'?3.2:type==='sail'?7.8:5.2,beam:type==='pwc'?1.2:2.3,mass:type==='pwc'?380:type==='sail'?2600:1100})),{id:7,type:'sail',x:167,y:37,a:Math.PI,length:8,beam:2.5,mass:2800},{id:8,type:'pwc',x:166,y:61,a:Math.PI,length:3.2,beam:1.2,mass:400}];
+ ...[[44,23],[45,38],[64,36],[82,33]].map(([x,y],i)=>({x,y,kind:'buoy',id:`B${i+1}`,label:`Boja ${i+1}`}))];
+export const TRAFFIC=[{id:0,type:'motor',x:37,y:18,a:-Math.PI/2,length:5.2,beam:2.1,mass:1100},
+ {id:1,type:'sail',x:61,y:30,a:0,length:7.8,beam:2.3,mass:2600},
+ {id:2,type:'pwc',x:77,y:30,a:-Math.PI/2,length:3.2,beam:1.2,mass:380}];
 export function polygonShore(x,y){
  let inside=false,best=Infinity,qx=0,qy=0;
  for(let i=0,j=LAKE.length-1;i<LAKE.length;j=i++){
