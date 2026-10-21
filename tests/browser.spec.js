@@ -105,3 +105,37 @@ test('real lake run keeps a gentle heading with slight steering during 350 HP ac
 test('bow anchor hit area follows the largest hull at high zoom',async({page})=>{
  await page.goto('/');await page.locator('#craft').selectOption('cruiser');await page.locator('#boat-length').fill('11');await page.locator('#begin-session').click();for(let i=0;i<5;i++)await page.locator('#zoom-in').click();await page.locator('#lake').scrollIntoViewIfNeeded();const r=await page.locator('#lake').boundingBox(),scale=Math.min(r.width/140,r.height/80)*3;await page.locator('#lake').click({position:{x:r.width/2+11*.49*scale,y:r.height/2}});await expect(page.locator('#anchor-picker')).toBeVisible();
 });
+test('twins show separate changing tachometers and a single left turn switches I to 0',async({page})=>{
+ await page.goto('/');await page.locator('#engine-count').selectOption('2');await page.locator('#begin-session').click();
+ await expect(page.locator('#gauge-rpm')).toBeVisible();await expect(page.locator('#gauge-rpm2')).toBeVisible();
+ await page.locator('#ignition-0 [data-key-turn="1"]').click();await page.locator('#ignition-0 [data-key-turn="1"]').click();await expect(page.locator('#key-state-0')).toHaveText('Pracuje');
+ await expect.poll(async()=>+(await page.locator('#gauge-rpm strong').innerText())).toBeGreaterThan(700);await expect(page.locator('#gauge-rpm2 strong')).toHaveText('0');
+ const rpm=await page.locator('#gauge-rpm strong').innerText();await expect.poll(async()=>page.locator('#gauge-rpm strong').innerText()).not.toBe(rpm);
+ await page.locator('#link-engines').uncheck();await page.locator('#throttle').fill('8');await expect.poll(async()=>+(await page.locator('#gauge-rpm strong').innerText())).toBeGreaterThan(790);
+ await page.locator('#ignition-0 [data-key-turn="-1"]').click();await expect(page.locator('#key-state-0')).toHaveText('Wyłączony');await expect(page.locator('#gauge-rpm strong')).toHaveText('0');
+ await expect(page.locator('#key-0 .key-pointer')).toHaveAttribute('style',/rotate\(-48deg\)/);
+ await page.locator('#craft').selectOption('tender');await page.locator('#engine-count').selectOption('1');await page.locator('#apply-craft').click();await expect(page.locator('#gauge-rpm2')).not.toBeVisible();
+});
+test('mooring boat diagram drags, retains its position on another bollard and operates ropes',async({page})=>{
+ await page.goto('/');await page.locator('#begin-session').click();await page.locator('[data-start=berth]').click();await page.locator('#lake').scrollIntoViewIfNeeded();
+ const lake=await page.locator('#lake').boundingBox(),scale=Math.min(lake.width/140,lake.height/80);
+ const select=async(x,y)=>page.locator('#lake').click({position:{x:lake.width/2+(x-24.3)*scale,y:lake.height/2+(y-22)*scale}});
+ await select(29,17);await expect(page.locator('.mooring-hull')).toBeVisible();await expect(page.locator('#map-ropes [data-cleat]')).toHaveCount(5);
+ await page.locator('[data-cleat=starboardBow]').click();await expect(page.locator('#map-rope-starboardBow')).toContainText('P5');
+ const before=await page.locator('#mooring-picker').boundingBox(),handle=await page.locator('#mooring-handle').boundingBox();
+ await page.mouse.move(handle.x+30,handle.y+15);await page.mouse.down();await page.mouse.move(handle.x+30+230,handle.y+15-90,{steps:8});await page.mouse.up();
+ const after=await page.locator('#mooring-picker').boundingBox();expect(after.x-before.x).toBeGreaterThan(200);expect(after.y).toBeLessThan(before.y-60);
+ await select(12,12.8);await expect(page.locator('#mooring-target')).toHaveText('Poler 1');const switched=await page.locator('#mooring-picker').boundingBox();expect(Math.abs(switched.x-after.x)).toBeLessThan(2);expect(Math.abs(switched.y-after.y)).toBeLessThan(2);
+ await expect(page.locator('#map-rope-starboardBow')).toContainText('P5');await page.locator('#map-ropes [data-action=detach]').click();await expect(page.locator('[data-cleat=starboardBow]')).toBeEnabled();
+ await page.setViewportSize({width:390,height:844});const compact=await page.locator('#mooring-picker').boundingBox(),smallLake=await page.locator('#lake').boundingBox();expect(compact.x).toBeGreaterThanOrEqual(smallLake.x-1);expect(compact.x+compact.width).toBeLessThanOrEqual(smallLake.x+smallLake.width+1);
+});
+test('mooring header can be dragged by touch within the mobile map',async({browser})=>{
+ const context=await browser.newContext({viewport:{width:390,height:950},isMobile:true,hasTouch:true});
+ try{
+  const page=await context.newPage();await page.goto('http://127.0.0.1:5173');await page.locator('#begin-session').tap();await page.locator('[data-start=berth]').tap();await page.locator('#lake').scrollIntoViewIfNeeded();
+  const lake=await page.locator('#lake').boundingBox(),scale=Math.min(lake.width/140,lake.height/80);await page.locator('#lake').tap({position:{x:lake.width/2+(29-24.3)*scale,y:lake.height/2+(17-22)*scale}});
+  await expect(page.locator('#mooring-picker')).toBeVisible();const before=await page.locator('#mooring-picker').boundingBox(),handle=await page.locator('#mooring-handle').boundingBox(),x=handle.x+25,y=handle.y+15;
+  const session=await context.newCDPSession(page);await session.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x,y}]});await session.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:x+10,y:y-30}]});await session.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+  const after=await page.locator('#mooring-picker').boundingBox();expect(after.y).toBeLessThan(before.y-20);expect(after.y).toBeGreaterThanOrEqual(lake.y-1);await expect(page.locator('#mooring-picker')).toBeVisible();
+ }finally{await context.close();}
+});

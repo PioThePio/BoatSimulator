@@ -1,4 +1,4 @@
-# Przystań — symulator manewrów motorówką v5
+# Przystań — symulator manewrów motorówką v6
 
 Przeglądarkowy symulator z widokiem z góry. Pięć profili kadłuba (w tym skuter wodny),
 zmieniane wymiary i masa, jeden lub dwa silniki do 350 KM każdy,
@@ -45,7 +45,7 @@ ponownie otwiera menu. Kamera zaczyna z łodzią w środku; ◎ centruje ją pon
 Dane ruchu i kompaktowa echosonda są na mapie; echosondę wyłącza przełącznik
 w konsoli. Obok kierownicy są strumieniowe, dalej manetki, wspólne pionowe
 przyciski biegów i trymu, stacyjki oraz wskaźniki. Spalanie jest pod paliwem
-w L/h, a sylwetka pokazuje równocześnie przegłębienie i kąt napędu.
+w L/h. Dwa silniki mają dwa niezależne obrotomierze, a sylwetka pokazuje równocześnie przegłębienie i kąt napędu.
 
 
 | Działanie | Klawiatura / mysz |
@@ -58,11 +58,11 @@ w L/h, a sylwetka pokazuje równocześnie przegłębienie i kąt napędu.
 | Obydwa silniki na luz | Spacja lub „Luz” |
 | Odbijacze | F lub przełącznik |
 | Pauza / nowa próba | P / R lub przyciski |
-| Punkt cumowania | Kliknij poler P / Y, boję B lub drzewo D na mapie, następnie wybierz knagę |
+| Punkt cumowania | Kliknij poler P / Y, boję B lub drzewo D na mapie, następnie kliknij knagę na rysunku łodzi; okno można przesuwać za nagłówek |
 | Założenie cumy | Pięć knag; alternatywnie cel z listy i + przy knadze; rzut do 6 m z 35 cm luzu |
 | Wybieranie / luzowanie | − / + po założeniu: cel ±0,5 m, wykonywany stopniowo |
 | Odczepienie | × przy cumie w panelu albo przy klikniętym polerze |
-| Rozruch / gaszenie | Graficzna stacyjka w prawo: 0 → I → START na luzie; w lewo: zgaszenie, potem wyłączenie zapłonu |
+| Rozruch / gaszenie | Graficzna stacyjka w prawo: 0 → I → START na luzie; w lewo: I → 0, zgaszenie i wyłączenie zapłonu jednym ruchem |
 | Trym napędu | Wspólne pionowe ▲ / ▼ dla obu silników, niezależnie od spięcia manetek |
 | Strumieniowe | Przytrzymaj ◀ / ▶; Q/E dziób, Z/X rufa; wyposażenie opcjonalne i wymagany zapłon |
 | Paliwo | Tankuj przy ⛽, prędkość <0,15 m/s, silniki zgaszone |
@@ -112,6 +112,9 @@ To umowne progi modelu, nie instrukcja użytkowania konkretnego silnika.
 
 - `src/physics.js` — dynamika kadłuba, kolizje i całkowanie.
 - `src/craft.js` — profile, masa i napęd.
+- `src/hydrodynamics.js` — rozłożone siły oporu poprzecznego i wiatru.
+- `src/marina.js` — ruch Y-bomów i wspólne punkty zaczepienia cum.
+- `src/popup.js` — przesuwanie okna cumowania myszą i dotykiem.
 - `src/thermal.js` — bilans ciepła, chłodzenie i ochrona termiczna.
 - `src/layout.js` — konsola, mapa, formularze i menu startowe.
 - `src/trail.js` — ślad z odległości, bez powielania punktów na postoju.
@@ -127,9 +130,13 @@ To umowne progi modelu, nie instrukcja użytkowania konkretnego silnika.
 - `tests/` — regresje fizyki oraz przeglądarki.
 - `docs/PHYSICS.md` — źródła i jawne założenia modelu.
 
-## Zakres wydania v5 i ładowanie w Chrome
+## Zakres wydania v6 i ładowanie w Chrome
 
-Wydanie v5 przebudowuje kokpit, koryguje tłumienie obrotu i dodaje temperaturę silników. Zgłoszony problem białego ekranu
+Wydanie v6 poprawia skręcanie, ruch na pełzającym, opór boczny i obrót przy wietrze.
+Dodaje osobne obrotomierze, żywe obroty biegu jałowego, przesuwalny diagram cum,
+stanowiska z bojami i wąskie ruchome Y-bomy. Łodzie portowe trzymają rzeczywiste
+cumy do widocznych punktów. Woda delikatnie faluje, kadłub zmienia skalę podczas
+kołysania, kamera płynnie oddala się przy szybszym płynięciu. Zgłoszony problem białego ekranu
 na konkretnym urządzeniu użytkownika pozostaje do osobnej diagnozy, zgodnie
 z jego prośbą. Poniższe zabezpieczenia pochodzą z v3.0.1.
 
@@ -142,7 +149,7 @@ Komunikat startowy, instrukcja dla wyłączonego JS i diagnostyka błędu
 zastępują pusty ekran, a przycisk ponowienia odświeża adres HTML.
 
 Przy starym ekranie z pamięci Chrome otwórz:
-`https://piothepio.github.io/BoatSimulator/?v=5.0.0`.
+`https://piothepio.github.io/BoatSimulator/?v=6.0.0`.
 Zrzut białego ekranu nie pozwolił jednoznacznie ustalić przyczyny po stronie
 konkretnej przeglądarki; poprawka usuwa zależność od osobnych zasobów
 i ujawnia ewentualny błąd uruchomienia.

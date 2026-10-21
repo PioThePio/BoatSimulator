@@ -41,7 +41,7 @@ test('local flow changes behind island, accelerates along channel and reeds are 
  const lee=environment(0,e,402,204),exposed=environment(0,e,180,204),canal=environment(0,e,304,204);assert.ok(lee.wind.x<exposed.wind.x*.8);assert.ok(lee.waveScale<exposed.waveScale);assert.ok(canal.current.x>.5);
  for(const x of [240,270,304,335,365])assert.ok(bottomAt(x,canalAt(x).y).depth>1.8);
  assert.ok(reedDensityAt(25,245)>.9);assert.ok(bottomAt(25,245).depth>0);assert.equal(reedDensityAt(64,48),0);
- assert.ok(BOLLARDS.filter(q=>q.kind==='buoy').length>=4);assert.ok(BOLLARDS.filter(q=>q.kind==='bollard').length>30);assert.equal(YBOOMS.length,3);
+ assert.ok(BOLLARDS.filter(q=>q.kind==='buoy').length>=4);assert.ok(BOLLARDS.filter(q=>q.kind==='bollard').length>30);assert.ok(YBOOMS.length>=4);assert.ok(YBOOMS.every(q=>q.width>=.2&&q.width<=.3));
 });
 test('moored traffic responds to environment and contact, toggle removes collisions',()=>{
  const b=createBoat('open'),q=b.traffic[0],x=q.x;run(b,8,{traffic:true,windSpeed:10,windDirection:90,waveHeight:.2});assert.ok(Math.abs(q.x-x)>.01&&Math.abs(q.x-x)<2);
@@ -49,5 +49,5 @@ test('moored traffic responds to environment and contact, toggle removes collisi
  const contact=hit(true),clear=hit(false);assert.ok(contact.traffic[0].vx<-.01||Math.abs(contact.traffic[0].w)>.001);assert.equal(clear.traffic[0].vx,0);assert.ok(Number.isFinite(contact.x));
 });
 test('Y-boom is a physical pier contact, including side fender protection',()=>{
- const b=createBoat('open');b.x=76;b.y=21.5;b.a=0;b.vy=-1;run(b,.5,{},false);assert.ok(b.lastImpact);assert.ok(b.lastImpact.protectedContact);assert.ok(b.y>20.8);assert.ok(Number.isFinite(b.vy));
+ const b=createBoat('open');b.x=77.2;b.y=18;b.a=Math.PI/2;b.vx=-1;run(b,.5,{},false);assert.ok(b.lastImpact);assert.ok(b.lastImpact.protectedContact);assert.ok(b.x>76.5);assert.ok(Math.abs(b.booms[0].a-Math.PI/2)>.001);assert.ok(Number.isFinite(b.vx));
 });

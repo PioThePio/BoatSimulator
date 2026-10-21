@@ -1,7 +1,13 @@
+import {mooringPoint,boomInverse,boomLoad} from './marina.js';
 import {BOLLARDS,bottomAt,clamp} from './world.js';
 export function point(b,x,y){const c=Math.cos(b.a),s=Math.sin(b.a);return{x:b.x+c*x-s*y,y:b.y+s*x+c*y};}
 export const CLEATS={bow:'Dziób',portBow:'Lewy przód',starboardBow:'Prawy przód',portStern:'Lewa rufa',starboardStern:'Prawa rufa'};
-export function cleat(b,end){const front=['bow','portBow','starboardBow'].includes(end),side=end.startsWith('port')?-1:end.startsWith('starboard')?1:0;return point(b,(front?1:-1)*b.spec.length*.39,side*b.spec.beam*.43);}
+export function cleatLocal(spec,end){
+ const side=end.startsWith('port')?-1:end.startsWith('starboard')?1:0;
+ const stern=end==='stern'||end.endsWith('Stern'),x=(stern?-.39:end==='bow'?.39:.19)*spec.length;
+ return{x,y:side*spec.beam*(stern?.43:.32)};
+}
+export function cleat(b,end){const p=cleatLocal(b.spec,end);return point(b,p.x,p.y);}
 export function inverseMass(b,n,arm){
  const c=Math.cos(b.a),s=Math.sin(b.a),u=n.x*c+n.y*s,v=-n.x*s+n.y*c;
  const lever=arm.x*n.y-arm.y*n.x;
@@ -14,8 +20,8 @@ export function impulse(b,n,j,arm){
 export function attachRope(b,end,bollard=null){
  if(b.ropes.some(r=>r.end===end))return{ok:false,message:'Ta knaga ma już cumę.'};
  const p=cleat(b,end);
- if(bollard===null){let best=Infinity;BOLLARDS.forEach((q,i)=>{const d=Math.hypot(p.x-q.x,p.y-q.y);if(d<best){best=d;bollard=i;}});}
- const q=BOLLARDS[bollard];if(!q)return{ok:false,message:'Wybierz poler na mapie albo z listy.'};
+ if(bollard===null){let best=Infinity;BOLLARDS.forEach((_,i)=>{const q=mooringPoint(b,i),d=Math.hypot(p.x-q.x,p.y-q.y);if(d<best){best=d;bollard=i;}});}
+ const q=mooringPoint(b,bollard);if(!q)return{ok:false,message:'Wybierz poler na mapie albo z listy.'};
  const d=Math.hypot(p.x-q.x,p.y-q.y);
  if(d>6)return{ok:false,message:`${q.label} jest poza zasięgiem rzutu (6 m od knagi).`};
  b.ropes.push({end,bollard,length:d+.35,targetLength:d+.35,tension:0,hauling:false,blocked:false,rate:0});
@@ -25,14 +31,14 @@ export function requestHaul(r,delta){r.targetLength=clamp(r.targetLength+delta,.
 export function solveRopes(b,dt,notify){
  b.maxTension=0;
  b.ropes=b.ropes.filter(r=>{
-  const p=cleat(b,r.end),q=BOLLARDS[r.bollard],dx=q.x-p.x,dy=q.y-p.y,d=Math.max(.001,Math.hypot(dx,dy));
+  const p=cleat(b,r.end),q=mooringPoint(b,r.bollard),dx=q.x-p.x,dy=q.y-p.y,d=Math.max(.001,Math.hypot(dx,dy));
   const n={x:dx/d,y:dy/d},arm={x:p.x-b.x,y:p.y-b.y};
-  const separation=-((b.vx-b.w*arm.y)*n.x+(b.vy+b.w*arm.x)*n.y);
+  const separation=(q.vx-b.vx+b.w*arm.y)*n.x+(q.vy-b.vy-b.w*arm.x)*n.y;
   const k=b.spec.lineEA/Math.max(1,r.length),damping=2*.65*Math.sqrt(k/inverseMass(b,n,arm));
   r.rate=0;r.blocked=false;
   if(r.targetLength<r.length-.001){
    // One person: 220 N and <= 40 W. The knot holds external loads; hauling cannot.
-   const inv=inverseMass(b,n,arm),denominator=1+(damping*dt+k*dt*dt)*inv;
+   const inv=inverseMass(b,n,arm)+boomInverse(b,r.bollard,n),denominator=1+(damping*dt+k*dt*dt)*inv;
    const existing=k*(d-r.length)+(damping+k*dt)*separation;
    const allowance=Math.max(0,(220*denominator-existing)/(2*k+damping/dt));
    const rate=Math.min(.18,40/Math.max(1,r.tension));
@@ -41,11 +47,11 @@ export function solveRopes(b,dt,notify){
   }else if(r.targetLength>r.length+.001){const amount=Math.min(.3*dt,r.targetLength-r.length);r.length+=amount;r.rate=amount/dt;}
   const extension=d-r.length;
   const closing=separation-r.rate;
-  const inv=inverseMass(b,n,arm);
+  const inv=inverseMass(b,n,arm)+boomInverse(b,r.bollard,n);
   // Backward-Euler Kelvin-Voigt tension, stable even for short stiff lines.
   r.tension=extension>0?Math.max(0,(k*extension+(damping+k*dt)*closing)/(1+(damping*dt+k*dt*dt)*inv)):0;
   if(r.tension>b.spec.lineBreak){notify(`Cuma pękła: przekroczono ${(b.spec.lineBreak/1000).toFixed(0)} kN.`);return false;}
-  impulse(b,n,r.tension*dt,arm);b.maxTension=Math.max(b.maxTension,r.tension);return true;
+  impulse(b,n,r.tension*dt,arm);boomLoad(b,r.bollard,-n.x*r.tension,-n.y*r.tension);b.maxTension=Math.max(b.maxTension,r.tension);return true;
  });
 }
 export function createAnchor(spec){return{mode:'stowed',phase:'locker',vx:0,vy:0,winchRate:0,status:'Na pokładzie',length:0,target:25,reserve:60,chainReserve:spec.chain,mass:spec.anchorMass,x:0,y:0,z:0,set:0,tension:0,horizontal:0,capacity:0,groundLength:0,dragged:0,broken:false,windlassBlocked:false,shape:null};}

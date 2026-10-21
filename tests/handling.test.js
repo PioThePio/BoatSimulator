@@ -52,9 +52,9 @@ test('bathymetry varies spatially and grounding slows boat',()=>{
  assert.ok(Math.abs(bottomAt(6,6).depth-bottomAt(64,48).depth)>3);assert.equal(bottomAt(500,200).material,'mud');const b=createBoat('open',{profile:'cruiser',hullMass:8000});b.x=8;b.y=6;b.a=0;b.vx=1;step(b,calm,1/120);assert.ok(b.grounded);run(b,1);assert.ok(Math.abs(b.vx)<.5);
 });
 test('wave-free rest is stable; waves physically drive bobbing and lateral motion',()=>{
- const rest=createBoat('berth'),waves=createBoat('berth');run(rest,10);let maxRoll=0,maxHeave=0;
- for(let i=0;i<10*120;i++){step(waves,{...calm,waveHeight:.35,waveDirection:90},1/120);maxRoll=Math.max(maxRoll,Math.abs(waves.roll));maxHeave=Math.max(maxHeave,Math.abs(waves.heave));}
- assert.equal(rest.heave,0);assert.equal(rest.roll,0);assert.ok(maxRoll>.01);assert.ok(maxHeave>.03);assert.ok(Math.abs(waves.x-rest.x)>.01);
+ const rest=createBoat('berth'),waves=createBoat('berth');run(rest,10);let maxRoll=0,maxHeave=0,maxMotion=0;
+ for(let i=0;i<10*120;i++){step(waves,{...calm,waveHeight:.35,waveDirection:90},1/120);maxRoll=Math.max(maxRoll,Math.abs(waves.roll));maxHeave=Math.max(maxHeave,Math.abs(waves.heave));maxMotion=Math.max(maxMotion,Math.hypot(waves.x-rest.x,waves.y-rest.y));}
+ assert.equal(rest.heave,0);assert.equal(rest.roll,0);assert.ok(maxRoll>.01);assert.ok(maxHeave>.03);assert.ok(maxMotion>.01);
 });
 test('catenary goes from slack seabed contact to lifted taut chain with increasing load',()=>{
  const slack=catenary(8,4,20,8),mid=catenary(19,4,20,8),tight=catenary(20,4,20,8);

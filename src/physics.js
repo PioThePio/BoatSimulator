@@ -1,5 +1,7 @@
 // SI, x east / y south. Heading clockwise from east. Physics reference: docs/PHYSICS.md.
-import {clamp,DOCKS,SOLIDS,BOLLARDS,environment,bottomAt,waveAt,reedDensityAt,YBOOMS} from './world.js';
+import {clamp,DOCKS,SOLIDS,BOLLARDS,environment,bottomAt,waveAt,reedDensityAt} from './world.js';
+import {createBooms,boomPoint,boomStep} from './marina.js';
+import {hullLateralForces,windForces} from './hydrodynamics.js';
 import {groundContact,propellerContact} from './ground.js';
 import {createSystems,systemsStep} from './systems.js';
 import {createTraffic,trafficStep} from './traffic.js';
@@ -11,10 +13,10 @@ export function createBoat(scenario='approach',options={}){
  const spec=specification(options);
  const starts={approach:[43,37,-2.1],berth:[24.3,22,-Math.PI/2],open:[64,48,-Math.PI/2],beach:[8.2,147,Math.PI/2],island:[304,278,Math.PI],fuel:[58,19.5,-Math.PI/2],canal:[304,204,0],harbor:[61,40,-Math.PI/2],lake:[80,110,0]};
  const [x,y,a]=starts[scenario]||starts.approach;
- return{...createSystems(spec,options.coldStart),traffic:createTraffic(),x,y,a,vx:0,vy:0,w:0,steer:0,actualSteer:0,throttle:0,throttle2:0,linked:true,enginesRaised:false,groundLoad:0,groundMaterial:'sand',spec,
+ return{...createSystems(spec,options.coldStart),booms:createBooms(),traffic:createTraffic(),x,y,a,vx:0,vy:0,w:0,steer:0,actualSteer:0,throttle:0,throttle2:0,linked:true,enginesRaised:false,groundLoad:0,groundMaterial:'sand',spec,
  engines:spec.powers.map((hp,i)=>engineState(hp,spec.engineCount===1?0:(i===0?-1:1)*spec.engineSpacing/2,options.coldStart)),
  fenders:true,damage:0,dockDamage:0,ropes:[],anchor:createAnchor(spec),time:0,lastImpact:null,events:[],maxTension:0,
- heave:0,heaveVelocity:0,roll:0,rollVelocity:0,pitch:0,pitchVelocity:0,planing:0,underKeel:bottomAt(x,y).depth-spec.draft,grounded:false,groundEvent:-10,
+ cameraZoom:1,heave:0,heaveVelocity:0,roll:0,rollVelocity:0,pitch:0,pitchVelocity:0,planing:0,underKeel:bottomAt(x,y).depth-spec.draft,grounded:false,groundEvent:-10,
  telemetry:{surge:0,sway:0,thrust:0,drag:0,shaftPower:0}};
 }
 export function impactClass(speed,fender=false){const safe=fender?.30:.15,destruction=fender?1.8:1.5;return speed<=safe?'gentle':speed<destruction?'damage':'destruction';}
@@ -33,6 +35,7 @@ export function step(b,e,dt){
  const vr=-(b.vx-env.current.x)*s+(b.vy-env.current.y)*c;
  const u=(b.vx-water.x)*c+(b.vy-water.y)*s;
  const v=-(b.vx-water.x)*s+(b.vy-water.y)*c;
+ const viewTarget=1-.22*clamp((Math.hypot(ur,vr)-3)/12,0,1);b.cameraZoom+=(viewTarget-b.cameraZoom)*(1-Math.exp(-dt/2));
  let X=0,Y=0,N=0;
  const force=(x,y,px=0,py=0)=>{X+=x;Y+=y;N+=px*y-py*x;};
  const fn=Math.abs(u)/Math.sqrt(9.81*S.length);
@@ -53,19 +56,11 @@ export function step(b,e,dt){
  const support=S.mass*9.81*(.032+.025*lowTrim+.00022*u*u+.30*(trimAngle-.08)**2)*b.planing;
  const displacementLimit=S.planing?0:S.mass*9.81*.085*Math.max(0,fn-.42)**2*12;
  const transom=u<0?(.5*1000*S.beam*S.draft*.75*u*u):0;
- const turnDrag=.5*1000*S.draft*S.length*.8*(v*v+(b.w*S.length)**2);
+ const turnFlow=Math.hypot(v,b.w*S.length*.4);
+ const turnDrag=.5*1000*S.draft*S.length*.7*turnFlow*turnFlow*Math.abs(u)/Math.hypot(u,turnFlow,.5);
  const drag=friction+Math.sign(u)*turnDrag+Math.sign(u)*(waveDrag+support+displacementLimit+transom);
  force(-drag-S.mass*.009*u,0);
- // Strip-theory cross-flow + speed-dependent lift. All local forces oppose local motion.
- const strips=9,dx=S.length/strips;
- for(let i=0;i<strips;i++){
-  const x=-S.length*.5+(i+.5)*dx,local=v+b.w*x;
-  const shape=.65+.35*Math.cos(x/S.length*Math.PI);
-  const cfDrag=.5*1000*S.draft*1.05*dx*shape*(1-.32*b.planing)*Math.abs(local)*local;
-  const lift=.5*1000*S.draft*dx*.9*Math.abs(u)*local;
-  const linear=S.mass*.028/strips*local;
-  force(0,-cfDrag-lift-linear,x-S.length*.10*clamp(u/3,0,1),0);
- }
+ hullLateralForces(S,u,v,b.w,b.planing,force);
  // Outboards rotate at a finite rate; linked controls copy commands, not engine states.
  b.actualSteer+=clamp(b.steer-b.actualSteer,-.38*dt,.38*dt);
  if(b.linked)b.throttle2=b.throttle;
@@ -90,14 +85,14 @@ export function step(b,e,dt){
  const reeds=reedDensityAt(b.x,b.y);b.reeds=reeds;
  force(-S.mass*.35*reeds*u*Math.abs(u),-S.mass*.6*reeds*v*Math.abs(v));
  const ax=env.wind.x-b.vx,ay=env.wind.y-b.vy,au=ax*c+ay*s,av=-ax*s+ay*c;
- force(.5*1.225*.85*S.beam*S.freeboard*au*Math.abs(au),.5*1.225*1.05*S.length*S.freeboard*av*Math.abs(av),S.length*.06,0);
+ windForces(S,au,av,b.w,force);
  force(S.mass*.12*(wave.ax*c+wave.ay*s),S.mass*.25*(-wave.ax*s+wave.ay*c));
  // Body-axis added-mass model with an empirical correction of the yaw moment.
  const udot=(X+S.mass*vr*b.w)/S.mx;
  const vdot=(Y-S.mass*ur*b.w)/S.my;
  // Empirical hull stability cancels the bare potential-flow Munk moment.
  // Leaving it uncalibrated amplifies sideslip into a spin at planing speed.
- const rotationalDrag=.5*1000*S.beam*S.length**4*.025*b.w*Math.abs(b.w);
+ const rotationalDrag=.5*1000*S.beam*S.length**4*(.004+.014*b.planing)*b.w*Math.abs(b.w);
  const rdot=(N-rotationalDrag)/S.iz-(.16+.04*Math.abs(u)/S.length)*b.w;
  // Convert body acceleration to world acceleration without double-counting frame rotation.
  const du=udot-b.w*vr,dv=vdot+b.w*ur;
@@ -105,12 +100,11 @@ export function step(b,e,dt){
  solveRopes(b,dt,m=>event(b,m));updateAnchor(b,e,dt,m=>event(b,m));
  groundContact(b,wave,dt,m=>event(b,m));
  b.x+=b.vx*dt;b.y+=b.vy*dt;b.a+=b.w*dt;
- contacts(b,dt);trafficStep(b,e,dt);
+ contacts(b,dt);boomContacts(b,dt);trafficStep(b,e,dt);if(e.traffic)for(const q of b.traffic)boomContacts(q,dt,b);boomStep(b,e,dt);
  if(b.damage>=100){b.throttle=0;b.throttle2=0;}
  b.telemetry={surge:ur,sway:vr,thrust:totalThrust,drag:Math.abs(drag),acceleration:udot,shaftPower:b.engines.reduce((sum,en)=>sum+en.hp*735.5*en.n**3,0)};
 }
-const boomRects=YBOOMS.flatMap(q=>{const n=Math.ceil(Math.hypot(q.x2-q.x1,q.y2-q.y1)/.45);return Array.from({length:n+1},(_,i)=>({x:q.x1+(q.x2-q.x1)*i/n-q.width/2,y:q.y1+(q.y2-q.y1)*i/n-q.width/2,w:q.width,h:q.width}));});
-const CONTACTS=[...SOLIDS,...boomRects];
+const CONTACTS=SOLIDS;
 function contacts(b,dt){
  const S=b.spec,radius=S.beam*.48,offset=S.length*.5-radius;
  const count=Math.max(3,Math.ceil(2*offset/(radius*1.4))+1);
@@ -137,6 +131,31 @@ function contacts(b,dt){
     }
    }
    b.x+=nx*depth*.8;b.y+=ny*depth*.8;
+  }
+ }
+}
+
+function boomContacts(b,dt,world=b){
+ const radius=b.spec.beam*.48,offset=b.spec.length*.5-radius;
+ for(const q of world.booms){
+  const end=boomPoint(q),dx=end.x-q.x1,dy=end.y-q.y1;
+  for(const fraction of [-1,-.5,0,.5,1]){
+   const p=point(b,offset*fraction,0),t=clamp(((p.x-q.x1)*dx+(p.y-q.y1)*dy)/(q.length*q.length),0,1);
+   const near=boomPoint(q,t),rx=p.x-near.x,ry=p.y-near.y,d=Math.hypot(rx,ry),depth=radius+q.width/2-d;
+   if(depth<=0||d<1e-6)continue;
+   const n={x:rx/d,y:ry/d},arm={x:p.x-b.x-n.x*radius,y:p.y-b.y-n.y*radius};
+   const lever=(near.x-q.x1)*n.y-(near.y-q.y1)*n.x;
+   const vn=(b.vx-b.w*arm.y-near.vx)*n.x+(b.vy+b.w*arm.x-near.vy)*n.y;
+   if(vn<0){const effective=1/(inverseMass(b,n,arm)+lever*lever/q.inertia),j=-vn*effective;
+    impulse(b,n,j,arm);q.w-=lever*j/q.inertia;
+    const protectedContact=b.fenders&&Math.abs(-n.x*Math.sin(b.a)+n.y*Math.cos(b.a))>.65;
+    if(b===world&&-vn>.08&&(!b.lastImpact||b.time-b.lastImpact.time>.65)){
+     const speed=-vn,kind=impactClass(speed,protectedContact),energy=.5*effective*speed*speed;
+     b.damage=clamp(b.damage+(kind==='gentle'?0:kind==='destruction'?100:Math.max(1,(energy-(protectedContact?40:10))/9)),0,100);
+     b.lastImpact={time:b.time,speed,energy,kind,protectedContact};event(b,`Kontakt z pływającym Y-bomem: ${speed.toFixed(2)} m/s.`);
+    }
+   }
+   b.x+=n.x*depth*.65;b.y+=n.y*depth*.65;
   }
  }
 }

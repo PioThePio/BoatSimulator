@@ -1,4 +1,4 @@
-# Model v5: podstawy, założenia i ograniczenia
+# Model v6: podstawy, założenia i ograniczenia
 
 Model ma odtwarzać **zależności fizyczne w manewrach**, ale nie jest
 zweryfikowanym cyfrowym bliźniakiem konkretnej motorówki. Nie dysponujemy
@@ -7,7 +7,7 @@ rozkładu masy ani próbami skrętu i hamowania rzeczywistej jednostki.
 Współczynniki wymagają takiej kalibracji, zanim można mówić o dokładności
 ilościowej. Osiągi w tabelach poniżej to wyniki symulatora, nie dane producentów.
 
-## Przejrzane materiały (20 października 2026)
+## Przejrzane materiały (ponowna weryfikacja kodu 21 października 2026)
 
 1. [Thor I. Fossen — Handbook of Marine Craft Hydrodynamics and Motion Control](https://github.com/cybergalactic/FossenHandbook).
    Przeczytano opis podręcznika, zakres hydrostatyki, modeli manewrowych,
@@ -45,33 +45,55 @@ y do prawej burty; dodatni obrót w prawo. Efektywna macierz bezwładności:
 `diag(1,08*m, 1,65*m, 1,55*Izz)`, gdzie
 `Izz = m*((0,27*L)^2+(0,22*B)^2) + m_paliwa*(0,16*L)^2`.
 
-W v3 niekalibrowany moment Munka `(mx-my)*u*v` wzmacniał znoszenie w obrót
-przy dużej prędkości. W v4 jest kompensowany w równaniu yaw. Podobną
-możliwość korekcji przy niestabilności wskazuje komentarz w modelu Otter
-Fossena (ponownie sprawdzony 20.10.2026). To wybór empiryczny dla tej
-aplikacji; nie pełna identyfikacja pochodnych hydrodynamicznych kadłuba.
+Równania z masą dodaną i empiryczną kompensacją momentu Munka:
 
 ```
 mx*u_dot = X + m*v*r
 my*v_dot = Y - m*u*r
 Iz*r_dot = N - D_r*r*abs(r) - Iz*(0,16+0,04*abs(u)/L)*r
+D_r = 0,5*rho*B*L^4*(0,004+0,014*udział_ślizgu)
 ```
 
-Pochodne przeliczamy z układu obracającego się do świata. Dziewięć pasów
-kadłuba liczy siły zależne od `v+r*x`, kwadratowy opór poprzeczny oraz
-składnik `|u|*(v+r*x)`. Przy płynięciu naprzód środek działania sił bocznych
-jest przesunięty o 0,1 L ku rufie dla stabilności kierunkowej.
-Dodatkowy empiryczny opór zakrętu wynosi
-`0,5*rho*draft*L*0,8*(v²+(r*L)²)` i działa przeciwnie do u.
-W v5 kompensacja obejmuje również sprzężenia od masy dodanej w osiach u/v,
-pozostawiając symetryczny człon Coriolisa od masy sztywnej m. Dodatkowy
-opór obrotu `D_r=0,5*rho*B*L^4*0,025` ogranicza narastanie obrotu po
-wytraceniu prędkości. Mniejszy opór zakrętu unika wcześniejszego przejścia
-od silnego wyhamowania do obrotu prawie w miejscu. Test oporu zakrętu
-wymaga nadal monotonicznego spadku prędkości i co najmniej 10% różnicy
-w badanej próbie; wcześniejszy arbitralny próg 15% zastąpiono dłuższą
-regresją wymagającą zachowania ruchu postępowego z 350 KM i dużym skrętem.
-Nie obracamy wektora prędkości natychmiast do osi kadłuba.
+Pochodne przeliczamy z układu obracającego się do świata. Kompensacja
+niekalibrowanego momentu Munka ogranicza wzmacnianie znoszenia w obrót.
+To wybór empiryczny; nie pełna identyfikacja pochodnych hydrodynamicznych.
+
+**Porównanie z PythonVehicleSimulator:** `crossFlowDrag()` sumuje siłę
+z prędkości `v+r*x` oraz moment tej samej siły z ramieniem `x`. Wcześniej
+nasz model liczył prędkość w innym miejscu niż ramię części sił. W v6
+usunięto tę niespójność. Trzynaście pasów używa tej samej współrzędnej do
+prędkości lokalnej i momentu. Opór kwadratowy jest przeciwny do lokalnego
+ruchu. Profil zanurzonego boku ma większy udział przy rufie:
+`shape=(0,65+0,35*cos(pi*x/L))*(1-0,50*x/L)`.
+
+Siła każdego pasa, `local=v+r*x`:
+`Y=-0,5*rho*draft*dx*[2,05*shape*(1-0,28*plane)*abs(local)*local
+ +(0,50+1,10*plane)*abs(u)*local] - m*0,035/13*local`.
+Współczynnik 2,05 i składnik zależny od ślizgu są naszymi przybliżeniami,
+nie przeniesionymi wartościami z tabel Hoernera. Większy opór poprzeczny
+ogranicza liniowe znoszenie, a dynamiczny składnik poprawia stabilność
+przy szybkim płynięciu.
+
+Opór zakrętu:
+`q²=v²+(0,4*r*L)²`,
+`D_turn=0,5*rho*draft*L*0,7*q²*abs(u)/sqrt(u²+q²+0,5²)`.
+Działa przeciwnie do `u` i **płynnie zanika przy u→0**. Dawny stały co do
+wartości opór `sign(u)*(v²+(rL)²)` potrafił przytrzymywać prędkość wzdłużną
+blisko zera mimo ciągu naprzód. To była główna przyczyna pełzania bokiem
+i obrotu bez postępu. Mniejsze tłumienie obrotu w ruchu wypornościowym
+pozwala na ciaśniejszy zakręt przy średniej prędkości. W ślizgu opór boczny
+i tłumienie wzrastają, chroniąc przed nagłym obrotem przy lekkim sterze.
+Nie ma wymuszonego promienia, obrotu wokół zadanego punktu ani natychmiastowego
+ustawiania prędkości wzdłuż osi kadłuba. Punkt obrotu wynika z sił i ruchu.
+
+Wiatr działa w czterech miejscach `x/L=-0,36/-0,12/0,14/0,37`, z udziałami
+`0,10/0,16/0,30/0,44`. Lokalny wiatr uwzględnia obrót. Większy nawiew na
+przód oraz większy opór wodny rufy i zanurzonego napędu pozwalają łodzi
+obracać się podczas dryfu. To umowny rozkład nawiewu i części podwodnej;
+rzeczywisty środek nawiewu zależy także od nadbudówki i obciążenia.
+Ciąg, jego ramię, napływ na śrubę, lokalny opór i masa dodana działają
+równocześnie: gwałtowny gaz na postoju daje inny stosunek obrotu do ruchu
+postępowego niż taki sam gaz podczas płynięcia.
 
 Testy sprawdzają zanikanie energii bez napędu, brak sztucznych sił przy
 wspólnym ruchu z wodą i powietrzem, większą bezwładność cięższego kadłuba,
@@ -95,7 +117,11 @@ napęd. Można zmieniać wymiary/masę i wybrać 1–2 silniki 10–350 KM każd
 skuter ma jeden napęd. Nietypowe konfiguracje nie są oceną dopuszczalnego
 obciążenia pawęży ani rekomendacją montażu.
 
-Każdy silnik ma osobne obroty, przekładnię, trym i stan uszkodzeń oraz temperaturę. Obroty
+Każdy silnik ma osobne obroty, przekładnię, trym i stan uszkodzeń oraz temperaturę.
+Przy dwóch silnikach są dwa obrotomierze. Na luzie ok. 750 obr/min;
+po ustaleniu pełzającego regulator podnosi bazę o ok. 65 obr/min. Drobne
+składowe okresowe (kilkanaście obr/min, inne fazy dla każdego silnika)
+ożywiają wskazanie; nie dodają sztucznego ciągu ani momentu do kadłuba. Obroty
 narastają ze stałą ok. 0,65–1,3 s, zależną od mocy i obciążenia, opadają
 ze stałą 0,4 s. Ciąg zależy od kwadratu obrotów, limit mocy od sześcianu.
 Zmiana biegu wymaga zwolnienia wału i co najmniej 0,65 s; polecenie
@@ -130,7 +156,7 @@ Trym 0–100% odpowiada umownie −4°…18° nachylenia napędu, ze zmianą do
 10 punktów procentowych/s. Wpływa na poziomą składową ciągu, powierzchnię
 zwilżoną, opór podparcia i równowagowe przegłębienie. Zbyt niski trym zwiększa
 zwilżenie; umiarkowany zmniejsza opory w ślizgu. Zbyt wysoki podnosi dziób
-i zwiększa opór, a powyżej 68% przy prędkości i gazie włącza wentylację:
+i zwiększa opór, a powyżej 64% przy prędkości i gazie włącza wentylację:
 rosną obroty, maleje obciążenie i ciąg (do 84% utraty).
 Grafika pokazuje spienienie i ostrzeżenie. Jest to wentylacja, a nie szczegółowy
 model kawitacji czy ciśnień przy łopacie.
@@ -177,7 +203,13 @@ Brak modelu nagrzewania i znamionowego czasu pracy tunelu.
 
 Kliknięty punkt na mapie pozwala też wybierać, luzować i odpinać cumy.
 Kliknięcie dziobu otwiera obsługę kotwicy, współdzieląc stan z dolnym panelem.
-Pięć knag: środek dziobu, lewy/prawy przód i lewa/prawa rufa. Kliknij
+Okno cumowania można przesuwać za nagłówek myszą, dotykiem albo strzałkami
+po ustawieniu fokusu na nagłówku. Rysunek ma pięć knag z przyciskami cum.
+Zmiana klikniętego polera zachowuje położenie okna i dotychczasowe cumy.
+Pięć knag: środek dziobu, lewy/prawy przód i lewa/prawa rufa.
+Boczne przednie knagi są przy x=0,19 L, y=±0,32 B, rufowe przy
+x=−0,39 L, y=±0,43 B; środek dziobu x=0,39 L. Rysunek i siły używają
+tej samej geometrii, także dla jednostek portowych. Kliknij
 poler, drzewo lub boję, potem knagę. Rzut do 6 m; początkowa długość to
 odległość + 0,35 m. **Samo założenie nie wybiera liny i nie nadaje impulsu.**
 Luźna lina nie ciągnie. Napięta: jednostronny Kelvin–Voigt, `k=EA/L`,
@@ -208,8 +240,9 @@ skale osi są różne. Nie jest to pełny MoorDyn ani model geotechniczny.
 
 Akwen 600 × 400 m ma nieregularną granicę, większą wyspę (ok. 164 × 128 m),
 przesmyk szerokości ok. 13 m z łagodnymi zakrętami, plaże, cztery mielizny,
-cztery płaty szuwarów, oryginalny mały port przedłużony o dwa pomosty i pojedynczy Y-bom, boje i pomosty na
-plaży/wyspie. Dno i rysunek korzystają z tej samej funkcji odległości od brzegu.
+cztery płaty szuwarów, oryginalny mały port z przedłużonym pomostem głównym,
+trzema stanowiskami prostopadłymi z bojami i sześcioma pływającymi Y-bomami
+oraz pomosty na plaży/wyspie. Dno i rysunek korzystają z tej samej funkcji odległości od brzegu.
 Głębokość płynnie rośnie od brzegu; środek przesmyku ma ok. 2 m.
 Piętnaście próbek kadłuba wyznacza podparcie, tarcie i obrót przy osiadaniu.
 Śruby są próbkowane osobno, niżej od kadłuba; trym zmniejsza ich zanurzenie.
@@ -229,16 +262,46 @@ kołysanie i przegłębienie. Wysokość sumuje składowe, nie jest statystyczny
 Automatyczna wysokość `min(0,55;0,004*V_wiatru²)` jest założeniem do
 ćwiczeń, bez prognozy rozbiegu i czasu działania wiatru. Brak odbić i pełnego RAO.
 
-Zacumowane łodzie, żaglówki i skutery mają masę, moment bezwładności,
-prędkość i więzy z tłumieniem do pozycji postoju. Reagują na wiatr, prąd
-oraz falę; kontakt przenosi impuls między jednostkami. Można je wyłączyć
-wraz z kolizjami. To uproszczone więzy postoju, nie osobna pełna lina
-MoorDyn dla każdego obiektu. Nie są samodzielnie sterowanym ruchem portowym.
+**Skala portu:** wszystkie współrzędne i rysowanie są w metrach. Główny
+pomost ma 2,8 m szerokości, domyślna motorówka 5,5 × 2,15 m. Y-bom jest
+prostą belką 10 × 0,25 m, rozstaw 5 m; tylko przy zawiasie ma trójkątną
+podporę i szerszy fragment do wejścia. Nie jest rozwidlonym pomostem
+w kształcie litery Y. Pochylenie względem zawiasu reaguje na kontakt,
+obciążenie cum i prąd. Ograniczenie końca pod wodą zastępuje sprężyna
+skrętna `16000*delta+200000*delta³ Nm` i tłumienie, bez pełnego modelu
+liny dennej. Moment bezwładności 6200 kg m², maksymalne umowne odchylenie
+±0,12 rad. Polery Y-bomu przemieszczają się i mają prędkość zgodną z belką;
+rzut cumy, siły, rysunek i wybór kursorem używają tego samego punktu.
+
+Geometria uwzględnia załączone zdjęcie użytkownika. Linki referencyjne
+[port Mazurski Raj](https://www.mazurskiraj.pl/thumb?file=mazurski-raj%2Fuser%2FPRZYSTA%C5%83%2Fmarina.jpg&w=1920&h=1440)
+i [Y-bom Alfabryggan](https://alfabryggan.se/wp-content/uploads/2023/11/batbom-ybom-y-bom-utan-tradack-1-till-smabatshamn.jpg)
+były niedostępne z tego środowiska (blokada HTTP 403); nie traktujemy ich
+jako obejrzanych stron. Rozplanowanie stanowisk uwzględnia też opis
+użytkownika: rufa przy pomoście, dziób do zewnętrznej boi, równoległe
+wąskie rozdzielacze stanowisk.
+
+Zacumowane motorówka, żaglówka i skuter mają masę, bezwładność, lokalny
+opór hydrodynamiczny i siły środowiska. Trzymają je **rzeczywiste
+jednostronne cumy między knagą a polerem/boją**, z początkowym luzem 5 cm.
+Nie ma sprężyny do pozycji domowej ani zadanego sinusoidą obrotu. Każda
+lina wytwarza siłę i moment, przez co jednostki mogą obracać się i kołysać
+w granicach geometrii cum. EA=120 kN; niejawny solver uwzględnia efektywną
+masę oraz ruch zaczepienia. Cumy tych jednostek nie są edytowalne i nie
+pękają. Kontakt z graczem przenosi impuls między dwiema masami, a pływający
+Y-bom odchyla się także przy kontakcie z jednostką portową. Przełącznik
+wyłącza ich ruch i kolizje. Nie jest to samodzielnie sterowany ruch portowy.
+
+Kamera płynnie oddala widok o maks. 22% pomiędzy 3 a 15 m/s, ze stałą
+czasową 2 s; zbliża się przy zwolnieniu. Rysunek kadłuba zmienia skalę
+według fizycznego ruchu pionowego (do ±4%); nie zmienia to metrycznych
+wymiarów do kolizji. Paski na powierzchni zmieniają też krzywiznę i lekko
+kołyszą się. To dodatkowe wskazówki wizualne, a nie dodatkowe siły fal.
 
 Echosonda: idealny pomiar dna pod rufą i historia 60 s; fish arches to
 wizualny easter egg, bez symulacji akustyki ani zachowania ryb.
 
-## Temperatura i chłodzenie v5
+## Temperatura i chłodzenie
 
 Bilans skupiony `T_dot = ciepło - chłodzenie` jest modelem szkoleniowym.
 Woda ma 18°C, początkowa temperatura silnika 18°C. Ciepło zależy od
@@ -262,7 +325,7 @@ konkretnego producenta.
 Ślad jest próbkowany po przebyciu 0,35 m, a nie co stały czas: drobne
 drgania pozycji na postoju nie tworzą wiązki nakładających się odcinków.
 
-## Wyniki kontrolne v5
+## Wyniki kontrolne v6
 
 Spokojna woda, bez kolizji terenowych (utrzymywanie pozycji testowej),
 krok 1/120 s. To wyniki równań symulatora, **nie dane osiągowe prawdziwej łodzi**.
@@ -272,12 +335,27 @@ Motorówka domyślna, start 8 m/s, manetka 50%, po 5 s:
 | Silnik | Prędkość [m/s] | Obrót [rad/s] | Zniesienie boczne [m/s] |
 | --- | --- | --- | --- |
 | 0° | 6,304 | 0 | 0 |
-| 2° | 6,298 | 0,0060 | −0,018 |
-| 8,6° | 6,209 | 0,0249 | −0,073 |
-| 28,6° | 5,439 | 0,0747 | −0,226 |
+| 2° | 6,299 | 0,0091 | −0,020 |
+| 8,6° | 6,224 | 0,0375 | −0,084 |
+| 28,6° | 5,570 | 0,1158 | −0,266 |
+
+Motorówka domyślna, start z postoju, pełny skręt 35°, po 25 s:
+
+| Manetka | Ruch wzdłużny [m/s] | Ruch boczny [m/s] | Obrót [rad/s] | Promień toru [m] |
+| --- | --- | --- | --- | --- |
+| Pełzający 8% | 1,086 | −0,154 | 0,0552 | 19,87 |
+| 25% | 2,017 | −0,336 | 0,1301 | 15,72 |
+| 50% | 2,599 | −0,484 | 0,1938 | 13,64 |
+| 100% | 8,625 | −0,239 | 0,1316 | 65,56 |
+
+Przy średnim gazie łódź mocniej skręca i traci prędkość. Przy dużej mocy
+wchodzi w ślizg; prędkość, opór obrotu i promień rosną. Przy pełzającym
+występuje ruch naprzód zamiast wcześniejszego niemal zerowego `u`.
+Te wartości odnoszą się do określonej chwili próby, nie ustalonej średnicy
+zwrotu z prób morskich.
 
 Ten sam kadłub z 350 KM, pełny gaz po 35 s: trym 10% ok. 19,91 m/s,
-trym 42% ok. 21,47 m/s, trym 100% ok. 7,77 m/s z wentylacją 96%.
+trym 42% ok. 21,47 m/s, trym 100% ok. 6,21 m/s z wentylacją 96%.
 Pokazuje to zależność jakościową, nie poprawny dobór 350 KM do tego kadłuba.
 Testy sprawdzają także start/stop, brak paliwa, masę/zanurzenie zbiorników,
 tankowanie, strumieniowe, skuter, linę z luzem, lokalne pola i postój jednostek.
@@ -289,6 +367,7 @@ Prędkość normalna punktu kontaktu uwzględnia ruch i obrót; energia
 bez szkód do 0,15 m/s, z burtowymi odbijaczami do 0,30 m/s; zniszczenie
 od 1,50 / 1,80 m/s. To nie są potwierdzone bezpieczne prędkości prawdziwej
 łodzi, pomostu ani rzeczywistych odbijaczy. Celem manewru jest kontakt bliski zeru.
-Kolizje z Y-bomami przybliża łańcuch małych prostokątów; z innymi jednostkami
-podłużne kapsuły i impuls. Nie liczymy deformacji materiałów. Zniszczony
+Kolizje z Y-bomami używają odcinka o rzeczywistej szerokości,
+z ruchem punktu kontaktu, bezwładnością obrotu i reakcją na zawiasie.
+Kadłuby przybliżają podłużne kapsuły i impuls. Nie liczymy deformacji materiałów. Zniszczony
 pomost nadal jest przeszkodą.
