@@ -1,4 +1,4 @@
-# Model v11: podstawy, założenia i ograniczenia
+# Model v12: podstawy, założenia i ograniczenia
 
 Model ma odtwarzać **zależności fizyczne w manewrach**, ale nie jest
 zweryfikowanym cyfrowym bliźniakiem konkretnej motorówki. Nie dysponujemy
@@ -660,3 +660,54 @@ Podany [film cqrbpDy6Ol0](https://www.youtube.com/watch?v=cqrbpDy6Ol0)
 zwrócił odmowę proxy HTTP 403; nie odsłuchano go i nie pobrano ścieżki.
 Zmiany uwzględniają zgłoszoną męczącą barwę i pożądany miks,
 bez twierdzenia o dopasowaniu widma do tego nagrania.
+
+## Dno, napędy, serwis i poziomy audio w v12
+
+Kontakt z dnem zapisujemy oddzielnie od bocznego obrysu. Każda z 15 próbek
+kadłuba należy do przedniej, środkowej albo tylnej strefy dna według
+lokalnego x/L (granice ±0,15). W obrębie strefy sumujemy udział penetracji
+i wyznaczamy prędkość zbliżania do dna z ruchu pionowego, pitch/roll oraz
+iloczynu gradientu głębokości i prędkości poziomej punktu. Siły podparcia,
+tarcia i ruch przy osiadaniu pozostają fizycznie aktywne także bez szkody.
+
+Usunięto naliczanie dowolnie małej szkody od każdego wolnego kontaktu
+z piaskiem. Dla kontaktu co najmniej co sekundę umowny przyrost to
+`[a*max(0,V-V0)^2 + c*max(0,V_normal-N0)^2] * clamp(pen/0.15,0,2) * udział_strefy`.
+Dla piasku a=0,15, V0=1,25 m/s, c=2, N0=0,5 m/s; dla mułu a=0,06,
+V0=1,6 m/s i ten sam próg pionowy; dla kamieni a=8, V0=0,18 m/s, c=12,
+N0=0,08 m/s. To założenia modelu treningowego, nie rzeczywiste bezpieczne
+progi konkretnego kadłuba. Szybkość jest próbkowana przed tarciem kontaktu.
+Wolne osiadanie na piasku może więc dawać kontakt i podparcie bez szkód,
+a szybkie tarcie lub uderzanie dnem o falę nadal może uszkodzić kadłub.
+
+Śruba dostaje małą szkodę od pierwszego poruszającego się kontaktu
+z piaskiem (około 0,12–0,50 punktu procentowego), potem dotychczasowe
+ścieranie zależne od penetracji, ruchu i obrotów. Powtórny pierwszy kontakt
+ma odstęp co najmniej sekundy. Kamienie zachowują znacznie większy impuls
+uszkodzenia; każda śruba jest oceniana osobno. Nieruchoma, nieobracająca się
+śruba na piasku nie ściera sama siebie.
+
+Wskaźnik ma osiem odcinków obrysu dla kolizji bocznych, trzy pola dna
+i jeden/dwa symbole napędu. Koła śrub pokazują ich szkody, korpus napędu
+również ostrzeżenie temperatury. Trwała barwa: poniżej 10% żółta,
+10–35% pomarańczowa, 35–65% ciemniejsza, od 65% czerwona. Kontakt bez
+szkód może krótko błysnąć zielono; nie zostawia czerwonego śladu. Samo
+osiadanie bez szkód ma żółty status. Ułamkowe otarcie śruby jest widoczne
+przy odczycie zdrowia z dokładnością do 0,1 punktu procentowego.
+
+Warsztat/slip leży przy x=121–128, y=6,5–19, obok pomostów serwisowych.
+Naprawę można rozpocząć przy całym kadłubie w prostokącie x=119,5–130,5,
+y=16–31, prędkości do 0,12 m/s, obrocie do 0,025 rad/s, wyłączonym zapłonie
+i rzeczywistej cumie do tego stanowiska. Kadłub odnawia 3 punkty zdrowia
+na sekundę, śruby po 4. Zerwanie warunków przerywa pracę. Proces nie
+przemieszcza łodzi ani nie zmienia szkód pomostu; nie modeluje wyciągania
+na przyczepę, geometrii podpór ani pracy warsztatu w czasie rzeczywistym.
+Domki są na lądzie i stanowią przeszkody; nowe pomosty używają tej samej
+skali metrów i solvera kontaktu co reszta portu.
+
+Suwak „Silniki” 0–200% steruje osobnym torem silników/wydechu przed
+wspólnym poziomem i kompresorem. Nie zmienia wody, trymu, strumieniowych,
+kliknięć ani alarmu. Obie nastawy zapisujemy lokalnie, starszy zapis
+bez poziomu silnika otrzymuje 100%. Elektryczna pompa trymu ma osobny
+szmer i ton mechaniczny; słychać je wyłącznie przy niezerowej fizycznej
+prędkości regulacji, do osiągnięcia celu. Skuter nie generuje tego dźwięku.

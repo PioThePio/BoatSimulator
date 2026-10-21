@@ -24,27 +24,29 @@ export function soundParameters(b,e={}){
   waterCutoff:500+clamp(speed/8,0,1)*650,
   skimming,spray:skimming*clamp(speed/16,0,1)*.14,sprayCutoff:1400+clamp(speed/22,0,1)*1300,
   ignitionAlarm:b.engines.some(en=>en.key==='ignition'),
+  trimPump:b.spec.jet?0:clamp(Math.max(...b.engines.map(en=>Math.abs(en.trimRate??0)))/.1,0,1),
   thrusters:['bow','stern'].map(end=>Math.abs(b.thrusters[end+'Actual']??0)*.085),pump:b.fuel.refueling?.025:0};
 }
 // Procedural Web Audio: no downloads, copyrighted recordings or dependency on a
 // media server. The context is created/resumed only inside a user gesture.
 export function createSoundscape({context=null}={}){
- let ctx=context,graph=null,enabled=true,volume=.45,active=false,previous=null,boatRef=null,failed=false;
+ let ctx=context,graph=null,enabled=true,volume=.45,engineVolume=1,active=false,previous=null,boatRef=null,failed=false;
  const target=(param,value,tau=.045)=>param.setTargetAtTime(value,ctx.currentTime,tau);
  function build(){
   if(graph||!ctx)return;
   const master=ctx.createGain(),limiter=ctx.createDynamicsCompressor();master.gain.value=0;
   limiter.threshold.value=-14;limiter.knee.value=12;limiter.ratio.value=5;limiter.attack.value=.004;limiter.release.value=.12;
   master.connect(limiter);limiter.connect(ctx.destination);
+  const engineMaster=ctx.createGain();engineMaster.gain.value=engineVolume;engineMaster.connect(master);
   const buffer=ctx.createBuffer(1,ctx.sampleRate*2,ctx.sampleRate),data=buffer.getChannelData(0);
   let brown=0;for(let i=0;i<data.length;i++){brown=(brown+Math.random()*.12-.06)*.98;data[i]=brown*.6+(Math.random()*2-1)*.18;}
   const noise=ctx.createBufferSource();noise.buffer=buffer;noise.loop=true;noise.start();
   function oscillator(type,frequency){const source=ctx.createOscillator();source.type=type;source.frequency.value=frequency;source.start();return source;}
-  function panConnect(node,pan){if(ctx.createStereoPanner){const p=ctx.createStereoPanner();p.pan.value=pan;node.connect(p);p.connect(master);}else node.connect(master);}
-  function noiseVoice(frequency,pan=0,bubbling=false){
+  function panConnect(node,pan,destination=master){if(ctx.createStereoPanner){const p=ctx.createStereoPanner();p.pan.value=pan;node.connect(p);p.connect(destination);}else node.connect(destination);}
+  function noiseVoice(frequency,pan=0,bubbling=false,destination=master){
    const filter=ctx.createBiquadFilter(),gain=ctx.createGain();filter.type='bandpass';filter.frequency.value=frequency;filter.Q.value=.6;gain.gain.value=0;noise.connect(filter);filter.connect(gain);
    let flutter;
-   if(bubbling){const tremolo=ctx.createGain(),depth=ctx.createGain();flutter=oscillator('sine',6);tremolo.gain.value=.65;depth.gain.value=.35;flutter.connect(depth);depth.connect(tremolo.gain);gain.connect(tremolo);panConnect(tremolo,pan);}else panConnect(gain,pan);
+   if(bubbling){const tremolo=ctx.createGain(),depth=ctx.createGain();flutter=oscillator('sine',6);tremolo.gain.value=.65;depth.gain.value=.35;flutter.connect(depth);depth.connect(tremolo.gain);gain.connect(tremolo);panConnect(tremolo,pan,destination);}else panConnect(gain,pan,destination);
    return{filter,gain,flutter};
   }
   // A crank pulse with strong low orders and the fourth firing order gives a
@@ -52,8 +54,8 @@ export function createSoundscape({context=null}={}){
   const v8Wave=ctx.createPeriodicWave(new Float32Array(9),new Float32Array([0,.85,.26,.12,.13,.035,.025,.01,.008]));
   const engines=[-.26,.26].map(pan=>{
    const source=oscillator('triangle',25),harmonic=oscillator('triangle',50),mechanical=oscillator('sine',270),bass=oscillator('sine',12),bassMix=ctx.createGain(),mechanicalMix=ctx.createGain(),mix=ctx.createGain(),filter=ctx.createBiquadFilter(),gain=ctx.createGain();
-   bassMix.gain.value=0;bass.connect(bassMix);bassMix.connect(filter);mechanicalMix.gain.value=.035;mechanical.connect(mechanicalMix);mechanicalMix.connect(filter);mix.gain.value=.10;source.connect(filter);harmonic.connect(mix);mix.connect(filter);filter.type='lowpass';filter.Q.value=.5;filter.frequency.value=300;gain.gain.value=0;filter.connect(gain);panConnect(gain,pan);
-   return{source,harmonic,mechanical,bass,bassMix,mechanicalMix,mix,filter,gain,exhaust:noiseVoice(240,pan,true),churn:noiseVoice(450,pan,true),timbre:'light'};
+   bassMix.gain.value=0;bass.connect(bassMix);bassMix.connect(filter);mechanicalMix.gain.value=.035;mechanical.connect(mechanicalMix);mechanicalMix.connect(filter);mix.gain.value=.10;source.connect(filter);harmonic.connect(mix);mix.connect(filter);filter.type='lowpass';filter.Q.value=.5;filter.frequency.value=300;gain.gain.value=0;filter.connect(gain);panConnect(gain,pan,engineMaster);
+   return{source,harmonic,mechanical,bass,bassMix,mechanicalMix,mix,filter,gain,exhaust:noiseVoice(240,pan,true,engineMaster),churn:noiseVoice(450,pan,true),timbre:'light'};
   });
   // Tunnel thrust is mostly turbulent water. No sustained pitched oscillator.
   const thrusters=[-.15,.15].map(pan=>noiseVoice(520,pan));
@@ -62,7 +64,8 @@ export function createSoundscape({context=null}={}){
   soften.type='lowpass';soften.frequency.value=24;soften.Q.value=.5;envelope.gain.value=0;alarm.gain.gain.value=0;
   alarm.clock.connect(gate);gate.connect(soften);soften.connect(envelope.gain);alarm.source.connect(envelope);envelope.connect(alarm.gain);alarm.gain.connect(master);
   const pump={source:oscillator('sine',95),gain:ctx.createGain()};pump.gain.gain.value=0;pump.source.connect(pump.gain);pump.gain.connect(master);
-  graph={master,buffer,engines,thrusters,pump,alarm,v8Wave,waves:noiseVoice(240),wash:noiseVoice(1100),spray:noiseVoice(1900,-.35),sprayRight:noiseVoice(2300,.35)};
+  const trim={source:oscillator('triangle',185),gain:ctx.createGain(),noise:noiseVoice(720)};trim.gain.gain.value=0;trim.source.connect(trim.gain);trim.gain.connect(master);
+  graph={master,engineMaster,buffer,engines,thrusters,pump,trim,alarm,v8Wave,waves:noiseVoice(240),wash:noiseVoice(1100),spray:noiseVoice(1900,-.35),sprayRight:noiseVoice(2300,.35)};
  }
  function pulse(frequency,level,duration=.12,noisy=false){
   if(!graph||!enabled||!active)return;
@@ -84,6 +87,7 @@ export function createSoundscape({context=null}={}){
   unlock,
   setEnabled(value){enabled=!!value;if(graph)target(graph.master.gain,enabled&&active?volume*.8:0);},
   setVolume(value){volume=clamp(value,0,1);if(graph)target(graph.master.gain,enabled&&active?volume*.8:0);},
+  setEngineVolume(value){engineVolume=clamp(value,0,2);if(graph)target(graph.engineMaster.gain,engineVolume);},
   setActive(value){active=!!value;if(graph)target(graph.master.gain,enabled&&active?volume*.8:0);},
   state(){return failed?'unsupported':!enabled?'muted':!ctx?'waiting':ctx.state;},
   update(b,e={},isActive=true){
@@ -103,6 +107,7 @@ export function createSoundscape({context=null}={}){
    target(graph.waves.gain.gain,values.waves*(.75+.25*Math.sin(b.time*1.3)));target(graph.wash.gain.gain,values.wash*(1-.72*values.skimming));target(graph.wash.filter.frequency,values.waterCutoff);
    target(graph.spray.gain.gain,values.spray*.65);target(graph.spray.filter.frequency,values.sprayCutoff);target(graph.sprayRight.gain.gain,values.spray*.55);target(graph.sprayRight.filter.frequency,values.sprayCutoff*1.2);
    values.thrusters.forEach((v,i)=>{target(graph.thrusters[i].gain.gain,v);target(graph.thrusters[i].filter.frequency,420+v*2200);});target(graph.pump.gain.gain,values.pump);target(graph.alarm.gain.gain,values.ignitionAlarm?.045:0,.025);
+   target(graph.trim.gain.gain,values.trimPump*.022);target(graph.trim.noise.gain.gain,values.trimPump*.055);target(graph.trim.source.frequency,175+values.trimPump*28);
    if(boatRef!==b){boatRef=b;previous=null;}
    if(previous&&active){
     b.engines.forEach((en,i)=>{const old=previous.engines[i];if(!old)return;const command=i?b.throttle2:b.throttle;if(Math.sign(command)!==old.command)pulse(900,.085,.055);if(en.key!==old.key)pulse(650,.09,.065);if(en.gear!==old.gear){pulse(en.gear?650:850,.22,.10,true);pulse(en.gear?155:210,.09,.08);}});

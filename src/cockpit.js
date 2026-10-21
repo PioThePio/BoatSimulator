@@ -3,6 +3,7 @@ import {engineKey} from './craft.js';
 import {trimStep} from './drive.js';
 import {gauge,attitudeMarkup,updateAttitude} from './instruments.js';
 import {requestRefuel} from './systems.js';
+import {requestRepair} from './service.js';
 import {conditionMarkup,updateContactInstrument} from './contact-instrument.js';
 const $=s=>document.querySelector(s);
 export function installCockpit(api){
@@ -23,6 +24,7 @@ export function installCockpit(api){
  }
  const release=()=>holds.bow=holds.stern=0;window.addEventListener('blur',release);document.addEventListener('visibilitychange',release);
  $('#refuel').onclick=()=>api.toast(requestRefuel(api.boat()).message);
+ $('#repair').onclick=()=>api.toast(requestRepair(api.boat()).message);
  $('#sonar-toggle').onchange=e=>$('.sonar').hidden=!e.target.checked;
  return function update(){
   const b=api.boat(),S=b.spec,en=b.engines,avg=k=>en.reduce((sum,e)=>sum+e[k],0)/en.length;
@@ -39,6 +41,7 @@ export function installCockpit(api){
   $('#gauge-volt').classList.toggle('danger',lowVolt||highVolt);$('#gauge-volt small').textContent='V · '+(lowVolt?'NISKIE':highVolt?'WYSOKIE':b.battery.current<0?'ŁADOWANIE':'SPOCZYNEK');
   $('#fuel-status').textContent=`${b.fuel.litres.toFixed(1)} / ${b.fuel.capacity} l · ${b.fuel.flow.toFixed(1)} L/h${b.fuel.refueling?' · TANKOWANIE':b.fuel.status?' · '+b.fuel.status:''}`;
   $('#refuel').textContent=b.fuel.refueling?'■ Stop tankowania':'⛽ Tankuj';
+  $('#repair').textContent=b.service.active?'■ Przerwij naprawę':'🔧 Napraw przy slipie';$('#repair-status').textContent=b.service.status+(b.service.active?' · '+Math.round(b.service.progress*100)+'%':'');
   const warnings=[];
   if(en.some(e=>e.overheated||e.thermalTrip))warnings.push('PRZEGRZANIE · zmniejsz gaz i opuść napęd'+(en.some(e=>e.thermalTrip)?' · silnik zatrzymany':''));
   else if(en.some(e=>e.key==='running'&&e.cooling<.25))warnings.push('Brak chłodzenia — opuść napęd');

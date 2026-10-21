@@ -2,9 +2,10 @@ import {clamp,FUEL_STATION} from './world.js';
 import {updateMass} from './craft.js';
 import {cleat} from './rigging.js';
 import {mooringPoint} from './marina.js';
+import {serviceStep} from './service.js';
 export function createSystems(spec,cold=false){return{
  fuel:{capacity:spec.fuelCapacity,litres:spec.fuelCapacity*.75,flow:0,refueling:false,status:'',tanks:Array.from({length:spec.tankCount},(_,i)=>({capacity:spec.fuelCapacity/spec.tankCount,litres:spec.fuelCapacity*.75/spec.tankCount,x:-.16*spec.length,y:spec.tankCount===1?0:(i===0?-1:1)*spec.beam*.22}))},
- battery:{capacity:spec.jet?35:80+80*(Number(spec.bowThruster)+Number(spec.sternThruster)),soc:.85,voltage:12.65,current:0},thrusters:{bow:0,stern:0,bowActual:0,sternActual:0,bowForce:0,sternForce:0},coldStart:cold};}
+ service:{active:false,progress:0,initial:0,status:''},battery:{capacity:spec.jet?35:80+80*(Number(spec.bowThruster)+Number(spec.sternThruster)),soc:.85,voltage:12.65,current:0},thrusters:{bow:0,stern:0,bowActual:0,sternActual:0,bowForce:0,sternForce:0},coldStart:cold};}
 export function fuelBerthStatus(b){
  // A real hull side must lie alongside the marked east face of the fuel pier.
  const S=b.spec,angle=Math.abs(Math.cos(b.a));
@@ -23,6 +24,7 @@ export function requestRefuel(b){
  b.fuel.refueling=!b.fuel.refueling;b.fuel.status='';return{ok:true,message:b.fuel.refueling?'Tankowanie rozpoczęte.':'Tankowanie zatrzymane.'};
 }
 export function systemsStep(b,dt){
+ serviceStep(b,dt);
  const fuel=b.fuel,battery=b.battery;
  fuel.flow=b.engines.reduce((sum,en)=>sum+(en.key==='running'?en.fuelFlow:0),0);
  fuel.litres=Math.max(0,fuel.litres-fuel.flow/3600*dt);

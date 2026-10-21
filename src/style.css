@@ -34,3 +34,5 @@
 .draft-readings{width:100%;font-size:8px;line-height:1.6;border-top:1px solid #d6e0cb;padding-top:4px;text-align:left}.draft-readings>span{display:flex;justify-content:space-between;gap:8px}.draft-readings b{font-size:9px;font-weight:600;white-space:nowrap}.draft-readings .warning{color:#a18536}
 @media(max-width:650px){.pitch-gauge .draft-readings{grid-column:1/-1;grid-row:5;display:flex;justify-content:space-around;flex-wrap:wrap;gap:4px 18px;font-size:9px}.pitch-gauge .condition-compact{grid-row:6}}
 @media(max-width:650px){#mooring-picker{width:min(280px,max(240px,calc(100% - 112px)))}}
+.volume-control output{font-size:8px;min-width:29px}.damage-map-key{font-size:6px;color:#819376;text-align:center;margin:3px 0 7px}.condition-heading .warning{color:#a18536}#repair-status{font-size:9px;color:#678461;max-width:240px}.console-tools .volume-control{gap:6px}
+@media(max-width:650px){.condition-compact .damage-map-key{grid-column:1/-1;grid-row:6}.condition-compact .motion-readings{grid-row:7}.volume-control output{font-size:9px}}

@@ -181,7 +181,7 @@ test('contact diagram shows the real fender and damaged bow, then fades while ke
   const strike={color:el.getAttribute('stroke'),flash:el.dataset.contact,damage:el.dataset.damage,label:document.querySelector('#impact-info').textContent};
   bow.time+=2;updateContactInstrument(bow);return{safe,strike,faded:{color:el.getAttribute('stroke'),flash:el.dataset.contact,damage:el.dataset.damage}};
  });
- expect(states.safe).toEqual({color:'#66bd8a',flash:'true',damage:0});expect(states.strike.flash).toBe('true');expect(+states.strike.damage).toBeGreaterThan(0);expect(states.strike.label).toContain('Dziób');expect(states.faded.flash).toBe('false');expect(states.faded.color).toBe('#bf6350');expect(states.faded.damage).toBe(states.strike.damage);
+ expect(states.safe).toEqual({color:'#66bd8a',flash:'true',damage:0});expect(states.strike.flash).toBe('true');expect(+states.strike.damage).toBeGreaterThan(0);expect(states.strike.label).toContain('Dziób');expect(states.faded.flash).toBe('false');expect(states.faded.color).toBe('#df9c54');expect(states.faded.damage).toBe(states.strike.damage);
 });
 test('phone keeps compact vessel condition below the attitude graphic with legible percentages',async({page})=>{
  await page.setViewportSize({width:390,height:844});await page.goto('/');await page.locator('#begin-session').click();

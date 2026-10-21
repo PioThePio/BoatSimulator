@@ -1,11 +1,11 @@
-# Przystań — symulator manewrów motorówką v11
+# Przystań — symulator manewrów motorówką v12
 
 Przeglądarkowy symulator z widokiem z góry, bez kont i backendu. Pięć rodzajów
 łodzi, w tym skuter, zmieniane wymiary i masa, jeden lub dwa silniki do 350 KM.
 Nieregularne jezioro 600 × 400 m, wyspa z przesmykiem, plaże, mielizny,
 szuwary, port ze stanowiskami z bojami i ruchomymi Y-bomami szerokości 25 cm.
 
-Uruchom: **https://piothepio.github.io/BoatSimulator/?v=11.0.0**.
+Uruchom: **https://piothepio.github.io/BoatSimulator/?v=12.0.0**.
 
 Model służy do poznawania zależności w manewrach; nie jest skalibrowany dla
 konkretnej łodzi. [Źródła, równania i ograniczenia](docs/PHYSICS.md).
@@ -36,6 +36,11 @@ wcześniejsze wybory. Zamknięcie okna bez rozpoczęcia nie resetuje rejsu.
 Pogodę podczas pływania zmieniaj pod ikoną **☀ na mapie**.
 Formularze łodzi i pogody są w oknach; pod konsolą pozostają cumy i kotwica.
 Stan kadłuba, pomostu i śrub jest w kokpicie pod schematem uniesienia dziobu.
+Obrys mapy stanu pokazuje uderzenia w burty, wnętrze trzy części dna
+(przód, środek, tył), a symbole napędów z tyłu stan każdej śruby.
+Łagodne osiadanie na piasku nie uszkadza kadłuba. Śruba może doznać drobnego
+otarcia piaskiem; kontakt z kamieniami jest znacznie groźniejszy. Trwałe
+kolory szkód przechodzą od żółtego przez pomarańczowy do czerwonego.
 Obok schematu widać zanurzenie kadłuba w spoczynku z aktualnym paliwem
 oraz bieżący prześwit pod stępką. Ten drugi uwzględnia przechył, kołysanie
 i dno pod całym kadłubem; ostrzega poniżej 20 cm i pokazuje osiadanie.
@@ -61,6 +66,9 @@ Uszkodzenia są zawsze aktywne.
 | Okna na mapie | Przesuwanie za nagłówek myszą/dotykiem; także strzałkami po ustawieniu fokusu na nagłówku |
 | Tankowanie | Burtą przy ⛽, co najmniej jedna cuma do stanowiska, prędkość <0,15 m/s, silniki i zapłon wyłączone |
 | Dźwięk | Przełącznik i głośność w konsoli; uruchamia się po dotknięciu ekranu, wycisza na pauzie |
+| Silniki osobno | Suwak „Silniki” 0–200%, zapisany razem z głośnością ogólną; nie ścisza wody, alarmów ani kliknięć |
+| Trym — dźwięk | Pompa elektryczna jest słyszalna podczas fizycznego ruchu napędu, również na wyłączonym silniku |
+| Naprawa | Slip na wschód od portu: postój, co najmniej jedna cuma do serwisu i wyłączony zapłon; „Napraw przy slipie” |
 | Widok | ◎ centruje łódź, minimapa przesuwa widok, „Cały akwen” pokazuje jezioro, „Ślad” przełącza linię trasy |
 
 Skok koła między oporami: otwarta 1,5 obrotu, motorówka 2,5, kabinowa 3,
@@ -122,6 +130,11 @@ i spalanie w L/h. Temperatura: umowny roboczy zakres 64–95°C, ostrzeganie
 zanurzenie; jeden lub dwa zbiorniki, razem 10–800 l, start z 75% paliwa.
 
 ## Cumy i kotwica
+
+Obok portu są domki, warsztat, slip i dwa pomosty serwisowe z polerami R1–R3
+po obu stronach. W menu startowym można wybrać „Przy slipie · serwis”.
+Naprawa kadłuba i śrub postępuje w czasie; odcumowanie, ruch lub włączenie
+zapłonu przerywa pracę. Naprawy nie przenoszą łodzi i nie odnawiają pomostów.
 
 Rzut cumy do 6 m pozostawia 35 cm luzu, bez przyciągania łodzi. Ręczne
 wybieranie działa tylko podczas przytrzymania: siła rośnie od 120 do 450 N,

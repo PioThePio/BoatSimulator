@@ -57,7 +57,7 @@ test('gentle fender contact flashes its real fender without marking undamaged hu
 });
 test('bow impact bypasses side fenders and identifies the damaged hull section',()=>{
  const b=collide(.5,true,true);assert.ok(b.damage>0);assert.equal(b.lastImpact.zone,'bow');assert.equal(b.lastImpact.protectedContact,false);assert.ok(b.sectionDamage.bow>0);assert.ok(impactPaint(b,'bow').flash>0);
- b.time+=2;assert.equal(impactPaint(b,'bow').flash,0);assert.equal(impactPaint(b,'bow').color,'#bf6350');assert.equal(impactPaint(b,'portStern').color,null);
+ b.time+=2;assert.equal(impactPaint(b,'bow').flash,0);assert.equal(impactPaint(b,'bow').color,'#df9c54');assert.equal(impactPaint(b,'portStern').color,null);
 });
 test('contact zones rotate with the boat, and jitter cooldown does not hide a different hit',()=>{
  const b=createBoat('open');b.a=Math.PI/2;const arm={x:b.spec.beam/2,y:b.spec.length*.25};assert.equal(contactZone(b,arm),'portBow');

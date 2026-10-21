@@ -10,21 +10,25 @@ export function canalAt(x){return{y:204+9*Math.sin((x-304)/25),slope:.36*Math.co
 // Original small marina, extended along the same shore with two extra piers.
 export const DOCKS=[{x:6,y:10,w:23,h:2.8},{x:17,y:12.8,w:2.8,h:17},{x:29,y:10,w:2.8,h:16},
  {x:31.8,y:10,w:78.2,h:2.8},{x:49,y:12.8,w:2.8,h:20},{x:70,y:12.8,w:2.8,h:24},
- {x:4,y:190,w:14,h:1.5},{x:17,y:185,w:1.4,h:13},{x:328,y:260,w:1.6,h:25},{x:328,y:283.5,w:15,h:1.6}];
+ {x:4,y:190,w:14,h:1.5},{x:17,y:185,w:1.4,h:13},{x:328,y:260,w:1.6,h:25},{x:328,y:283.5,w:15,h:1.6},
+ {x:110,y:10,w:9.5,h:2.8,service:true},{x:118,y:12.8,w:1.5,h:18.2,service:true},{x:130.5,y:7,w:1.5,h:24,service:true}];
+export const SERVICE_STATION={x:119.5,y:16,w:11,h:15,slip:{x:121,y:6.5,w:7,h:13},start:{x:125,y:24,a:-Math.PI/2}};
+export const BUILDINGS=[{x:12,y:-5,w:8,h:6,roof:'#b28365'},{x:35,y:-4,w:7,h:6,roof:'#a18c72'},{x:53,y:-5,w:8,h:7,roof:'#b38c6c'},{x:76,y:-5,w:9,h:6,roof:'#8e9d8a'},{x:116,y:-3,w:13,h:7,roof:'#839a92',service:true}];
 // Floating fingers: 25 cm beam, triangular brace only at the hinge, 5 m spacing.
 export const YBOOMS=Array.from({length:6},(_,i)=>({id:i,x1:76+i*5,y1:12.8,x2:76+i*5,y2:22.8,width:.25,length:10,a:Math.PI/2}));
 export const BUOY_SLIPS=[35.5,41,46.5].map((x,i)=>({x,y:26,id:`B${i+1}`}));
 export const FUEL_STATION={x:51.8,y:20,pumpX:50.4,pumpY:18,alongMin:15,alongMax:28,maxGap:1.4};
 export const FUEL_FENDERS=[16,18.5,21,23.5,26].map((y,id)=>({x:51.8,y:y-.35,w:.22,h:.7,fender:true,id:'fuel-fender-'+id}));
-export const SOLIDS=[...DOCKS,...FUEL_FENDERS,{x:-45,y:-45,w:700,h:20},{x:-45,y:-25,w:20,h:480},{x:-25,y:434,w:680,h:20},{x:634,y:-25,w:20,h:480}];
+export const SOLIDS=[...DOCKS,...FUEL_FENDERS,...BUILDINGS,{x:-45,y:-45,w:700,h:20},{x:-45,y:-25,w:20,h:480},{x:-25,y:434,w:680,h:20},{x:634,y:-25,w:20,h:480}];
 export const BEACHES=[{edge:'north',from:105,to:190,name:'Plaża Północna'},{edge:'west',from:125,to:205,name:'Plaża Sosnowa'},{edge:'south',from:420,to:520,name:'Plaża Południowa'}];
 export const REEDS=[{x:25,y:245,r:10},{x:190,y:375,r:13},{x:550,y:345,r:12},{x:278,y:268,r:9}];
 export const SHOALS=[{x:91,y:64,rx:16,ry:12,drop:7.1},{x:440,y:285,rx:42,ry:26,drop:7.8},{x:420,y:120,rx:25,ry:19,drop:7.6},{x:115,y:290,rx:24,ry:17,drop:7.4}];
 const islandTree=a=>{const r=islandRadius(a)-1.2;return{x:ISLAND.x+Math.cos(a)*r,y:ISLAND.y+Math.sin(a)*r};};
-const docksPoints=DOCKS.slice(3).flatMap((d,i)=>d.w>d.h?Array.from({length:Math.max(2,Math.floor(d.w/6))},(_,j)=>({x:d.x+1+j*(d.w-2)/Math.max(1,Math.floor(d.w/6)-1),y:d.y+d.h})):Array.from({length:Math.max(2,Math.floor(d.h/6))},(_,j)=>({x:d.x+d.w,y:d.y+1+j*(d.h-2)/Math.max(1,Math.floor(d.h/6)-1)})));
+const docksPoints=DOCKS.filter((d,i)=>i>=3&&!d.service).flatMap((d,i)=>d.w>d.h?Array.from({length:Math.max(2,Math.floor(d.w/6))},(_,j)=>({x:d.x+1+j*(d.w-2)/Math.max(1,Math.floor(d.w/6)-1),y:d.y+d.h})):Array.from({length:Math.max(2,Math.floor(d.h/6))},(_,j)=>({x:d.x+d.w,y:d.y+1+j*(d.h-2)/Math.max(1,Math.floor(d.h/6)-1)})));
 export const BOLLARDS=[...[[12,12.8],[17,18],[17,25],[19.8,28],[29,17],[29,23],[25,12.8]].map(([x,y],i)=>({x,y,kind:'bollard',id:`P${i+1}`,label:`Poler ${i+1}`})),
  ...[{x:2.8,y:147},{x:2.6,y:173},{x:132,y:6.8},{x:165,y:6},islandTree(1.0),islandTree(1.65),{x:452,y:405.2},{x:489,y:405.2}].map((p,i)=>({...p,kind:'tree',id:`D${i+1}`,label:`Drzewo ${i+1}`})),
  ...docksPoints.map((p,i)=>({...p,kind:'bollard',id:`P${i+8}`,label:`Poler ${i+8}`})),
+ ...[16,22,28].flatMap((y,i)=>[119.5,130.5].map((x,j)=>({x,y,kind:'bollard',id:`R${i+1}${j?'P':'L'}`,label:`Serwis · poler ${i+1} ${j?'P':'L'}`}))),
  ...BUOY_SLIPS.flatMap((q,i)=>[-1,1].map(side=>({x:q.x+side*1.2,y:12.8,kind:'bollard',id:`S${i+1}${side<0?'L':'P'}`,label:`Stanowisko ${i+1} · ${side<0?'lewa':'prawa'} knaga`}))),
  ...YBOOMS.flatMap((q,i)=>[.22,.92].map(fraction=>({x:q.x1,y:q.y1+q.length*fraction,boom:i,fraction,kind:'bollard',id:`Y${i+1}${fraction<.5?'A':'B'}`,label:`Y-bom ${i+1} · ${fraction<.5?'nasada':'koniec'}`}))),
  ...[...BUOY_SLIPS,{x:64,y:38,id:'B4'}].map(q=>({...q,kind:'buoy',label:`Boja ${q.id.slice(1)}`}))];

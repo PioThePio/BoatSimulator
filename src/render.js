@@ -1,4 +1,4 @@
-import {LAKE,REEDS,FUEL_STATION,FUEL_FENDERS,WORLD,ISLAND,DOCKS,BOLLARDS,BEACHES,islandOutline,islandRadius,shoreAt,bottomAt,environment,waveHeight,clamp} from './world.js';
+import {LAKE,REEDS,FUEL_STATION,FUEL_FENDERS,SERVICE_STATION,BUILDINGS,WORLD,ISLAND,DOCKS,BOLLARDS,BEACHES,islandOutline,islandRadius,shoreAt,bottomAt,environment,waveHeight,clamp} from './world.js';
 import {drawHullWake} from './wake.js';
 import {mooringPoint} from './marina.js';
 import {FENDERS,HULL_SECTIONS,impactPaint} from './impacts.js';
@@ -30,6 +30,22 @@ export function renderWorld(ctx,state){
  ctx.save();ctx.translate(width/2,height/2);ctx.scale(scale,scale);ctx.translate(-camera.x,-camera.y);
  const visible=(x,y,pad=4)=>x>bounds.left-pad&&x<bounds.right+pad&&y>bounds.top-pad&&y<bounds.bottom+pad;
  ctx.drawImage(terrainImage(),0,0,608,408);
+ // Small shore settlement and a concrete slip next to the service fingers.
+ for(const house of BUILDINGS){
+  if(!visible(house.x,house.y,20))continue;
+  ctx.fillStyle='#68807130';ctx.fillRect(house.x+.5,house.y+.6,house.w,house.h);
+  ctx.fillStyle=house.roof;ctx.fillRect(house.x,house.y,house.w,house.h);ctx.strokeStyle='#65796a';ctx.lineWidth=.12;ctx.strokeRect(house.x,house.y,house.w,house.h);
+  ctx.strokeStyle='#edf0db88';ctx.beginPath();ctx.moveTo(house.x+.5,house.y+house.h/2);ctx.lineTo(house.x+house.w-.5,house.y+house.h/2);ctx.stroke();
+  ctx.fillStyle='#dfe8d3';for(let i=1;i<4;i++)ctx.fillRect(house.x+house.w*i/5,house.y+house.h-.9,.7,.5);
+  if(house.service){ctx.font='bold 1.35px system-ui';ctx.fillStyle='#edf3de';ctx.fillText('SERWIS',house.x+2,house.y+house.h*.65);}
+ }
+ const slip=SERVICE_STATION.slip;
+ if(visible(slip.x,slip.y,30)){
+  ctx.fillStyle='#aeb8a5';ctx.fillRect(slip.x,slip.y,slip.w,slip.h);ctx.strokeStyle='#849889';ctx.lineWidth=.12;
+  for(let y=slip.y+.6;y<slip.y+slip.h;y+=.8){ctx.beginPath();ctx.moveTo(slip.x,y);ctx.lineTo(slip.x+slip.w,y);ctx.stroke();}
+  ctx.strokeStyle='#74887e';ctx.lineWidth=.18;for(const x of [slip.x+1.8,slip.x+slip.w-1.8]){ctx.beginPath();ctx.moveTo(x,slip.y);ctx.lineTo(x,slip.y+slip.h);ctx.stroke();}
+  ctx.font='bold 1.3px system-ui';ctx.fillStyle='#486c60';ctx.fillText('SLIP · NAPRAWA',119,34);
+ }
  // Sparse anchored surface features replace the metre grid. They make translation legible.
  const H=waveHeight(env,b.time),speed=.07+H*.6,angle=(env.waveDirection??90)*Math.PI/180,nx=Math.sin(angle),ny=-Math.cos(angle);
  const textureStep=Math.max(5,22/scale);
@@ -120,6 +136,7 @@ function drawBoat(ctx,b){
 export function renderMinimap(canvas,b,view){
  const c=canvas.getContext('2d'),w=canvas.width,h=canvas.height,sx=w/600,sy=h/400;
  c.clearRect(0,0,w,h);c.drawImage(terrainImage(),0,0,w,h);c.save();c.scale(sx,sy);c.translate(-4,-4);
+ c.fillStyle='#557e77';c.fillRect(SERVICE_STATION.start.x-4,SERVICE_STATION.start.y-4,8,8);
  c.strokeStyle='#6b8f7a';c.lineWidth=1/sx;c.strokeRect(view.bounds.left,view.bounds.top,view.bounds.right-view.bounds.left,view.bounds.bottom-view.bounds.top);
  c.save();c.translate(b.x,b.y);c.rotate(b.a);c.fillStyle='#b96f3d';c.beginPath();c.moveTo(11,0);c.lineTo(-7,-6);c.lineTo(-7,6);c.closePath();c.fill();c.restore();c.restore();
 }
