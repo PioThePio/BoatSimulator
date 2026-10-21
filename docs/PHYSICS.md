@@ -1,4 +1,4 @@
-# Model v8: podstawy, założenia i ograniczenia
+# Model v9: podstawy, założenia i ograniczenia
 
 Model ma odtwarzać **zależności fizyczne w manewrach**, ale nie jest
 zweryfikowanym cyfrowym bliźniakiem konkretnej motorówki. Nie dysponujemy
@@ -141,7 +141,8 @@ morskimi; układ z empiryczną korekcją nie jest pełnym modelem idealnego pły
 | Skuter | 3,2 × 1,22 | 310 | 0,20 | 170 | 60 |
 
 Do masy dodajemy silniki zaburtowe `28+0,62*KM` kg każdy, załogę 150 kg
-(85 kg na skuterze), zbiorniki i paliwo. Masa kadłuba skutera obejmuje jego
+(85 kg na skuterze), zbiorniki i paliwo. Każda opcja strumieniowego
+dodaje 22 kg umownego dodatkowego banku akumulatorów. Masa kadłuba skutera obejmuje jego
 napęd. Można zmieniać wymiary/masę i wybrać 1–2 silniki 10–350 KM każdy;
 skuter ma jeden napęd. Nietypowe konfiguracje nie są oceną dopuszczalnego
 obciążenia pawęży ani rekomendacją montażu.
@@ -172,6 +173,17 @@ Nie ma skegu zaburtowego ani regulowanego trymu. Bez strugi ma mały autorytet
 sterowania, zaś gaz wytwarza moment przez skręconą dyszę. Kontakt z dnem
 próbkujemy przy wlocie pod kadłubem. Nie modelujemy konkretnego systemu
 hamowania/iBR, wyrzutu pasażera ani pełnej hydrauliki deflektora.
+
+Koło ma różny skok między oporami: otwarta 1,5 obrotu, motorówka 2,5,
+kabinowa 3, wypornościowa 3,5; skuter 0,25 obrotu, czyli 90°.
+Kąt napędu zaburtowego: domyślnie ±35°, wybór ±30/35/40/45°; to zakres
+konfiguracji modelu, bez deklaracji zgodności z instrukcją konkretnego
+silnika. Dysza skutera pozostaje ±28°, bez trymu. Prędkość fizycznego
+przestawienia: zaburtowy 0,38 rad/s, dysza skutera 1,6 rad/s.
+Klawiatura przestawia koło z czasem od środka do oporu odpowiednio
+1 / 1,4 / 1,7 / 1,9 / 0,45 s. Zmiana manetki po 180 ms trzymania klawisza
+ma szybkość 0,8 zakresu/s (skuter 1,2); krótkie dotknięcie zachowuje bieg
+pełzający. Stacyjki ignorują strzałki jako polecenia zmiany pozycji.
 
 ## Ślizg, trym i wysokość dziobu
 
@@ -252,38 +264,56 @@ między nimi i bez swobodnej powierzchni cieczy.
 Przyjęte zużycie pracującego silnika w l/h:
 `0,45+0,003*KM+0,29*KM*n³*(0,55+0,45*obciążenie)`.
 Nie jest to mapa spalania konkretnego producenta. Na luzie nadal zużywa
-paliwo. Pusty zbiornik zatrzymuje silnik. Tankowanie w promieniu 6 m od
-stanowiska `(58;19,5)`, przy prędkości <0,15 m/s i zgaszonych silnikach:
-0,65 l/s. Ruszenie lub rozruch przerywa tankowanie.
+paliwo. Pusty zbiornik zatrzymuje silnik. Stanowisko paliwowe jest na
+wschodniej burcie pomostu x=51,8 m, y=15–28 m. Pięć stałych odbijaczy ma
+własne kolizje i ochronę. Burtowe podejście wymaga kąta do pomostu poniżej
+około 24° i odstępu skraju kadłuba do 1,4 m. Potrzebna jest co najmniej
+jedna cuma do polera tego stanowiska, prędkość ≤0,15 m/s oraz wszystkie
+stacyjki w 0. Tankowanie 0,65 l/s; rozruch, odcumowanie, ruch lub opuszczenie
+stanowiska przerywa je. Nie ma już koła zasięgu wokół dystrybutora.
 
-Akumulator: 80 Ah, skuter 35 Ah; start 85%. Zapłon 1,2 A,
-alternator pracującego silnika 12–34 A, strumieniowe osobne obciążenie.
-Napięcie zależy od naładowania i spadku pod obciążeniem; podczas ładowania
-13,5–14,4 V. Woltomierz nie jest dokładnym modelem chemii akumulatora.
+Akumulator: bazowo 80 Ah (skuter 35 Ah), z dodatkowym bankiem 80 Ah na
+każdy zamontowany strumieniowy; start 85%. Jest to skupiony model banków
+równoległych, a nie schemat instalacji konkretnej łodzi. Zapłon 1,2 A,
+alternator 12–34 A, moc strumieniowego szacowana jako `6.5 W/N` siły
+znamionowej. Napięcie spoczynkowe `11.8+1.05*SOC`, opór banku
+`0.003*80/capacity` Ω; ładowanie 13,5–14,4 V. Poprzedni stały opór 0,006 Ω
+wywoływał cykliczne odcięcia obu strumieniowych przy dużym poborze.
+Woltomierz i SOC nie stanowią pełnego modelu elektrochemii.
 
-Strumieniowe przy kierownicy (opcje dziobowy i rufowy) działają tylko przy zapłonie,
-wystarczającym napięciu i energii. Siła boczna 150–850 N zależna od masy,
-ramię ±0,38 L, rozpędzenie ok. 0,22 s. Skuteczność maleje jak
-`1/(1+(u/1,8)^2)`; moc elektryczna szacowana z siły. Mogą przesuwać łódź
-bokiem lub obracać ją, również przy zgaszonych silnikach i włączonym zapłonie.
-Brak modelu nagrzewania i znamionowego czasu pracy tunelu.
+Siła znamionowa jednego strumieniowego `clamp(L*B*45,220,1550)` N zależy
+od rozmiaru wyposażanej jednostki, nie od zmieniającej się masy paliwa.
+Działa na zapłonie, przy SOC>4% i napięciu>10,2 V; ramię ±0,38 L,
+rozpędzenie 0,22 s. Ciąg słabnie z prędkością jak `1/(1+(u/1.8)^2)`
+i skaluje się z napięciem. W próbie 15 s z obiema jednostkami na zapłonie
+bez ładowania: kabinowa około 870 N na końcówkę / 11,68 V,
+wypornościowa około 1173 N / 11,21 V, bez cyklicznych odcięć.
+Nominały, banki i moce są naszymi założeniami, nie katalogowymi danymi tuneli.
+
+Przy 7,5 m/s wiatru i 0,95 m/s prądu ustawionych poprzecznie do kadłuba,
+początkowy napór w modelu może wynosić około 3–6 kN dla większych łodzi.
+Ręka 450 N i wyposażenie strumieniowe nie gwarantują pokonania takiego
+naporu. Próba kabinowej 200 KM, jedna dziobowa cuma, wstecz 70%, skręt
+35° i oba strumieniowe: po 10 s odsunięcie rufy jest o ponad 3 m mniejsze
+niż bez wspomagania; nie traktujemy tego jako gwarancji dociągnięcia do
+pomostu w dowolnej konfiguracji. Brak modelu grzania tunelu i czasu pracy.
 
 ## Cumy i kotwica
 
 Okno kotwicy jest przesuwalne. Sugestia rode to 5 razy odległość dna od
-rolki dziobowej, a przy wietrze od 7 m/s, prądzie od 0,5 m/s lub ręcznej
-fali od 0,35 m — 7 razy. Przy kotwicy na pokładzie próbkujemy dno pod
-dziobem; po zrzucie pod kotwicą. Dodajemy wysokość rolki 0,65 m i heave.
-Przycisk wpisuje sugestię do obu kontrolek; człowiek nadal decyduje, ile
-wydać. Jeśli potrzebna długość przekracza zapas, komunikat pokazuje
-pełną potrzebną długość, a przycisk ogranicza wpis do dostępnego rode.
-To jawna reguła interfejsu, **nie wynik solvera MoorPy ani gwarancja
-trzymania kotwicy**. 3:1 nie przyjmujemy jako reguły dla łańcucha z liną;
-znaczenie mają dno, wiatr, fala, kotwica i wolne miejsce na obrót łodzi.
+rolki dziobowej, a przy górnej granicy wiatru od 7 m/s, prądu od 0,5 m/s
+lub ręcznej fali od 0,35 m — 7 razy. Przy kotwicy na pokładzie próbkujemy
+dno pod dziobem; po zrzucie pod kotwicą. Dodajemy wysokość rolki 0,65 m
+i heave. Sugestię ograniczamy do zapasu; komunikat pokazuje także pełną
+potrzebną długość. To jawna reguła interfejsu, bez gwarancji trzymania;
+znaczenie mają dno, kotwica i przestrzeń do obrotu łodzi. Nie przyjmujemy
+3:1 jako uniwersalnej reguły dla połączenia łańcucha z liną.
 
 Kliknięty punkt na mapie pozwala też wybierać, luzować i odpinać cumy.
 Kliknięcie dziobu otwiera obsługę kotwicy, współdzieląc stan z dolnym panelem.
-Okno cumowania można przesuwać za nagłówek myszą, dotykiem albo strzałkami
+Okno cumowania otwiera się po prawej stronie łodzi. Na telefonie widok
+przesuwa łódź w lewo, zostawiając miejsce na okno. Można je przesuwać
+za nagłówek myszą, dotykiem albo strzałkami
 po ustawieniu fokusu na nagłówku. Rysunek ma pięć knag z przyciskami cum.
 Zmiana klikniętego polera zachowuje położenie okna i dotychczasowe cumy.
 Pięć knag: środek dziobu, lewy/prawy przód i lewa/prawa rufa.
@@ -297,10 +327,16 @@ rozwiązanie niejawne z efektywną masą punktu zaczepienia. EA:
 80/160/240/330/60 kN, zerwanie 10/18/28/40/8 kN według profilu.
 Kolor łagodnie zmienia się ze wzrostem stosunku naciągu do siły zerwania.
 
-Ręka wybiera do 220 N / 40 W / 0,18 m/s; luzowanie do 0,3 m/s. Przyciski
-zadają cel ±0,5 m wykonywany stopniowo. Knaga może utrzymać większy naciąg,
-ale człowiek go nie wybierze. Boje są punktami zaczepienia z umownym
-stałym położeniem; nie symulujemy ich całego własnego układu dennego.
+Ręczne wybieranie działa wyłącznie podczas przytrzymania −. Siła rośnie
+`min(450,120+110*t)` N, maksymalna moc 65 W i prędkość 0,18 m/s.
+Równocześnie wybierane liny dzielą tę siłę i moc jednej osoby. Luzowanie
+przy przytrzymaniu + ma limit 0,3 m/s. Puszczenie, anulowanie dotyku,
+utrata aktywności, zamknięcie okna lub pauza zatrzymuje polecenie; knaga
+nadal utrzymuje zewnętrzne napięcie. Nie kolejkujemy celu ±0,5 m.
+Istniejący naciąg większy niż siła człowieka blokuje dalsze wybieranie.
+Cuma pęka od łącznego naciągu przekraczającego wytrzymałość profilu;
+ręka sama nie uzyskuje nieograniczonej siły przez długie przytrzymanie.
+Boje mają umowne stałe położenie; nie modelujemy ich całego układu dennego.
 Brak owijania lin o przeszkody i dokładnej geometrii pionowej cum.
 
 Kotwica zachowuje solver v3: ciężki łańcuch i lekka lina, quasi-statyczny
@@ -336,6 +372,16 @@ pomostach. Osłona ogranicza wysokość fali. Są to **zadane pola przybliżone,
 nie rozwiązanie równań przepływu**; brak wymuszenia zachowania masy pola
 wody w całym akwenie. Przełącznik umożliwia porównanie z jednorodnym polem.
 Kierunki oznaczają dokąd płynie/wieje, nie meteorologiczne skąd.
+
+Pogoda ma niezależne przedziały siły MIN–MAX dla wiatru i prądu oraz
+osobną zmienność kierunku ±0–90°. Równe końce przedziału wyłączają zmiany
+siły; ±0° wyłącza zmiany kierunku. Siła to środek zakresu plus połowa
+rozpiętości razy suma trzech sinusów o wagach 0,55 / 0,30 / 0,15.
+Wiatr ma częstości 0,23 / 0,61 / 1,13 rad/s, prąd 0,09 / 0,21 / 0,37;
+kierunki używają osobnych wolniejszych składowych. To deterministyczne,
+gładkie pola do ćwiczeń, bez modelowania turbulencji ani prognozy pogody.
+Automatyczne fale korzystają z aktualnej siły wiatru, a sugestia kotwicy
+z górnej granicy wybranego przedziału.
 
 Trzy składowe fal o okresach 2,8/1,9/3,9 s wymuszają ruch orbitalny,
 kołysanie i przegłębienie. Wysokość sumuje składowe, nie jest statystycznym Hs.
@@ -423,7 +469,7 @@ konkretnego producenta.
 Ślad jest próbkowany po przebyciu 0,35 m, a nie co stały czas: drobne
 drgania pozycji na postoju nie tworzą wiązki nakładających się odcinków.
 
-## Wyniki kontrolne v8
+## Wyniki kontrolne zakrętu (v9)
 
 Spokojna woda, 120 Hz. Ta sama motorówka 5,5 m / kadłub 800 kg, prędkość
 wejścia 9 m/s, początkowy udział ślizgu 0,9, rozkręcony silnik, pełny gaz
@@ -445,7 +491,7 @@ promień 24,1 m. Moc względem masy zmienia możliwość utrzymania ślizgu.
 
 Skuter 170 KM przy analogicznym wejściu: około 9,58 m/s,
 1,05 rad/s, promień 9,2 m. Z postoju przy pełnym gazie i skręcie po 2 s:
-skuter 170 KM około 5,98 m/s, motorówka 170 KM około 0,85 m/s.
+skuter 170 KM około 5,64 m/s, motorówka 170 KM około 0,85 m/s.
 Pompa ma szybsze narastanie obrotów i zmianę kierunku deflektora niż
 przekładnia zaburtowa; ciąg nadal jest ograniczony mocą, napływem i masą.
 
@@ -478,7 +524,7 @@ to pomostów, Y-bomów, innych łodzi i kontaktu z dnem. Nie ma wyłącznika szk
 Kadłuby przybliżają podłużne kapsuły i impuls. Nie liczymy deformacji materiałów. Zniszczony
 pomost nadal jest przeszkodą.
 
-## Układ interfejsu v8
+## Układ interfejsu v9
 
 Menu startowe zawiera łódź, wyposażenie, miejsce startu i pogodę. R i „Nowa
 próba” otwierają je z zachowaniem wyborów; dopiero „Rozpocznij rejs” tworzy
@@ -493,3 +539,20 @@ Wskaźnik paliwa ma E/F i kontrolkę poniżej 10%. Temperatura: niebieski
 czerwony poniżej 11,5 V i ponad 14,8 V, żółty 11,5–12,2 V, zielony
 12,2–14,8 V; napis rozróżnia ładowanie i spoczynek. Są to zakresy
 przyjęte do tego modelu, bez norm konkretnego wskaźnika czy alternatora.
+
+## Dźwięk proceduralny (v9)
+
+Web Audio tworzy po pierwszym geście użytkownika dwa niezależne głosy
+silników: puls obrotów, harmoniczne i wyższy składnik mechaniczny słyszalny
+na małych głośnikach. Częstotliwość zależy od RPM i profilu, poziom od
+pracy/obciążenia, rozrusznik ma osobny przerywany charakter. Osobne impulsy
+sygnalizują stacyjkę, zapadkę manetki, faktyczne załączenie przekładni,
+kontakt kadłuba/odbijacza i pęknięcie cumy. Filtrowany szum opisuje fale,
+opływ i ślizg, a tony strumieniowe oraz pompa paliwa zależą od ich pracy.
+Głośność wygładzamy, a sumę ogranicza kompresor. Pauza, menu i utrata
+aktywności wyciszają główny tor. Wyłączenie dźwięku i głośność zapisujemy
+lokalnie; brak Web Audio nie blokuje symulatora. Brak zewnętrznych nagrań,
+modelu akustyki przestrzennej i kalibracji do rzeczywistego silnika.
+Test OfflineAudioContext sprawdza sygnał, zmianę częstotliwości, brak
+przesterowania oraz ciszę po wyciszeniu i pauzie; nie zastępuje odsłuchu
+na różnych fizycznych głośnikach.

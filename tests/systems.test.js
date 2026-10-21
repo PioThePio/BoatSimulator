@@ -14,7 +14,7 @@ test('fuel is consumed, contributes to mass/inertia/draft and empty tank stops e
  assert.equal(b.fuel.tanks.length,2);assert.ok(Math.abs(b.fuel.tanks.reduce((s,t)=>s+t.litres,0)-b.fuel.litres)<1e-9);b.fuel.litres=0;run(b,.1);assert.equal(b.engines[0].key,'ignition');assert.equal(b.engines[0].thrust,0);
 });
 test('refueling requires station, rest and stopped engines, fills gradually and stops when leaving',()=>{
- const b=createBoat('fuel',{coldStart:true});b.fuel.litres=20;assert.ok(requestRefuel(b).ok);systemsStep(b,1);assert.ok(b.fuel.litres>20&&b.fuel.litres<21);b.vx=.4;systemsStep(b,1);assert.equal(b.fuel.refueling,false);assert.equal(requestRefuel(b).ok,false);b.vx=0;b.engines[0].key='running';assert.equal(requestRefuel(b).ok,false);b.engines[0].key='off';b.x=FUEL_STATION.x+FUEL_STATION.radius+1;assert.equal(requestRefuel(b).ok,false);
+ const b=createBoat('fuel',{coldStart:true});b.fuel.litres=20;assert.equal(requestRefuel(b).ok,false);assert.ok(attachRope(b,'bow').ok);assert.ok(requestRefuel(b).ok);systemsStep(b,1);assert.ok(b.fuel.litres>20&&b.fuel.litres<21);b.vx=.4;systemsStep(b,1);assert.equal(b.fuel.refueling,false);assert.equal(requestRefuel(b).ok,false);b.vx=0;b.engines[0].key='running';assert.equal(requestRefuel(b).ok,false);b.engines[0].key='off';b.x=FUEL_STATION.x+10;assert.equal(requestRefuel(b).ok,false);
 });
 test('thrusters require ignition, turn opposite at bow/stern, discharge battery, weaken underway',()=>{
  const off=createBoat('open',{coldStart:true,bowThruster:true});off.thrusters.bow=1;run(off,1);assert.equal(off.thrusters.bowForce,0);assert.equal(off.w,0);

@@ -22,7 +22,7 @@ export function driveGeometry(b,en,env={}){
 export function anchorAdvice(b,env={}){
  const anchor=b.anchor,at=anchor.mode==='stowed'?{x:b.x+Math.cos(b.a)*b.spec.length*.39,y:b.y+Math.sin(b.a)*b.spec.length*.39}:anchor;
  const depth=Math.max(0,bottomAt(at.x,at.y).depth),height=Math.max(.2,depth+.65+b.heave);
- const scope=(env.windSpeed??0)>=7||(env.currentSpeed??0)>=.5||(env.waveHeight??0)>=.35?7:5;
+ const scope=(env.windMax??env.windSpeed??0)>=7||(env.currentMax??env.currentSpeed??0)>=.5||(env.waveHeight??0)>=.35?7:5;
  const required=Math.ceil(height*scope),length=Math.min(anchor.reserve,required);
  return{depth,height,scope,required,length,limited:required>anchor.reserve};
 }

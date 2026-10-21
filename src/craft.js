@@ -15,10 +15,11 @@ export function specification(options={}){
  const engineCount=p.jet?1:options.engineCount===2?2:1;
  const powers=Array.from({length:engineCount},(_,i)=>clamp(Number(options.powers?.[i])||p.hp,10,350));
  const fuelCapacity=clamp(Number(options.fuelCapacity)||p.fuel,10,800),tankCount=options.tankCount===2?2:1;
- const dryMass=hullMass+powers.reduce((sum,hp)=>sum+(p.jet?0:28+hp*.62),0)+(p.jet?85:150)+fuelCapacity*.08+2*tankCount;
+ const dryMass=hullMass+powers.reduce((sum,hp)=>sum+(p.jet?0:28+hp*.62),0)+(p.jet?85:150)+fuelCapacity*.08+2*tankCount+(p.jet?0:22*(Number(!!options.bowThruster)+Number(!!options.sternThruster)));
  const mass=dryMass+fuelCapacity*.75*.745;
  const base={...p,profile,length,beam,hullMass,engineCount,powers,fuelCapacity,tankCount,dryMass,mass,
-  referenceMass:mass,referenceDraft:p.draft*(hullMass/p.hullMass)**.32,draft:p.draft*(hullMass/p.hullMass)**.32,engineSpacing:engineCount===2?beam*.46:0,maxSteer:(p.jet?28:35)*Math.PI/180,
+  referenceMass:mass,referenceDraft:p.draft*(hullMass/p.hullMass)**.32,draft:p.draft*(hullMass/p.hullMass)**.32,engineSpacing:engineCount===2?beam*.46:0,maxSteer:(p.jet?28:clamp(Number(options.steeringLimit)||35,30,45))*Math.PI/180,
+  wheelTurns:({tender:1.5,runabout:2.5,cabin:3,cruiser:3.5,pwc:.25})[profile],steeringLockTime:({tender:1,runabout:1.4,cabin:1.7,cruiser:1.9,pwc:.45})[profile],thrusterRating:clamp(length*beam*45,220,1550),
   engineLever:p.jet?-.40*length:-.44*length,bowThruster:!p.jet&&!!options.bowThruster,sternThruster:!p.jet&&!!options.sternThruster};
  return updateMass(base,fuelCapacity*.75);
 }

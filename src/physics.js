@@ -15,7 +15,7 @@ export {clamp,DOCKS,SOLIDS,BOLLARDS,environment,bottomAt,waveAt,point,cleat,atta
 export const MODEL=specification();
 export function createBoat(scenario='approach',options={}){
  const spec=specification(options);
- const starts={approach:[43,37,-2.1],berth:[24.3,22,-Math.PI/2],open:[64,48,-Math.PI/2],beach:[8.2,147,Math.PI/2],island:[304,278,Math.PI],fuel:[58,19.5,-Math.PI/2],canal:[304,204,0],harbor:[61,40,-Math.PI/2],lake:[80,110,0]};
+ const starts={approach:[43,37,-2.1],berth:[24.3,22,-Math.PI/2],open:[64,48,-Math.PI/2],beach:[8.2,147,Math.PI/2],island:[304,278,Math.PI],fuel:[54,20,Math.PI/2],canal:[304,204,0],harbor:[61,40,-Math.PI/2],lake:[80,110,0]};
  const [x,y,a]=starts[scenario]||starts.approach;
  return{...createSystems(spec,options.coldStart),booms:createBooms(),traffic:createTraffic(),x,y,a,vx:0,vy:0,w:0,steer:0,actualSteer:0,throttle:0,throttle2:0,linked:true,enginesRaised:false,groundLoad:0,groundMaterial:'sand',spec,
  engines:spec.powers.map((hp,i)=>engineState(hp,spec.engineCount===1?0:(i===0?-1:1)*spec.engineSpacing/2,options.coldStart)),
@@ -78,7 +78,8 @@ export function step(b,e,dt){
  force(-drag-S.mass*.009*u,0);
  hullLateralForces(S,u,v,b.w,b.planing,force);
  // Outboards rotate at a finite rate; linked controls copy commands, not engine states.
- b.actualSteer+=clamp(b.steer-b.actualSteer,-.38*dt,.38*dt);
+ const steeringRate=S.jet?1.6:.38;
+ b.actualSteer+=clamp(b.steer-b.actualSteer,-steeringRate*dt,steeringRate*dt);
  if(b.linked)b.throttle2=b.throttle;
  if(b.engines.length===2)b.engines[1].trimTarget=b.engines[0].trimTarget;
  let totalThrust=0;
@@ -136,11 +137,11 @@ function contacts(b,dt){
    if(d<1e-8){const sides=[{v:p.x-rect.x,x:-1,y:0},{v:rect.x+rect.w-p.x,x:1,y:0},{v:p.y-rect.y,x:0,y:-1},{v:rect.y+rect.h-p.y,x:0,y:1}].sort((a,b)=>a.v-b.v);nx=sides[0].x;ny=sides[0].y;depth=radius+sides[0].v;}else{nx=dx/d;ny=dy/d;}
    const arm={x:p.x-b.x-nx*radius,y:p.y-b.y-ny*radius},n={x:nx,y:ny};
    const vn=(b.vx-b.w*arm.y)*nx+(b.vy+b.w*arm.x)*ny,effective=1/inverseMass(b,n,arm);
-   const dockContact=k<DOCKS.length||k>=SOLIDS.length;
-   const protectedContact=!!fender&&dockContact;
+   const dockContact=k<DOCKS.length||!!rect.fender;
+   const protectedContact=(!!fender||!!rect.fender)&&dockContact;
    if(vn<0){
     const speed=-vn;impulse(b,n,-1.015*vn*effective,arm);
-    recordImpact(b,{arm,speed,effective,protectedContact,fender,target:'solid-'+k,dock:dockContact},m=>event(b,m));
+    recordImpact(b,{arm,speed,effective,protectedContact,fender,target:rect.id??'solid-'+k,dock:dockContact},m=>event(b,m));
    }
    b.x+=nx*depth*.8;b.y+=ny*depth*.8;
   }

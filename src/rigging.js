@@ -24,27 +24,32 @@ export function attachRope(b,end,bollard=null){
  const q=mooringPoint(b,bollard);if(!q)return{ok:false,message:'Wybierz poler na mapie albo z listy.'};
  const d=Math.hypot(p.x-q.x,p.y-q.y);
  if(d>6)return{ok:false,message:`${q.label} jest poza zasięgiem rzutu (6 m od knagi).`};
- b.ropes.push({end,bollard,length:d+.35,targetLength:d+.35,tension:0,hauling:false,blocked:false,rate:0});
+ b.ropes.push({end,bollard,length:d+.35,targetLength:d+.35,tension:0,control:0,effortTime:0,manualForce:0,blocked:false,rate:0});
  return{ok:true,message:`Cuma ${CLEATS[end]||'rufowa'} → ${q.label.toLowerCase()}.`};
 }
-export function requestHaul(r,delta){r.targetLength=clamp(r.targetLength+delta,.45,15);}
+export function requestHaul(r,direction){r.control=Math.sign(direction);r.targetLength=r.length;if(!direction){r.manualForce=0;r.effortTime=0;r.rate=0;r.blocked=false;}}
 export function solveRopes(b,dt,notify){
  b.maxTension=0;
+ const hands=Math.max(1,b.ropes.filter(r=>r.control<0).length);
  b.ropes=b.ropes.filter(r=>{
   const p=cleat(b,r.end),q=mooringPoint(b,r.bollard),dx=q.x-p.x,dy=q.y-p.y,d=Math.max(.001,Math.hypot(dx,dy));
   const n={x:dx/d,y:dy/d},arm={x:p.x-b.x,y:p.y-b.y};
   const separation=(q.vx-b.vx+b.w*arm.y)*n.x+(q.vy-b.vy-b.w*arm.x)*n.y;
   const k=b.spec.lineEA/Math.max(1,r.length),damping=2*.65*Math.sqrt(k/inverseMass(b,n,arm));
   r.rate=0;r.blocked=false;
-  if(r.targetLength<r.length-.001){
-   // One person: 220 N and <= 40 W. The knot holds external loads; hauling cannot.
+  r.effortTime=r.control<0?(r.effortTime??0)+dt:0;
+  r.manualForce=r.control<0?Math.min(450,120+r.effortTime*110)/hands:0;
+  if(r.control<0&&r.length>.45){
+   // A held pull builds effort, not an unbounded winch. The knot holds external
+   // loads after release; shortening stops on the next physics step.
    const inv=inverseMass(b,n,arm)+boomInverse(b,r.bollard,n),denominator=1+(damping*dt+k*dt*dt)*inv;
    const existing=k*(d-r.length)+(damping+k*dt)*separation;
-   const allowance=Math.max(0,(220*denominator-existing)/(2*k+damping/dt));
-   const rate=Math.min(.18,40/Math.max(1,r.tension));
-   const amount=Math.min(rate*dt,r.length-r.targetLength,allowance);
+   const allowance=Math.max(0,(r.manualForce*denominator-existing)/(2*k+damping/dt));
+   const rate=Math.min(.18,65/hands/Math.max(1,r.tension));
+   const amount=Math.min(rate*dt,r.length-.45,allowance);
    r.length-=amount;r.rate=-amount/dt;r.blocked=amount<.00001;
-  }else if(r.targetLength>r.length+.001){const amount=Math.min(.3*dt,r.targetLength-r.length);r.length+=amount;r.rate=amount/dt;}
+  }else if(r.control>0){const amount=Math.min(.3*dt,15-r.length);r.length+=amount;r.rate=amount/dt;}
+  r.targetLength=r.length;
   const extension=d-r.length;
   const closing=separation-r.rate;
   const inv=inverseMass(b,n,arm)+boomInverse(b,r.bollard,n);

@@ -1,11 +1,11 @@
-# Przystań — symulator manewrów motorówką v8
+# Przystań — symulator manewrów motorówką v9
 
 Przeglądarkowy symulator z widokiem z góry, bez kont i backendu. Pięć rodzajów
 łodzi, w tym skuter, zmieniane wymiary i masa, jeden lub dwa silniki do 350 KM.
 Nieregularne jezioro 600 × 400 m, wyspa z przesmykiem, plaże, mielizny,
 szuwary, port ze stanowiskami z bojami i ruchomymi Y-bomami szerokości 25 cm.
 
-Uruchom: **https://piothepio.github.io/BoatSimulator/?v=8.0.0**.
+Uruchom: **https://piothepio.github.io/BoatSimulator/?v=9.0.0**.
 
 Model służy do poznawania zależności w manewrach; nie jest skalibrowany dla
 konkretnej łodzi. [Źródła, równania i ograniczenia](docs/PHYSICS.md).
@@ -52,16 +52,40 @@ Uszkodzenia są zawsze aktywne.
 | Trym | ▲/▼ wspólnie dla obu silników, 0–40% co 5 punktów, dalej co 10; przyciski pokazują cel, wskaźnik aktualną pozycję |
 | Strumieniowe | Przytrzymaj ◀/▶; Q/E dziób, Z/X rufa; wymagają wyposażenia i zapłonu |
 | Odbijacze / pauza | F / P lub przełączniki |
-| Cumy | Kliknij poler P/Y, boję B lub drzewo D, następnie knagę na rysunku; − wybiera, + luzuje, × odpina |
+| Cumy | Kliknij poler P/Y, boję B lub drzewo D, następnie knagę na rysunku; przytrzymaj − / +, aby wybierać/luzować, × odpina |
 | Kotwica | Kliknij dziób lub ⚓; zadana długość i Wydaj/Stop/Wybierz, również w dolnym panelu |
 | Okna na mapie | Przesuwanie za nagłówek myszą/dotykiem; także strzałkami po ustawieniu fokusu na nagłówku |
-| Tankowanie | Przy ⛽, prędkość <0,15 m/s i zgaszone silniki |
+| Tankowanie | Burtą przy ⛽, co najmniej jedna cuma do stanowiska, prędkość <0,15 m/s, silniki i zapłon wyłączone |
+| Dźwięk | Przełącznik i głośność w konsoli; uruchamia się po dotknięciu ekranu, wycisza na pauzie |
 | Widok | ◎ centruje łódź, minimapa przesuwa widok, „Cały akwen” pokazuje jezioro, „Ślad” przełącza linię trasy |
 
-Koło ma 2½ obrotu między oporami i nie wraca do zera. Manetki też pozostają
+Skok koła między oporami: otwarta 1,5 obrotu, motorówka 2,5, kabinowa 3,
+wypornościowa 3,5; skuter tylko 90°. Koło nie wraca do zera. Zaburtowy ma
+domyślnie ±35°, z wyborem ±30/35/40/45° w menu; dysza skutera ±28°.
+Klawiatura szybciej zmienia manetkę po przytrzymaniu: pełny zakres w około
+1,3 s, na skuterze około 0,95 s. Krótkie naciśnięcie nadal wybiera pełzający.
+Strzałki po ustawieniu fokusu na stacyjce sterują łodzią; stacyjka nie zmienia pozycji. Manetki też pozostają
 w zadanej pozycji. Dwa silniki mają osobne obrotomierze, obciążenie i ciąg.
 Wsteczny ciąg jest słabszy, a zmiana biegu wymaga czasu. Luz pozwala płynąć
 bezwładnością; zanurzony zaburtowy nadal reaguje na przepływ wody.
+
+## Dźwięk i pogoda
+
+Proste syntezowane dźwięki: stacyjka, rozrusznik, osobna praca i obroty silników,
+przełączenie manetki i przekładni, fale, opływ/ślizg, strumieniowe, tankowanie,
+uderzenia i pęknięcie cumy. Web Audio nie pobiera plików. Pierwsze dotknięcie
+odblokowuje dźwięk; głośność i wyciszenie są zapamiętywane na urządzeniu.
+Pauza, menu startowe i utrata aktywności karty wyciszają symulację.
+
+Pod **☀ Pogoda** siłę wiatru i prądu ustawiasz dwoma uchwytami na jednym
+suwaku: MIN–MAX. Równe wartości oznaczają stałą siłę; przycisk „Ustaw stały”
+zrównuje je z maksimum. Osobny suwak **±0–90°** ustawia zmienność kierunku.
+Wartości zmieniają się płynnie, niezależnie dla wiatru i prądu. Fale mogą
+zależeć od aktualnej siły wiatru albo mieć ręcznie ustawioną wysokość.
+
+Tankowanie odbywa się przy oznaczonym odcinku pomostu z pięcioma stałymi
+odbijaczami. Odpięcie ostatniej cumy, odpłynięcie lub włączenie silnika
+przerywa tankowanie. Usunięto przełącznik podnoszenia napędu; służy do tego trym.
 
 ## Trym, płycizna i wskaźniki
 
@@ -87,7 +111,11 @@ zanurzenie; jeden lub dwa zbiorniki, razem 10–800 l, start z 75% paliwa.
 ## Cumy i kotwica
 
 Rzut cumy do 6 m pozostawia 35 cm luzu, bez przyciągania łodzi. Ręczne
-wybieranie jest stopniowe, do 220 N, 40 W i 0,18 m/s; luzowanie do 0,3 m/s.
+wybieranie działa tylko podczas przytrzymania: siła rośnie od 120 do 450 N,
+moc do 65 W i prędkość do 0,18 m/s; luzowanie do 0,3 m/s. Puszczenie
+zatrzymuje zmianę długości. Kilka lin dzieli siłę jednej osoby. Wiatr, prąd
+i silnik mogą nadal przeciążyć i zerwać cumę. Przy silnym prądzie potrzebny
+uciąg może przekroczyć siłę ręki i zamontowanych strumieniowych.
 Cumy zaparkowanych jednostek łączą rzeczywiste knagi i polery, reagują na
 wiatr/prąd i pozwalają na ograniczony obrót. Y-bomy reagują na kontakt i cumy.
 
@@ -118,7 +146,7 @@ Kamera łagodnie oddala widok przy szybszym płynięciu.
 
 W `tests/` są regresje rozruchu, przyspieszenia, pełzania, hamowania w
 zakręcie, dryfu, masy/paliwa, trymu i zejścia z płycizny, cum, kotwicy,
-fal oraz obsługi okien myszą i dotykiem. [Opis fizyki](docs/PHYSICS.md)
+fal, przedziałów pogody, sygnału audio oraz obsługi okien myszą i dotykiem. [Opis fizyki](docs/PHYSICS.md)
 odróżnia teoretyczną strukturę modelu od naszych umownych współczynników.
 
 Najważniejsze moduły: `physics.js` i `hydrodynamics.js` — ruch i opory;

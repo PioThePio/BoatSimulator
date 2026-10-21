@@ -1,3 +1,5 @@
+import {weatherAt} from './weather.js';
+export {weatherAt} from './weather.js';
 export const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 export const WORLD={left:4,top:4,right:604,bottom:404};
 export const LAKE=[{x:4,y:4},{x:100,y:4},{x:135,y:9},{x:185,y:5},{x:230,y:18},{x:300,y:8},{x:360,y:20},{x:420,y:5},{x:488,y:15},{x:548,y:9},{x:592,y:35},{x:604,y:90},{x:585,y:142},{x:600,y:200},{x:576,y:260},{x:590,y:318},{x:552,y:370},{x:510,y:396},{x:460,y:404},{x:400,y:388},{x:340,y:400},{x:280,y:379},{x:230,y:397},{x:180,y:382},{x:120,y:397},{x:65,y:377},{x:20,y:345},{x:5,y:290},{x:20,y:245},{x:4,y:205},{x:4,y:125},{x:12,y:92},{x:4,y:48}];
@@ -12,8 +14,9 @@ export const DOCKS=[{x:6,y:10,w:23,h:2.8},{x:17,y:12.8,w:2.8,h:17},{x:29,y:10,w:
 // Floating fingers: 25 cm beam, triangular brace only at the hinge, 5 m spacing.
 export const YBOOMS=Array.from({length:6},(_,i)=>({id:i,x1:76+i*5,y1:12.8,x2:76+i*5,y2:22.8,width:.25,length:10,a:Math.PI/2}));
 export const BUOY_SLIPS=[35.5,41,46.5].map((x,i)=>({x,y:26,id:`B${i+1}`}));
-export const SOLIDS=[...DOCKS,{x:-45,y:-45,w:700,h:20},{x:-45,y:-25,w:20,h:480},{x:-25,y:434,w:680,h:20},{x:634,y:-25,w:20,h:480}];
-export const FUEL_STATION={x:58,y:19.5,radius:6,pumpX:50.4,pumpY:18};
+export const FUEL_STATION={x:51.8,y:20,pumpX:50.4,pumpY:18,alongMin:15,alongMax:28,maxGap:1.4};
+export const FUEL_FENDERS=[16,18.5,21,23.5,26].map((y,id)=>({x:51.8,y:y-.35,w:.22,h:.7,fender:true,id:'fuel-fender-'+id}));
+export const SOLIDS=[...DOCKS,...FUEL_FENDERS,{x:-45,y:-45,w:700,h:20},{x:-45,y:-25,w:20,h:480},{x:-25,y:434,w:680,h:20},{x:634,y:-25,w:20,h:480}];
 export const BEACHES=[{edge:'north',from:105,to:190,name:'Plaża Północna'},{edge:'west',from:125,to:205,name:'Plaża Sosnowa'},{edge:'south',from:420,to:520,name:'Plaża Południowa'}];
 export const REEDS=[{x:25,y:245,r:10},{x:190,y:375,r:13},{x:550,y:345,r:12},{x:278,y:268,r:9}];
 export const SHOALS=[{x:91,y:64,rx:16,ry:12,drop:7.1},{x:440,y:285,rx:42,ry:26,drop:7.8},{x:420,y:120,rx:25,ry:19,drop:7.6},{x:115,y:290,rx:24,ry:17,drop:7.4}];
@@ -58,8 +61,8 @@ export function bottomAt(x,y){
 export function bottomGradient(x,y){const d=.12;return{x:(bottomAt(x+d,y).depth-bottomAt(x-d,y).depth)/(2*d),y:(bottomAt(x,y+d).depth-bottomAt(x,y-d).depth)/(2*d)};}
 export function reedDensityAt(x,y){if(shoreAt(x,y).land)return 0;return REEDS.reduce((v,r)=>Math.max(v,clamp(1-Math.hypot(x-r.x,y-r.y)/r.r,0,1)),0);}
 export function environment(t,e={},x=null,y=null){
- const phase=e.gusts?1+.28*Math.sin(t*.37)+.12*Math.sin(t*1.13):1,a=(e.windDirection??90)*Math.PI/180,c=(e.currentDirection??90)*Math.PI/180;
- let wind={x:Math.sin(a)*(e.windSpeed??0)*phase,y:-Math.cos(a)*(e.windSpeed??0)*phase},current={x:Math.sin(c)*(e.currentSpeed??0),y:-Math.cos(c)*(e.currentSpeed??0)},shelter=1;
+ const weather=weatherAt(t,e),a=weather.windDirection*Math.PI/180,c=weather.currentDirection*Math.PI/180;
+ let wind={x:Math.sin(a)*weather.windSpeed,y:-Math.cos(a)*weather.windSpeed},current={x:Math.sin(c)*weather.currentSpeed,y:-Math.cos(c)*weather.currentSpeed},shelter=1;
  if(e.spatialEffects&&x!==null){
   const wx=Math.sin(a),wy=-Math.cos(a),dx=x-ISLAND.x,dy=y-ISLAND.y,down=dx*wx+dy*wy,side=-dx*wy+dy*wx;
   if(down>0)shelter-=.70*Math.exp(-Math.max(0,down-70)/160)*Math.exp(-((side/75)**2));
@@ -77,9 +80,9 @@ export function environment(t,e={},x=null,y=null){
  }
  return{wind,current,shelter,waveScale:.4+.6*shelter};
 }
-export function waveHeight(e){return e.autoWaves?Math.min(.55,.004*(e.windSpeed??0)**2):(e.waveHeight??0);}
+export function waveHeight(e,t=0){return e.autoWaves?Math.min(.55,.004*weatherAt(t,e).windSpeed**2):(e.waveHeight??0);}
 export function waveAt(x,y,t,e){
- const H=waveHeight(e)*(e.spatialEffects?environment(t,e,x,y).waveScale:1),a=(e.waveDirection??e.windDirection??90)*Math.PI/180,n={x:Math.sin(a),y:-Math.cos(a)};let eta=0,sx=0,sy=0,vx=0,vy=0,ax=0,ay=0;
+ const H=waveHeight(e,t)*(e.spatialEffects?environment(t,e,x,y).waveScale:1),a=(e.waveDirection??e.windDirection??90)*Math.PI/180,n={x:Math.sin(a),y:-Math.cos(a)};let eta=0,sx=0,sy=0,vx=0,vy=0,ax=0,ay=0;
  const h=Math.max(.4,bottomAt(x,y).depth);
  for(const [weight,period,phase,offset]of [[.65,2.8,0,0],[.25,1.9,1.7,.32],[.1,3.9,3.2,-.4]]){
   const omega=2*Math.PI/period;let k=omega*omega/9.81;for(let i=0;i<5;i++)k=omega*omega/(9.81*Math.tanh(k*3));

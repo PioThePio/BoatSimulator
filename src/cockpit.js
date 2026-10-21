@@ -13,7 +13,7 @@ export function installCockpit(api){
  }
  function turnKey(index,direction){const b=api.boat(),en=b.engines[index];if(!en)return;const action=direction>0?(en.key==='off'?'ignition':'start'):'off';api.toast(engineKey(b,index,action).message);}
  document.querySelectorAll('[data-key-turn]').forEach(btn=>btn.onclick=()=>turnKey(+btn.dataset.engine,+btn.dataset.keyTurn));
- document.querySelectorAll('.key-knob').forEach(btn=>{btn.onclick=e=>{const r=btn.getBoundingClientRect();turnKey(+btn.dataset.engine,e.clientX<r.left+r.width/2?-1:1);};btn.onkeydown=e=>{if(e.key==='ArrowLeft'||e.key==='ArrowRight'){e.preventDefault();e.stopPropagation();turnKey(+btn.dataset.engine,e.key==='ArrowRight'?1:-1);}};});
+ document.querySelectorAll('.key-knob').forEach(btn=>{btn.onclick=e=>{const r=btn.getBoundingClientRect();turnKey(+btn.dataset.engine,e.detail!==0&&e.clientX<r.left+r.width/2?-1:1);};});
  document.querySelectorAll('[data-gas]').forEach(btn=>btn.onclick=()=>{const dir=+btn.dataset.gas;if(!dir){api.neutral();return;}const b=api.boat(),i=api.selected();api.setThrottle(throttleStep(i?b.throttle2:b.throttle,dir),i);});
  document.querySelectorAll('[data-trim]').forEach(btn=>btn.onclick=()=>{const b=api.boat();if(b.enginesRaised){b.enginesRaised=false;for(const en of b.engines)en.trim=en.trimTarget=1;}const target=trimStep(b.engines[0].trimTarget,+btn.dataset.trim);for(const en of b.engines)en.trimTarget=target;});
  const holds={bow:0,stern:0};api.holds=holds;
@@ -37,7 +37,7 @@ export function installCockpit(api){
   const reserve=b.fuel.litres<b.fuel.capacity*.1,hot=temperature>=105,lowVolt=b.battery.voltage<11.5,highVolt=b.battery.voltage>14.8;
   for(const [id,active,label]of [['fuel',reserve,reserve?'Rezerwa paliwa':'Paliwo powyżej rezerwy'],['temp',hot,hot?'Przegrzanie':'Temperatura poniżej alarmu'],['volt',lowVolt||highVolt,lowVolt?'Niskie napięcie':highVolt?'Za wysokie napięcie':'Napięcie prawidłowe']]){const led=$('#'+id+'-led');led.classList.toggle('lit',active);led.setAttribute('aria-label',label);led.title=label;}
   $('#gauge-volt').classList.toggle('danger',lowVolt||highVolt);$('#gauge-volt small').textContent='V · '+(lowVolt?'NISKIE':highVolt?'WYSOKIE':b.battery.current<0?'ŁADOWANIE':'SPOCZYNEK');
-  $('#fuel-status').textContent=`${b.fuel.litres.toFixed(1)} / ${b.fuel.capacity} l · ${b.fuel.flow.toFixed(1)} L/h${b.fuel.refueling?' · TANKOWANIE':''}`;
+  $('#fuel-status').textContent=`${b.fuel.litres.toFixed(1)} / ${b.fuel.capacity} l · ${b.fuel.flow.toFixed(1)} L/h${b.fuel.refueling?' · TANKOWANIE':b.fuel.status?' · '+b.fuel.status:''}`;
   $('#refuel').textContent=b.fuel.refueling?'■ Stop tankowania':'⛽ Tankuj';
   const warnings=[];
   if(en.some(e=>e.overheated||e.thermalTrip))warnings.push('PRZEGRZANIE · zmniejsz gaz i opuść napęd'+(en.some(e=>e.thermalTrip)?' · silnik zatrzymany':''));
@@ -47,7 +47,7 @@ export function installCockpit(api){
   for(const [i,e]of en.entries()){
    $('#key-state-'+i).textContent=({off:'Wyłączony',ignition:'Zapłon',starting:'Rozrusznik…',running:'Pracuje'})[e.key];$('#key-'+i+' .key-pointer').style.transform=`rotate(${e.key==='off'?-48:e.key==='starting'?48:0}deg)`;$('#key-'+i).classList.toggle('running',e.key==='running');$('#temperature-'+i).textContent=Math.round(e.temperature)+'°C';$('#temperature-'+i).classList.toggle('danger',e.overheated);
   }
-  $('#raise-engines').disabled=!!S.jet;document.querySelectorAll('[data-trim]').forEach(btn=>btn.disabled=!!S.jet);
+  document.querySelectorAll('[data-trim]').forEach(btn=>btn.disabled=!!S.jet);
   $('#thruster-panel').hidden=!S.bowThruster&&!S.sternThruster;for(const end of ['bow','stern'])$('#thruster-'+end).hidden=!S[end+'Thruster'];
  };
 }

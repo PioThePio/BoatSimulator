@@ -21,4 +21,11 @@ export function draggablePopup(panel,handle){
   e.preventDefault();e.stopPropagation();const box=panel.getBoundingClientRect(),host=panel.parentElement.getBoundingClientRect();place(box.left-host.left+direction[0],box.top-host.top+direction[1]);
  });
  const resize=new ResizeObserver(()=>{if(placed&&!panel.hidden)place(parseFloat(panel.style.left),parseFloat(panel.style.top));});resize.observe(panel.parentElement);resize.observe(panel);
+ return{beside(x,y,boatRadius=10){
+  const host=panel.parentElement,pad=10,right=x+boatRadius+18;
+  // Prefer the right side; on a narrow phone keep the panel on screen below/above
+  // the boat instead of forcing it across the middle of the hull.
+  const fits=right+panel.offsetWidth<=host.clientWidth-pad;
+  place(fits?right:host.clientWidth-panel.offsetWidth-pad,fits?y-panel.offsetHeight*.25:y+boatRadius+18);
+ }};
 }
