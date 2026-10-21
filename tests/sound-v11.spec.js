@@ -1,6 +1,6 @@
 import {test,expect} from '@playwright/test';
 
-test('ignition buzzer has real audible and quiet intervals, stops at START, and obeys mute and pause',async({page})=>{
+test('ignition buzzer is continuous, stops at START, and obeys mute and pause',async({page})=>{
  await page.goto('/');
  const results=await page.evaluate(async()=>{
   const {createSoundscape}=await import('/src/sound.js'),{createBoat}=await import('/src/physics.js');
@@ -12,7 +12,7 @@ test('ignition buzzer has real audible and quiet intervals, stops at START, and 
   }
   return{on:await render('ignition'),off:await render('off'),start:await render('starting'),muted:await render('ignition',false),paused:await render('ignition',true,false)};
  });
- expect(results.on.bins.filter(v=>v>.003).length).toBeGreaterThanOrEqual(4);expect(results.on.bins.filter(v=>v<.0001).length).toBeGreaterThanOrEqual(4);expect(results.on.tone).toBeGreaterThan(.001);
+ expect(Math.min(...results.on.bins.slice(3))).toBeGreaterThan(.003);expect(Math.max(...results.on.bins.slice(3))/Math.min(...results.on.bins.slice(3))).toBeLessThan(1.05);expect(results.on.tone).toBeGreaterThan(.001);
  for(const name of ['off','muted','paused'])expect(Math.max(...results[name].bins)).toBeLessThan(.000001);
  expect(results.start.tone).toBeLessThan(results.on.tone*.02);
 });

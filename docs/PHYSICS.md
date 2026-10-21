@@ -1,4 +1,4 @@
-# Model v12: podstawy, założenia i ograniczenia
+# Model v13: podstawy, założenia i ograniczenia
 
 Model ma odtwarzać **zależności fizyczne w manewrach**, ale nie jest
 zweryfikowanym cyfrowym bliźniakiem konkretnej motorówki. Nie dysponujemy
@@ -641,8 +641,8 @@ do osobnych pasm rozbryzgu w stereo. Szybkość względem wody wyznacza
 poziom i pasmo; sam pozostawiony stan ślizgu przy zatrzymanej łodzi nie
 generuje szumu jazdy. Nie jest to symulacja akustyki CFD ani nagranie łodzi.
 
-W pozycji I bez pracy silnika jeden wspólny alarm 1050 Hz odzywa się
-cyklicznie co 1,4 s. Bramka ma wygładzone zbocza. Przy dwóch silnikach
+W pozycji I bez pracy silnika jeden wspólny alarm 1050 Hz brzmi ciągle
+(od v13; w v11–12 był przerywany). Zmiana poziomu ma wygładzone zbocza. Przy dwóch silnikach
 wystarczy jeden pozostawiony na zapłonie; alarm obejmuje także zgaśnięcie
 z braku paliwa i zatrzymanie przez ochronę termiczną. Nie dublujemy
 brzęczyków. START, praca i 0 nie uruchamiają tego alarmu. Wyciszenie,
@@ -695,13 +695,13 @@ szkód może krótko błysnąć zielono; nie zostawia czerwonego śladu. Samo
 osiadanie bez szkód ma żółty status. Ułamkowe otarcie śruby jest widoczne
 przy odczycie zdrowia z dokładnością do 0,1 punktu procentowego.
 
-Warsztat/slip leży przy x=121–128, y=6,5–19, obok pomostów serwisowych.
+Slip w v13 leży przy x=121–128, y=−8–36, obok pomostów serwisowych.
 Naprawę można rozpocząć przy całym kadłubie w prostokącie x=119,5–130,5,
 y=16–31, prędkości do 0,12 m/s, obrocie do 0,025 rad/s, wyłączonym zapłonie
 i rzeczywistej cumie do tego stanowiska. Kadłub odnawia 3 punkty zdrowia
 na sekundę, śruby po 4. Zerwanie warunków przerywa pracę. Proces nie
-przemieszcza łodzi ani nie zmienia szkód pomostu; nie modeluje wyciągania
-na przyczepę, geometrii podpór ani pracy warsztatu w czasie rzeczywistym.
+przemieszcza łodzi ani nie zmienia szkód pomostu. Slipowanie przyczepą
+jest osobnym mechanizmem opisanym niżej; naprawa nadal odbywa się przy pomoście.
 Domki są na lądzie i stanowią przeszkody; nowe pomosty używają tej samej
 skali metrów i solvera kontaktu co reszta portu.
 
@@ -711,3 +711,82 @@ kliknięć ani alarmu. Obie nastawy zapisujemy lokalnie, starszy zapis
 bez poziomu silnika otrzymuje 100%. Elektryczna pompa trymu ma osobny
 szmer i ton mechaniczny; słychać je wyłącznie przy niezerowej fizycznej
 prędkości regulacji, do osiągnięcia celu. Skuter nie generuje tego dźwięku.
+
+## SUV, przyczepa i slipowanie w v13
+
+SUV to osobne ciało: masa 2400 kg, 250 KM, długość 4,9 m, rozstaw osi
+2,9 m, skręt kół ±34°, koło 2,5 obrotu. Przyczepa dobiera długość,
+szerokość, liczbę osi i masę do wybranej łodzi. Masa własna to
+`220 + 65*L + 0,055*max(0,masa_łodzi-1200)` kg. Zestawy o nośności
+powyżej 750 kg mają model hamulców przyczepy także po zdjęciu łodzi.
+To wybrane parametry treningowe, bez przypisania do konkretnego SUV-a.
+
+Samochód i przyczepa mają po trzy stopnie swobody w płaszczyźnie.
+Impulsy w dwóch osiach wymuszają zgodność pozycji i prędkości zaczepu;
+osiem iteracji na krok 1/120 s przenosi siły i momenty między ciałami.
+Kąt przyczepy wynika z ruchu, sił opon i przegubu, więc cofanie może
+złożyć zestaw. Zderzenie kończące zakres przy około 80° ogranicza dalsze
+załamanie. Przednia i tylna oś SUV-a oraz oś/osiowy środek przyczepy
+mają tłumione poprzeczne poślizgi z limitem Coulomba. Napęd i boczna
+przyczepność dzielą budżet siły opon. Ściany, domki i pomosty zatrzymują
+pojazdy. Linie parkingowe nie są przeszkodami.
+
+PRND określa kierunek napędu albo hamulec postojowy. Zmiana kierunku
+wymaga prędkości poniżej 0,25 m/s; rozruch pozycji P/N, trwa 0,85 s.
+Gaz ma stałą narastania 0,25 s, obroty dochodzą do celu z bezwładnością.
+Maksymalny uciąg napędu 13,1 kN dodatkowo ograniczają moc 150 kW na
+kołach i przyczepność. Dochodzą opory toczenia, hamulce, opór wody,
+hamowanie silnikiem i składowa grawitacji na rampie. Bieg R ogranicza
+napęd powyżej 3,2 m/s; zjazd pod ciężarem może przekroczyć ten zakres.
+Każdy pedał działa do puszczenia; klawiatura nie zmienia manetek łodzi.
+Paliwa SUV-a ubywa według pracy napędu i obrotów jałowych. Audio korzysta
+z rzeczywistych obrotów i obciążenia SUV-a.
+
+Pochylnia x=121–128, y=−8–36 ma linię wody y=7,5 i regulowany kąt
+4–18°. Głębokość to `(y−7,5)*tan(kąt)`; na bokach i końcu rampy
+przechodzi w dno jeziora. Zmiana kąta aktualizuje fizyczne dno i jego
+obraz. Parking na lądzie ma 64 × 40 m i miejsca około 4,7 × 13 m.
+Tył SUV-a częściowo wjeżdża do wody; układ pokazuje głębokość przy
+kołach i pod podporami. μ suchego podłoża wynosi 0,78, a mokrego/
+zanurzonego zmniejsza się od 0,44 do 0,22. Głębokie zanurzenie nadwozia
+zmniejsza nacisk osi. Przekroczenie 0,9 m przy przedniej osi gasi silnik
+(dolot pod wodą); nie można wtedy ponownie go uruchomić. Ciężar,
+nachylenie i poślizg mogą uniemożliwić wyjazd. Ostrzeżenie powyżej 3,5 t
+na haku odnosi się do umownej zdolności tej jednostki holującej.
+
+Podpory znajdują się `0,6 + 0,15*zanurzenie_kadłuba` m nad rampą.
+Wypór odciąża przyczepę stopniowo jako
+`clamp((głębokość-podpory)/zanurzenie_kadłuba,0,1)`. Na przyczepie
+kadłub jest podparty: zachowuje prześwit, pochylenie rampy i ruch zestawu,
+a wyłączony kontakt z dnem nie nalicza fałszywych szkód transportowych.
+Zwolnienie zabezpieczeń na sucho nie przenosi łodzi na wodę. Dopiero
+prawie całkowity wypór zwalnia podparcie i przywraca pełną fizykę łodzi,
+z zachowaniem położenia i prędkości. Zwolniona cuma nadal ogranicza ruch,
+a usunięcie jej następuje przez zwykłą obsługę lin.
+
+Załadunek wymaga podejścia dziobem, ustawienia względem prowadnic
+(do około 11,5°, 65 cm wzdłużnie i 20% szerokości + 10 cm poprzecznie),
+względnej prędkości poniżej 0,3 m/s, postoju samochodu, wyłączonych
+silników i cumy dziobowej do PRZ. Za mała głębokość zwiększa opór
+przesuwania po podporach; stalowe prowadnice przenoszą kontakt na zestaw.
+Za głęboko (ponad podpory + zanurzenie + 45 cm) nie można zabezpieczyć
+łodzi, dopóki SUV nie podjedzie płycej. Ruchomy poler PRZ ma prędkość
+punktu przyczepy i odbiera reakcję od cumy, zamiast zachowywać się jak
+nieruchomy punkt na brzegu. Lina do PRZ nie zalicza się jako cumowanie
+do pomostu serwisowego. Model nie obejmuje pracy rolek 3D, zawieszenia,
+przechyłu poprzecznego rampy ani rzeczywistych opon/ciśnienia.
+
+Alarm zapłonu w v13 jest ciągłym tonem 1050 Hz; wygładzenie głośności
+pozostaje przy włączaniu i wyłączaniu. Nie ma cyklicznej bramki.
+Strzałka po prawej pokazuje lokalny aktualny wiatr z osłonami, w m/s
+oraz kurs **dokąd** wieje (zgodnie z panelem pogody).
+Kolory knag w menu to dostępność połączenia: jasna wolna, zielona do
+wybranego punktu, beżowa do innego. Nie oznaczają napięcia. To ostatnie
+jest podane w kN i oddzielnie zmienia kolor liny na mapie.
+
+Testy obejmują start/stacyjkę, PRND, masę i hamowanie, skręcanie naprzód/
+wstecz, zgodność zaczepu, odciążanie wyporem, odczepienie na sucho,
+załadunek i jego warunki, reakcję ruchomego polera, mokrą przyczepność,
+przeciążony zestaw na stromym slipie, zanurzenie dolotu oraz pełny cykl
+wodowania i powrotu na ląd. Testy przeglądarkowe obejmują przełączanie
+kokpitu, trzymane pedały, klawiaturę, pogodę, kąt rampy i ekran telefonu.

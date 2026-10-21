@@ -10,6 +10,7 @@ import {groundContact,propellerContact} from './ground.js';
 import {createSystems,systemsStep} from './systems.js';
 import {createTraffic,trafficStep} from './traffic.js';
 import {specification,engineState,updateEngine} from './craft.js';
+import {placeTrailerBoat} from './towing.js';
 import {point,cleat,attachRope,solveRopes,createAnchor,updateAnchor,inverseMass,impulse} from './rigging.js';
 export {clamp,DOCKS,SOLIDS,BOLLARDS,environment,bottomAt,waveAt,point,cleat,attachRope};
 export const MODEL=specification();
@@ -27,6 +28,11 @@ function event(b,message){b.events.unshift({time:b.time,message});b.events=b.eve
 function oscillator(state,vel,target,omega,zeta,dt,forcing=0){const acc=omega*omega*(target-state)-2*zeta*omega*vel+forcing;vel+=acc*dt;return[state+vel*dt,vel];}
 export function step(b,e,dt){
  b.time+=dt;const S=b.spec,c=Math.cos(b.a),s=Math.sin(b.a);
+ if(b.towRig?.boatLoaded){
+  placeTrailerBoat(b.towRig,b);b.throttle=b.throttle2=0;
+  for(const en of b.engines)updateEngine(en,0,0,dt,b.damage,{noFuel:b.fuel.litres<=0,raised:true,immersion:0,intake:0});
+  systemsStep(b,dt);trafficStep(b,e,dt);boomStep(b,e,dt);return;
+ }
  const env=environment(b.time,e,b.x,b.y),wave=waveAt(b.x,b.y,b.time,e);
  const ownWave=sampleHullWake(b.wake,b.x,b.y,b.time);
  for(const key of ['eta','sx','sy','vx','vy','ax','ay'])wave[key]+=ownWave[key];

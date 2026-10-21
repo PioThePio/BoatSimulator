@@ -59,10 +59,8 @@ export function createSoundscape({context=null}={}){
   });
   // Tunnel thrust is mostly turbulent water. No sustained pitched oscillator.
   const thrusters=[-.15,.15].map(pan=>noiseVoice(520,pan));
-  const alarm={source:oscillator('sine',1050),clock:oscillator('sine',1/1.4),gain:ctx.createGain()},gate=ctx.createWaveShaper(),envelope=ctx.createGain(),soften=ctx.createBiquadFilter();
-  gate.curve=Float32Array.from({length:1024},(_,i)=>{const t=clamp(((i/1023*2-1)-.55)/.12,0,1);return t*t*(3-2*t);});
-  soften.type='lowpass';soften.frequency.value=24;soften.Q.value=.5;envelope.gain.value=0;alarm.gain.gain.value=0;
-  alarm.clock.connect(gate);gate.connect(soften);soften.connect(envelope.gain);alarm.source.connect(envelope);envelope.connect(alarm.gain);alarm.gain.connect(master);
+  const alarm={source:oscillator('sine',1050),gain:ctx.createGain()};alarm.gain.gain.value=0;
+  alarm.source.connect(alarm.gain);alarm.gain.connect(master);
   const pump={source:oscillator('sine',95),gain:ctx.createGain()};pump.gain.gain.value=0;pump.source.connect(pump.gain);pump.gain.connect(master);
   const trim={source:oscillator('triangle',185),gain:ctx.createGain(),noise:noiseVoice(720)};trim.gain.gain.value=0;trim.source.connect(trim.gain);trim.gain.connect(master);
   graph={master,engineMaster,buffer,engines,thrusters,pump,trim,alarm,v8Wave,waves:noiseVoice(240),wash:noiseVoice(1100),spray:noiseVoice(1900,-.35),sprayRight:noiseVoice(2300,.35)};

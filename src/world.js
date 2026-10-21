@@ -12,8 +12,11 @@ export const DOCKS=[{x:6,y:10,w:23,h:2.8},{x:17,y:12.8,w:2.8,h:17},{x:29,y:10,w:
  {x:31.8,y:10,w:78.2,h:2.8},{x:49,y:12.8,w:2.8,h:20},{x:70,y:12.8,w:2.8,h:24},
  {x:4,y:190,w:14,h:1.5},{x:17,y:185,w:1.4,h:13},{x:328,y:260,w:1.6,h:25},{x:328,y:283.5,w:15,h:1.6},
  {x:110,y:10,w:9.5,h:2.8,service:true},{x:118,y:12.8,w:1.5,h:18.2,service:true},{x:130.5,y:7,w:1.5,h:24,service:true}];
-export const SERVICE_STATION={x:119.5,y:16,w:11,h:15,slip:{x:121,y:6.5,w:7,h:13},start:{x:125,y:24,a:-Math.PI/2}};
-export const BUILDINGS=[{x:12,y:-5,w:8,h:6,roof:'#b28365'},{x:35,y:-4,w:7,h:6,roof:'#a18c72'},{x:53,y:-5,w:8,h:7,roof:'#b38c6c'},{x:76,y:-5,w:9,h:6,roof:'#8e9d8a'},{x:116,y:-3,w:13,h:7,roof:'#839a92',service:true}];
+export const SERVICE_STATION={x:119.5,y:16,w:11,h:15,slip:{x:121,y:-8,w:7,h:44,waterY:7.5,angle:8},start:{x:125,y:24,a:-Math.PI/2}};
+export const PARKING={x:101,y:-48,w:64,h:40};
+export function setSlipAngle(value){SERVICE_STATION.slip.angle=clamp(Number(value)||8,4,18);}
+export function slipDepth(x,y){const r=SERVICE_STATION.slip;return(y-r.waterY)*Math.tan(r.angle*Math.PI/180);}
+export const BUILDINGS=[{x:12,y:-5,w:8,h:6,roof:'#b28365'},{x:35,y:-4,w:7,h:6,roof:'#a18c72'},{x:53,y:-5,w:8,h:7,roof:'#b38c6c'},{x:76,y:-5,w:9,h:6,roof:'#8e9d8a'},{x:142,y:-3,w:13,h:7,roof:'#839a92',service:true}];
 // Floating fingers: 25 cm beam, triangular brace only at the hinge, 5 m spacing.
 export const YBOOMS=Array.from({length:6},(_,i)=>({id:i,x1:76+i*5,y1:12.8,x2:76+i*5,y2:22.8,width:.25,length:10,a:Math.PI/2}));
 export const BUOY_SLIPS=[35.5,41,46.5].map((x,i)=>({x,y:26,id:`B${i+1}`}));
@@ -31,7 +34,8 @@ export const BOLLARDS=[...[[12,12.8],[17,18],[17,25],[19.8,28],[29,17],[29,23],[
  ...[16,22,28].flatMap((y,i)=>[119.5,130.5].map((x,j)=>({x,y,kind:'bollard',id:`R${i+1}${j?'P':'L'}`,label:`Serwis · poler ${i+1} ${j?'P':'L'}`}))),
  ...BUOY_SLIPS.flatMap((q,i)=>[-1,1].map(side=>({x:q.x+side*1.2,y:12.8,kind:'bollard',id:`S${i+1}${side<0?'L':'P'}`,label:`Stanowisko ${i+1} · ${side<0?'lewa':'prawa'} knaga`}))),
  ...YBOOMS.flatMap((q,i)=>[.22,.92].map(fraction=>({x:q.x1,y:q.y1+q.length*fraction,boom:i,fraction,kind:'bollard',id:`Y${i+1}${fraction<.5?'A':'B'}`,label:`Y-bom ${i+1} · ${fraction<.5?'nasada':'koniec'}`}))),
- ...[...BUOY_SLIPS,{x:64,y:38,id:'B4'}].map(q=>({...q,kind:'buoy',label:`Boja ${q.id.slice(1)}`}))];
+ ...[...BUOY_SLIPS,{x:64,y:38,id:'B4'}].map(q=>({...q,kind:'buoy',label:`Boja ${q.id.slice(1)}`})),
+ {x:124.5,y:-19,kind:'bollard',id:'PRZ',trailer:true,label:'Przyczepa · poler dziobowy'}];
 export const TRAFFIC=[{id:0,type:'motor',x:35.5,y:18.8,a:Math.PI/2,length:5.2,beam:2.1,mass:1100,ties:[['portStern','S1P'],['starboardStern','S1L'],['bow','B1']]},
  {id:1,type:'sail',x:88.5,y:18.3,a:Math.PI/2,length:7.8,beam:2.3,mass:2600,ties:[['portStern','Y4A'],['starboardStern','Y3A'],['portBow','Y4B'],['starboardBow','Y3B']]},
  {id:2,type:'pwc',x:98.5,y:16.7,a:Math.PI/2,length:3.2,beam:1.2,mass:380,ties:[['portStern','Y6A'],['starboardStern','Y5A'],['portBow','Y6B'],['starboardBow','Y5B']]}];
@@ -59,7 +63,9 @@ export function bottomAt(x,y){
  const basin=shore.edge==='canal'?2.8:8.5;
  let depth=dist>=0?basin*(1-Math.exp(-dist*slope/basin)):dist*(shore.beach?.07:.32);
  if(dist>=0){for(const s of SHOALS)depth-=s.drop*Math.exp(-((x-s.x)**2/s.rx**2+(y-s.y)**2/s.ry**2));depth=Math.max(.015,depth+.10*Math.sin(x*.13)*Math.sin(y*.16)*clamp(dist/12,0,1));}
- const material=shore.beach?'sand':(shore.edge==='island'&&shore.along<0)||x>73&&y<40?'rock':x>113?'mud':'sand';
+ const ramp=SERVICE_STATION.slip;
+ if(x>ramp.x&&x<ramp.x+ramp.w&&y>=ramp.y&&y<ramp.y+ramp.h){const blend=clamp(Math.min(x-ramp.x,ramp.x+ramp.w-x),0,1)*clamp((ramp.y+ramp.h-y)/5,0,1);depth+=(slipDepth(x,y)-depth)*blend;}
+ const material=x>ramp.x&&x<ramp.x+ramp.w&&y>=ramp.y&&y<ramp.y+ramp.h?'rock':shore.beach?'sand':(shore.edge==='island'&&shore.along<0)||x>73&&y<40?'rock':x>113?'mud':'sand';
  return{depth,material,name:{sand:'piasek',mud:'muł',rock:'kamienie'}[material],holding:{sand:28,mud:12,rock:3}[material],shoreDistance:dist,land:shore.land,beach:shore.beach};
 }
 export function bottomGradient(x,y){const d=.12;return{x:(bottomAt(x+d,y).depth-bottomAt(x-d,y).depth)/(2*d),y:(bottomAt(x,y+d).depth-bottomAt(x,y-d).depth)/(2*d)};}

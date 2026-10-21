@@ -1,11 +1,11 @@
-# Przystań — symulator manewrów motorówką v12
+# Przystań — symulator manewrów motorówką v13
 
 Przeglądarkowy symulator z widokiem z góry, bez kont i backendu. Pięć rodzajów
 łodzi, w tym skuter, zmieniane wymiary i masa, jeden lub dwa silniki do 350 KM.
 Nieregularne jezioro 600 × 400 m, wyspa z przesmykiem, plaże, mielizny,
 szuwary, port ze stanowiskami z bojami i ruchomymi Y-bomami szerokości 25 cm.
 
-Uruchom: **https://piothepio.github.io/BoatSimulator/?v=12.0.0**.
+Uruchom: **https://piothepio.github.io/BoatSimulator/?v=13.0.0**.
 
 Model służy do poznawania zależności w manewrach; nie jest skalibrowany dla
 konkretnej łodzi. [Źródła, równania i ograniczenia](docs/PHYSICS.md).
@@ -34,7 +34,7 @@ Na początku wybierz łódź, wyposażenie, **miejsce startu** i pogodę.
 klawisz R i przycisk „Łódź i start” otwierają ten sam formularz, zachowując
 wcześniejsze wybory. Zamknięcie okna bez rozpoczęcia nie resetuje rejsu.
 Pogodę podczas pływania zmieniaj pod ikoną **☀ na mapie**.
-Formularze łodzi i pogody są w oknach; pod konsolą pozostają cumy i kotwica.
+Formularze łodzi i pogody są w oknach; pod konsolą pozostają cumy, kotwica i ustawienia slipowania.
 Stan kadłuba, pomostu i śrub jest w kokpicie pod schematem uniesienia dziobu.
 Obrys mapy stanu pokazuje uderzenia w burty, wnętrze trzy części dna
 (przód, środek, tył), a symbole napędów z tyłu stan każdej śruby.
@@ -81,6 +81,29 @@ w zadanej pozycji. Dwa silniki mają osobne obrotomierze, obciążenie i ciąg.
 Wsteczny ciąg jest słabszy, a zmiana biegu wymaga czasu. Luz pozwala płynąć
 bezwładnością; zanurzony zaburtowy nadal reaguje na przepływ wody.
 
+## SUV i slipowanie
+
+Wybierz start **Parking · łódź na przyczepie** albo **Slip · załadunek z wody**.
+Przycisk na mapie, wybór stanowiska w konsoli lub **V** przełącza łódź/SUV.
+Koło i wskaźniki pozostają na swoich miejscach, manetki zastępują gaz,
+hamulec i **PRND**. W/↑ gaz, S/↓ lub Spacja hamulec, 1/2/3/4 wybiera
+P/R/N/D. Stacyjka: klik w prawo zapłon/rozruch, w lewo całkowite wyłączenie.
+Zatrzymaj zestaw przed zmianą kierunku i przesiadką. Pedały puszczają po
+zwolnieniu przycisku, suwaka albo klawisza.
+
+Cofnij przyczepę na slip, zatrzymaj w P i zwolnij zabezpieczenia.
+Łódź odpłynie dopiero po zanurzeniu podpór. Do załadunku wprowadź ją
+prosto między prowadnice, załóż cumę dziobową na **PRZ**, zatrzymaj,
+wyłącz silniki i wybierz **Zabezpiecz łódź**. Zbyt płytka/głęboka przyczepa
+utrudnia operację. Przed wyjazdem odczep cumy od pomostu i wybierz kotwicę.
+Kąt slipu 4–18° ustawisz na starcie lub w panelu poniżej. Obciążenie,
+przegub, hamowanie, opory, wypór i mokra trakcja wpływają na ruch;
+parking z liniami służy do ćwiczenia cofania i parkowania.
+
+Knagi w menu cumowania: **jasna** wolna, **zielona** połączona z wybranym
+polerem, **beżowa** z innym. Naciąg pokazuje wartość w kN i kolor liny na
+mapie. Po prawej jest lokalny wiatr ze strzałką pokazującą **dokąd** wieje.
+
 ## Dźwięk i pogoda
 
 Proste syntezowane dźwięki: stacyjka, rozrusznik, osobna praca i obroty silników,
@@ -93,7 +116,7 @@ W v11 silniki mają łagodniejsze, cichsze brzmienie i więcej szumu wydechu,
 a kliknięcia manetki, stacyjki i uderzenia są wyraźniejsze. Strumieniowy
 szumi wodą; wejście w ślizg dodaje osobny, szerszy rozbryzg i ogranicza
 niższy szum wypornościowy. Zapłon bez pracującego silnika uruchamia
-przerywany brzęczyk, również po zgaśnięciu; START, praca silnika i pozycja
+ciągły brzęczyk, również po zgaśnięciu; START, praca silnika i pozycja
 0 wyłączają go. Zimny silnik lekko faluje na wolnych obrotach, a efekt
 zanika przy rozgrzaniu i zwiększeniu gazu. Okno cumowania otwiera się dalej
 od kadłuba, z zachowaniem możliwości przesuwania i obsługi na telefonie.

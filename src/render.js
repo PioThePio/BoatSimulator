@@ -1,11 +1,12 @@
 import {LAKE,REEDS,FUEL_STATION,FUEL_FENDERS,SERVICE_STATION,BUILDINGS,WORLD,ISLAND,DOCKS,BOLLARDS,BEACHES,islandOutline,islandRadius,shoreAt,bottomAt,environment,waveHeight,clamp} from './world.js';
+import {drawParking,drawTowRig} from './render-towing.js';
 import {drawHullWake} from './wake.js';
 import {mooringPoint} from './marina.js';
 import {FENDERS,HULL_SECTIONS,impactPaint} from './impacts.js';
 import {point,cleat,cleatLocal,CLEATS} from './rigging.js';
-let terrain=null;
+let terrain=null,terrainAngle=null;
 function terrainImage(){
- if(terrain)return terrain;terrain=document.createElement('canvas');terrain.width=608;terrain.height=408;const c=terrain.getContext('2d'),im=c.createImageData(608,408);
+ if(terrain&&terrainAngle===SERVICE_STATION.slip.angle)return terrain;terrainAngle=SERVICE_STATION.slip.angle;terrain=document.createElement('canvas');terrain.width=608;terrain.height=408;const c=terrain.getContext('2d'),im=c.createImageData(608,408);
  const stops=[[0,[218,218,183]],[.4,[200,216,185]],[1,[184,211,196]],[2,[172,207,199]],[4,[161,201,198]],[8.5,[148,191,192]]];
  for(let y=0;y<408;y++)for(let x=0;x<608;x++){const q=bottomAt(x,y),shore=shoreAt(x,y),d=q.depth;let rgb;
  if(d<0)rgb=shore.beach?[229,211,168]:[174,197,155];else{let j=1;while(j<stops.length-1&&d>stops[j][0])j++;const [lo,low]=stops[j-1],[hi,high]=stops[j],t=clamp((d-lo)/(hi-lo),0,1);rgb=low.map((v,k)=>v+(high[k]-v)*t);}
@@ -17,19 +18,20 @@ function island(ctx,padding,color){path(ctx,islandOutline(padding));ctx.fillStyl
 export function propWashCount(engine){return Math.abs(engine.thrust)>5?1+Math.floor(clamp((engine.n-.23)/.77,0,1)*5):0;}
 export function renderWorld(ctx,state){
  const {boat:b,env,width,height,zoom,follow,overview,manualCenter,selected}=state;
- const base=Math.min(width/140,height/80);
- const scale=overview?Math.min((width-40)/600,(height-40)/400):base*zoom*(b.cameraZoom??1);
+ const focus=state.focus??b,base=state.focus?Math.min(width/65,height/45):Math.min(width/140,height/80);
+ const scale=overview?Math.min((width-40)/600,(height-40)/400):base*zoom*(focus.cameraZoom??1);
  const halfX=width/(2*scale),halfY=height/(2*scale);
  const tracked={x:halfX>300?304:clamp(b.x,4+halfX-3,604-halfX+3),y:halfY>200?204:clamp(b.y,4+halfY-3,404-halfY+3)};
  const ref=state.centerReference??b,refTracked={x:halfX>300?304:clamp(ref.x,4+halfX-3,604-halfX+3),y:halfY>200?204:clamp(ref.y,4+halfY-3,404-halfY+3)},blend=Math.exp(-Math.hypot(b.x-ref.x,b.y-ref.y)/16);
  const initialOffset={x:(ref.x-refTracked.x)*blend,y:(ref.y-refTracked.y)*blend};
- const camera=overview?{x:304,y:204}:!follow&&manualCenter?{...manualCenter}:{x:tracked.x+initialOffset.x,y:tracked.y+initialOffset.y};
+ const camera=overview?{x:304,y:204}:!follow&&manualCenter?{...manualCenter}:state.focus?{x:focus.x,y:focus.y}:{x:tracked.x+initialOffset.x,y:tracked.y+initialOffset.y};
  if(state.screenShift)camera.x=b.x+state.screenShift/scale;
  const bounds={left:camera.x-width/(2*scale),right:camera.x+width/(2*scale),top:camera.y-height/(2*scale),bottom:camera.y+height/(2*scale)};
  ctx.clearRect(0,0,width,height);ctx.fillStyle='#aec59b';ctx.fillRect(0,0,width,height);
  ctx.save();ctx.translate(width/2,height/2);ctx.scale(scale,scale);ctx.translate(-camera.x,-camera.y);
  const visible=(x,y,pad=4)=>x>bounds.left-pad&&x<bounds.right+pad&&y>bounds.top-pad&&y<bounds.bottom+pad;
  ctx.drawImage(terrainImage(),0,0,608,408);
+ drawParking(ctx);
  // Small shore settlement and a concrete slip next to the service fingers.
  for(const house of BUILDINGS){
   if(!visible(house.x,house.y,20))continue;
@@ -41,7 +43,7 @@ export function renderWorld(ctx,state){
  }
  const slip=SERVICE_STATION.slip;
  if(visible(slip.x,slip.y,30)){
-  ctx.fillStyle='#aeb8a5';ctx.fillRect(slip.x,slip.y,slip.w,slip.h);ctx.strokeStyle='#849889';ctx.lineWidth=.12;
+  const concrete=ctx.createLinearGradient(0,slip.waterY,0,slip.y+slip.h);concrete.addColorStop(0,'#aeb8a5');concrete.addColorStop(1,'#a5c3b9');ctx.fillStyle=concrete;ctx.fillRect(slip.x,slip.y,slip.w,slip.h);ctx.strokeStyle='#849889';ctx.lineWidth=.12;
   for(let y=slip.y+.6;y<slip.y+slip.h;y+=.8){ctx.beginPath();ctx.moveTo(slip.x,y);ctx.lineTo(slip.x+slip.w,y);ctx.stroke();}
   ctx.strokeStyle='#74887e';ctx.lineWidth=.18;for(const x of [slip.x+1.8,slip.x+slip.w-1.8]){ctx.beginPath();ctx.moveTo(x,slip.y);ctx.lineTo(x,slip.y+slip.h);ctx.stroke();}
   ctx.font='bold 1.3px system-ui';ctx.fillStyle='#486c60';ctx.fillText('SLIP · NAPRAWA',119,34);
@@ -79,16 +81,16 @@ export function renderWorld(ctx,state){
  if(previousBoat!==b){wake=[];lastWake=b.time;previousBoat=b;}
  const water=environment(b.time,env,b.x,b.y).current;
  drawHullWake(ctx,b.wake,b.time);
- if(b.time-lastWake>.18){
+ if(!b.towRig?.boatLoaded&&b.time-lastWake>.18){
   lastWake=b.time;for(const x of [-.38,0,.38])for(const y of [-.50,.50]){
    const p=point(b,b.spec.length*x,b.spec.beam*y),vx=b.vx-b.w*(p.y-b.y)-water.x,vy=b.vy+b.w*(p.x-b.x)-water.y,speed=Math.hypot(vx,vy);
    if(speed>.15)wake.push({x:p.x,y:p.y,t:b.time,angle:Math.atan2(vy,vx),size:Math.min(.45,.12+speed*.06)});
   }
  }
- wake=wake.filter(p=>b.time-p.t<4).slice(-240);
+ wake=b.towRig?.boatLoaded?[]:wake.filter(p=>b.time-p.t<4).slice(-240);
  for(const p of wake){const age=b.time-p.t,x=p.x+water.x*age,y=p.y+water.y*age;ctx.save();ctx.translate(x,y);ctx.rotate(p.angle);ctx.strokeStyle=`rgba(250,255,246,${.6*(1-age/4)})`;ctx.lineWidth=.07;ctx.beginPath();ctx.moveTo(-p.size,-p.size*(1+age*.2));ctx.quadraticCurveTo(p.size*.3,0,-p.size,p.size*(1+age*.2));ctx.stroke();ctx.restore();}
  // Local velocities show bow and stern moving in opposite directions during rotation.
- for(const x of [-.4,0,.4]){
+ for(const x of (b.towRig?.boatLoaded?[]:[-.4,0,.4])){
   const p=point(b,b.spec.length*x,0),vx=b.vx-b.w*(p.y-b.y)-water.x,vy=b.vy+b.w*(p.x-b.x)-water.y,v=Math.hypot(vx,vy);
   if(v<.12)continue;
   const unit={x:vx/v,y:vy/v},perp={x:-unit.y,y:unit.x},advance=(b.time*Math.max(.15,v))%.65;
@@ -103,7 +105,7 @@ export function renderWorld(ctx,state){
   const bob=1+clamp(q.heave*.18,-.04,.04);
   ctx.save();ctx.translate(q.x,q.y);ctx.scale(bob,bob);ctx.rotate(q.a);ctx.scale(1,Math.cos(q.roll));ctx.fillStyle=q.type==='pwc'?'#ddae62':'#e8e9dc';ctx.strokeStyle='#597d75';ctx.lineWidth=.09;ctx.beginPath();ctx.moveTo(q.length*.5,0);ctx.quadraticCurveTo(q.length*.2,-q.beam*.6,-q.length*.47,-q.beam*.45);ctx.lineTo(-q.length*.47,q.beam*.45);ctx.quadraticCurveTo(q.length*.2,q.beam*.6,q.length*.5,0);ctx.fill();ctx.stroke();ctx.fillStyle='#729697';ctx.fillRect(-q.length*.2,-q.beam*.3,q.length*.35,q.beam*.6);if(q.type==='sail'){ctx.strokeStyle='#635f4e';ctx.beginPath();ctx.moveTo(-q.length*.4,0);ctx.lineTo(q.length*.55,0);ctx.stroke();ctx.fillStyle='#f8f3df';ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(-q.length*.35,q.beam*.3);ctx.lineTo(-q.length*.35,-q.beam*.3);ctx.fill();}ctx.fillStyle='#d5a64f';for(const end of Object.keys(CLEATS)){const p=cleatLocal(q.spec,end);ctx.beginPath();ctx.arc(p.x,p.y,.09,0,Math.PI*2);ctx.fill();}ctx.restore();
  }
- drawBoat(ctx,b);
+ drawTowRig(ctx,state.towRig,b);drawBoat(ctx,b);
  const bow=cleat(b,'bow');ctx.fillStyle='#cfb56d';ctx.beginPath();ctx.arc(bow.x,bow.y,.22,0,Math.PI*2);ctx.fill();
  ctx.restore();
  const metres=overview?50:5;ctx.strokeStyle='#4f756d';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(22,height-52);ctx.lineTo(22+metres*scale,height-52);ctx.moveTo(22,height-56);ctx.lineTo(22,height-49);ctx.moveTo(22+metres*scale,height-56);ctx.lineTo(22+metres*scale,height-49);ctx.stroke();ctx.fillStyle='#4f756d';ctx.font='10px system-ui';ctx.fillText(metres+' m',24,height-60);
@@ -111,8 +113,9 @@ export function renderWorld(ctx,state){
 }
 function drawBoat(ctx,b){
  ctx.save();ctx.translate(b.x,b.y);ctx.rotate(b.a);ctx.scale(b.spec.length/5.5,b.spec.beam/2.1*Math.cos(b.roll));
- ctx.fillStyle=`rgba(23,63,61,${.12+Math.abs(b.heave)*.15})`;ctx.beginPath();ctx.ellipse(.2,.23+b.heave*.8,3,1.18,0,0,Math.PI*2);ctx.fill();
- const bob=1+clamp(b.heave*.18,-.04,.04);ctx.scale(bob,bob);
+ const visualHeave=b.towRig?.boatLoaded?0:b.heave;
+ ctx.fillStyle=`rgba(23,63,61,${b.towRig?.boatLoaded?.05:.12+Math.abs(visualHeave)*.15})`;ctx.beginPath();ctx.ellipse(.2,.23+visualHeave*.8,3,1.18,0,0,Math.PI*2);ctx.fill();
+ const bob=1+clamp(visualHeave*.18,-.04,.04);ctx.scale(bob,bob);
  ctx.strokeStyle='#548f9190';ctx.lineWidth=.18;ctx.beginPath();ctx.moveTo(-2.7,0);ctx.lineTo(2.8,0);ctx.stroke();
  ctx.beginPath();ctx.moveTo(2.75,0);ctx.bezierCurveTo(1.8,-1.05,-.5,-1.15,-2.75,-.95);ctx.lineTo(-2.75,.95);ctx.bezierCurveTo(-.5,1.15,1.8,1.05,2.75,0);ctx.fillStyle=b.damage>=100?'#d0aaa0':b.spec.color;ctx.fill();ctx.strokeStyle='#2f5754';ctx.lineWidth=.1;ctx.stroke();
  for(const [zone,points]of Object.entries(HULL_SECTIONS)){
