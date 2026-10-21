@@ -21,7 +21,7 @@ test('propeller load changes exhaust colour at fixed RPM; ignition and a stopped
  for(const hp of [90,200]){
   const b=createBoat('lake',{powers:[hp]}),en=b.engines[0];Object.assign(en,{gear:1,n:.8,rpm:4500,load:.2});
   const light=soundParameters(b).engines[0];en.load=.9;const loaded=soundParameters(b).engines[0];
-  assert.equal(light.frequency,loaded.frequency);assert.ok(loaded.exhaust>light.exhaust*3);assert.ok(loaded.harmonicMix>light.harmonicMix);assert.ok(loaded.level>light.level);
+  assert.equal(light.frequency,loaded.frequency);assert.ok(loaded.exhaust>light.exhaust*1.4);assert.ok(loaded.harmonicMix>light.harmonicMix);assert.ok(loaded.level>light.level);
   for(const key of ['ignition','off']){en.key=key;const silent=soundParameters(b).engines[0];assert.equal(silent.level,0);assert.equal(silent.exhaust,0);assert.equal(silent.churn,0);}
  }
 });

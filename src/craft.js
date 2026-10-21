@@ -95,7 +95,11 @@ export function updateEngine(en,command,inflow,dt,damage=0,context={}){
  // Idle governor responds to clutch load; small combustion/governor ripple, independent per engine.
  const idle=750+(gear!==0?65*clamp(n/.22,0,1):0),shaft=4750*clamp((n-.23)/.77,0,1);
  const ripple=(11+9*n)*Math.sin(en.clock*8.1+en.y*2.7)+5*Math.sin(en.clock*13.7+en.hp*.01);
- en.rpm=idle+shaft+en.ventilation*450+ripple;
+ // Cold idle hunting fades with temperature and throttle; each engine has its
+ // own phase. It never introduces RPM on an engine that has stopped.
+ const cold=clamp((60-en.temperature)/42,0,1)*(1-clamp((n-.23)/.25,0,1)),phase=en.y*2.3+en.hp*.013;
+ const hunting=cold*(18*Math.sin(en.clock*2.1+phase)+9*Math.sin(en.clock*3.3-phase));
+ en.rpm=idle+shaft+en.ventilation*450+ripple+hunting;
  en.fuelFlow=.45+.003*en.hp+.29*en.hp*n**3*(.55+.45*en.load);
  return en.thrust;
 }

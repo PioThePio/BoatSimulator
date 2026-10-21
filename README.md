@@ -1,11 +1,11 @@
-# Przystań — symulator manewrów motorówką v10
+# Przystań — symulator manewrów motorówką v11
 
 Przeglądarkowy symulator z widokiem z góry, bez kont i backendu. Pięć rodzajów
 łodzi, w tym skuter, zmieniane wymiary i masa, jeden lub dwa silniki do 350 KM.
 Nieregularne jezioro 600 × 400 m, wyspa z przesmykiem, plaże, mielizny,
 szuwary, port ze stanowiskami z bojami i ruchomymi Y-bomami szerokości 25 cm.
 
-Uruchom: **https://piothepio.github.io/BoatSimulator/?v=10.0.0**.
+Uruchom: **https://piothepio.github.io/BoatSimulator/?v=11.0.0**.
 
 Model służy do poznawania zależności w manewrach; nie jest skalibrowany dla
 konkretnej łodzi. [Źródła, równania i ograniczenia](docs/PHYSICS.md).
@@ -81,6 +81,15 @@ uderzenia i pęknięcie cumy. Web Audio nie pobiera plików. Pierwsze dotknięci
 odblokowuje dźwięk; głośność i wyciszenie są zapamiętywane na urządzeniu.
 Pauza, menu startowe i utrata aktywności karty wyciszają symulację.
 
+W v11 silniki mają łagodniejsze, cichsze brzmienie i więcej szumu wydechu,
+a kliknięcia manetki, stacyjki i uderzenia są wyraźniejsze. Strumieniowy
+szumi wodą; wejście w ślizg dodaje osobny, szerszy rozbryzg i ogranicza
+niższy szum wypornościowy. Zapłon bez pracującego silnika uruchamia
+przerywany brzęczyk, również po zgaśnięciu; START, praca silnika i pozycja
+0 wyłączają go. Zimny silnik lekko faluje na wolnych obrotach, a efekt
+zanika przy rozgrzaniu i zwiększeniu gazu. Okno cumowania otwiera się dalej
+od kadłuba, z zachowaniem możliwości przesuwania i obsługi na telefonie.
+
 Pod **☀ Pogoda** siłę wiatru i prądu ustawiasz dwoma uchwytami na jednym
 suwaku: MIN–MAX. Równe wartości oznaczają stałą siłę; przycisk „Ustaw stały”
 zrównuje je z maksimum. Osobny suwak **±0–90°** ustawia zmienność kierunku.
@@ -139,8 +148,8 @@ Przeciążenie może wymagać podpłynięcia nad kotwicę. Nie ma automatycznego
 Zaburtowe od **150 KM każdy** mają głębsze, syntetyczne brzmienie w stylu
 V8. Mniejsze silniki i skuter zachowują wyższy, brzęczący ton; dwa silniki
 90 KM nie zmieniają się w jeden duży. To wybór barwy, a nie deklaracja
-liczby cylindrów rzeczywistego silnika danej mocy. Dotychczasowy szum
-płynięcia pozostaje. Osobno słychać bulgot przy hamowaniu przeciwnym
+liczby cylindrów rzeczywistego silnika danej mocy. Osobno słychać
+bulgot przy hamowaniu przeciwnym
 biegiem oraz napowietrzaniu/podnoszeniu pracującej śruby; po pełnym
 wynurzeniu ustaje podwodny bulgot.
 

@@ -1,4 +1,4 @@
-# Model v10: podstawy, założenia i ograniczenia
+# Model v11: podstawy, założenia i ograniczenia
 
 Model ma odtwarzać **zależności fizyczne w manewrach**, ale nie jest
 zweryfikowanym cyfrowym bliźniakiem konkretnej motorówki. Nie dysponujemy
@@ -615,3 +615,48 @@ których używa kontakt z dnem: uwzględnia rzeczywiste pochylenie, przechył,
 heave i lokalną głębokość. Prześwit poniżej 0,20 m jest żółty, osiadanie
 czerwone. To odczyt aktualnego modelu dna pod łodzią, bez przewidywania
 głębokości przed dziobem ani dodatkowego marginesu bezpieczeństwa.
+
+## Miks i alarmy w v11
+
+Zmniejszono poziom ciągłych tonów silnika, udział wysokich harmonicznych
+i górną częstotliwość filtra. Harmoniczna pomocnicza jest trójkątem zamiast
+piły, składnik mechaniczny cichym sinusem. Filtr ma Q=0,5, bez uwydatniania
+wąskiego pasma. Wydech ma osobny filtrowany szum modulowany rytmem pracy,
+również na luzie. Zachowano reakcję na RPM i obciążenie. W próbce 200 KM,
+3600 RPM i obciążenia 50% RMS silnika zmalał z około 0,0217 do 0,0102
+(około −6,5 dB). To porównanie cyfrowego miksu przy tym samym poziomie,
+bez pomiaru głośności rzeczywistego silnika ani fizycznych głośników.
+
+Strumieniowe używają filtrowanego szumu bez oscylatora o słyszalnej
+wysokości tonu. W tej samej próbie pełne wysterowanie daje RMS około
+0,0022 wobec 0,0099 poprzednio (około −13 dB). Kliknięcia mają wyższy poziom
+i właściwe pasmo filtra; wcześniej domyślne odcięcie 350 Hz tłumiło nawet
+klik 900 Hz. Odbijacz daje miękki, krótki bas z lekkim szmerem, nieosłonięty
+kadłub mocniejszy stuk z szerszym impulsem szumu. Wspólny kompresor nadal
+ogranicza sumę. Testy renderują rzeczywiste impulsy ponad pracującym silnikiem
+i sprawdzają ich zanik i poziom maksymalny.
+
+Udział ślizgu 0,2–0,8 płynnie przenosi miks od niższego szumu opływu
+do osobnych pasm rozbryzgu w stereo. Szybkość względem wody wyznacza
+poziom i pasmo; sam pozostawiony stan ślizgu przy zatrzymanej łodzi nie
+generuje szumu jazdy. Nie jest to symulacja akustyki CFD ani nagranie łodzi.
+
+W pozycji I bez pracy silnika jeden wspólny alarm 1050 Hz odzywa się
+cyklicznie co 1,4 s. Bramka ma wygładzone zbocza. Przy dwóch silnikach
+wystarczy jeden pozostawiony na zapłonie; alarm obejmuje także zgaśnięcie
+z braku paliwa i zatrzymanie przez ochronę termiczną. Nie dublujemy
+brzęczyków. START, praca i 0 nie uruchamiają tego alarmu. Wyciszenie,
+pauza i menu obejmują również alarm. To umowny sygnał zapłonu,
+bez odwzorowania kodów diagnostycznych konkretnej marki.
+
+Zimny bieg jałowy dodaje do istniejącego pulsowania małe, wolniejsze
+falowanie (18 i 9 RPM przy 2,1 i 3,3 rad/s). Waga maleje od 1 przy 18°C
+do 0 przy 60°C oraz zanika przy zwiększaniu obrotów. Faza jest osobna
+dla każdego silnika. Jest to drobny model pracy regulatora biegu jałowego
+wskazywany przez obrotomierz i słyszalny w dźwięku; nie dodaje sił kołyszących
+kadłub ani obrotów na wyłączonym silniku.
+
+Podany [film cqrbpDy6Ol0](https://www.youtube.com/watch?v=cqrbpDy6Ol0)
+zwrócił odmowę proxy HTTP 403; nie odsłuchano go i nie pobrano ścieżki.
+Zmiany uwzględniają zgłoszoną męczącą barwę i pożądany miks,
+bez twierdzenia o dopasowaniu widma do tego nagrania.

@@ -43,6 +43,7 @@ test('crosswind rotates an asymmetric hull and broadside drift is bounded',()=>{
 });
 test('creep lifts idle RPM slightly, both running engines vary independently, stopping reaches zero',()=>{
  const idle=engineState(90,-.5),creep=engineState(90,.5);let idleMin=Infinity,idleMax=0;
+ idle.temperature=creep.temperature=70;
  for(let i=0;i<1200;i++){updateEngine(idle,0,0,1/120);updateEngine(creep,.08,0,1/120);if(i>600){idleMin=Math.min(idleMin,idle.rpm);idleMax=Math.max(idleMax,idle.rpm);assert.ok(creep.rpm>idle.rpm+20);}}
  assert.ok(idleMax-idleMin>15&&idleMax-idleMin<50);assert.ok(creep.rpm<900);
  creep.key='off';updateEngine(creep,0,0,1/120);assert.equal(creep.rpm,0);

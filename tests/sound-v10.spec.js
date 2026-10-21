@@ -24,7 +24,9 @@ test('actual bubbling produces an extra audio layer and is silent with the prop 
  const result=await page.evaluate(async()=>{
   const {createSoundscape}=await import('/src/sound.js'),{createBoat}=await import('/src/physics.js');
   async function render(immersion,inflow,ventilation=.6){
-   const context=new OfflineAudioContext(2,48000,48000),sound=createSoundscape({context}),b=createBoat('lake');
+   const context=new OfflineAudioContext(2,48000,48000),random=Math.random;let seed=7,sound;
+   try{Math.random=()=>{seed=(1664525*seed+1013904223)>>>0;return seed/4294967296;};sound=createSoundscape({context});}finally{Math.random=random;}
+   const b=createBoat('lake');
    Object.assign(b.engines[0],{rpm:3600,n:.8,gear:-1,load:0,thrust:immersion?-2500:0,immersion,inflow,ventilation,trimRate:.16});sound.update(b,{},true);
    return(await context.startRendering()).getChannelData(0);
   }

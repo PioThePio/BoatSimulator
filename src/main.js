@@ -141,7 +141,7 @@ $('#zoom-in').onclick=()=>{overview=false;zoom=clamp(zoom*1.25,.16,3);};$('#zoom
 $('#trail-toggle').onclick=()=>{showTrail=!showTrail;$('#trail-toggle').setAttribute('aria-pressed',showTrail);};let showTrail=true;
 const canvas=$('#lake'),ctx=canvas.getContext('2d');let width=1,height=1;
 new ResizeObserver(()=>{const r=canvas.getBoundingClientRect();width=r.width;height=r.height;const dpr=Math.min(devicePixelRatio,2);canvas.width=width*dpr;canvas.height=height*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);}).observe(canvas);
-function draw(){const screenShift=!$('#mooring-picker').hidden&&width<650&&!overview?Math.max(0,width/2-48):0;view=renderWorld(ctx,{boat,env,width,height,zoom,follow,overview,manualCenter,centerReference,screenShift,selected:selectedTarget,trail,showTrail});renderMinimap($('#minimap'),boat,view);}
+function draw(){const screenShift=!$('#mooring-picker').hidden&&width<650&&!overview?Math.max(0,width/2-(width<360?24:48)):0;view=renderWorld(ctx,{boat,env,width,height,zoom,follow,overview,manualCenter,centerReference,screenShift,selected:selectedTarget,trail,showTrail});renderMinimap($('#minimap'),boat,view);}
 canvas.onclick=e=>{
  if(!view)return;const rect=canvas.getBoundingClientRect(),p={x:(e.clientX-rect.left-width/2)/view.scale+view.camera.x,y:(e.clientY-rect.top-height/2)/view.scale+view.camera.y};
  let best=-1,d=Math.max(.8,12/view.scale);BOLLARDS.forEach((_,i)=>{const q=mooringPoint(boat,i),dist=Math.hypot(p.x-q.x,p.y-q.y);if(dist<d){best=i;d=dist;}});

@@ -22,10 +22,12 @@ export function draggablePopup(panel,handle){
  });
  const resize=new ResizeObserver(()=>{if(placed&&!panel.hidden)place(parseFloat(panel.style.left),parseFloat(panel.style.top));});resize.observe(panel.parentElement);resize.observe(panel);
  return{beside(x,y,boatRadius=10){
-  const host=panel.parentElement,pad=10,right=x+boatRadius+18;
+  const host=panel.parentElement,pad=10,gap=Math.max(46,Math.min(100,host.clientWidth*.065)),right=x+boatRadius+gap;
   // Prefer the right side; on a narrow phone keep the panel on screen below/above
   // the boat instead of forcing it across the middle of the hull.
   const fits=right+panel.offsetWidth<=host.clientWidth-pad;
-  place(fits?right:host.clientWidth-panel.offsetWidth-pad,fits?y-panel.offsetHeight*.25:y+boatRadius+18);
+  const left=host.clientWidth-panel.offsetWidth-pad,below=y+boatRadius+gap;
+  const top=below+panel.offsetHeight<=host.clientHeight-pad?below:Math.max(pad,y-boatRadius-gap-panel.offsetHeight);
+  place(fits?right:left,fits?y-panel.offsetHeight*.25:top);
  }};
 }
