@@ -24,7 +24,7 @@ test('mouse controls, environment and mooring are usable',async({page})=>{
  await weather(page);await page.locator('#preset').selectOption('crosswind');await expect(page.locator('#wind-value')).toHaveText('6.0 m/s');await weather(page);await page.locator('#preset').selectOption('gusty');await expect(page.locator('#wind-value')).toHaveText('8.0 m/s');await expect(page.locator('#gusts')).toBeChecked();
  await page.locator('#wheel').scrollIntoViewIfNeeded();const r=await page.locator('#wheel').boundingBox(),cx=r.x+r.width/2,cy=r.y+r.height/2,radius=r.width*.4;await page.mouse.move(cx,cy-radius);await page.mouse.down();for(let i=1;i<=12;i++){const a=-Math.PI/2+i*Math.PI/24;await page.mouse.move(cx+Math.cos(a)*radius,cy+Math.sin(a)*radius);}await page.mouse.up();expect(+(await page.locator('#wheel').getAttribute('aria-valuenow'))).toBeGreaterThan(3);
  await page.locator('#throttle').fill('40');await expect(page.locator('#gear')).toContainText('40%');await page.locator('#neutral').click();await expect(page.locator('#gear')).toContainText('LUZ');
- await page.locator('#limits').click();await expect(page.locator('#info')).toBeVisible();await expect(page.locator('#info')).toContainText('umowne progi dydaktyczne');await page.keyboard.press('Escape');await expect(page.locator('#info')).not.toBeVisible();
+ await page.locator('#help').click();await expect(page.locator('#info')).toBeVisible();await expect(page.locator('#info')).toContainText('umowne progi dydaktyczne');await page.keyboard.press('Escape');await expect(page.locator('#info')).not.toBeVisible();
 });
 test('mobile layout fits viewport and renders map',async({page})=>{
  await page.setViewportSize({width:390,height:844});await page.goto('/');await page.locator('#begin-session').click();await expect(page.locator('#lake')).toBeVisible();
@@ -146,7 +146,7 @@ test('mooring header can be dragged by touch within the mobile map',async({brows
 test('restart opens the setup menu with the selected vessel, weather and location retained',async({page})=>{
  await page.goto('/');await page.locator('#craft').selectOption('cabin');await page.locator('#power-left').fill('150');await page.locator('#start-location').selectOption('canal');await page.locator('#preset').selectOption('crosswind');await page.locator('#begin-session').click();
  await expect(page.locator('#craft-state')).toContainText('150 KM');await expect(page.locator('#wind-value')).toHaveText('6.0 m/s');await expect(page.locator('#vessel-panel')).not.toBeVisible();await expect(page.locator('#environment-panel')).not.toBeVisible();await expect(page.locator('#settings #vessel-panel')).toHaveCount(0);await expect(page.locator('#settings #environment-panel')).toHaveCount(0);
- const condition=await page.locator('.condition-bar').boundingBox(),controls=await page.locator('.controls').boundingBox();expect(condition.y).toBeLessThan(controls.y);
+ const condition=await page.locator('.condition-compact').boundingBox(),attitude=await page.locator('.attitude-svg').boundingBox();expect(condition.y).toBeGreaterThan(attitude.y+attitude.height);await expect(page.locator('.pitch-gauge .condition-compact')).toBeVisible();await expect(page.locator('#limits')).toHaveCount(0);
  await page.locator('.wheel-section h2').click();await page.keyboard.press('r');await expect(page.locator('#setup-dialog')).toBeVisible();await expect(page.locator('#craft')).toHaveValue('cabin');await expect(page.locator('#power-left')).toHaveValue('150');await expect(page.locator('#start-location')).toHaveValue('canal');await expect(page.locator('#preset')).toHaveValue('crosswind');
  await page.locator('#start-location').selectOption('fuel');await page.locator('#begin-session').click();await page.locator('#reset').click();await expect(page.locator('#setup-dialog')).toBeVisible();await expect(page.locator('#start-location')).toHaveValue('fuel');await page.locator('#setup-close').click();await expect(page.locator('#setup-dialog')).not.toBeVisible();
 });
@@ -167,4 +167,23 @@ test('trim detents, propeller-ground diagram and actual steering position are vi
  await expect(page.locator('#prop-water-state')).not.toContainText('ŚRUBA DOTYKA DNA',{timeout:9000});
  await page.locator('.wheel-section h2').click();await page.keyboard.down('ArrowRight');await page.waitForTimeout(450);await page.keyboard.up('ArrowRight');await expect(page.locator('#rudder-angle')).toContainText('P');
  const commanded=await page.locator('#rudder-command').getAttribute('style'),actual=await page.locator('#rudder-actual').getAttribute('style');expect(parseFloat(commanded.match(/left: ([\d.]+)/)[1])).toBeGreaterThan(50);expect(parseFloat(actual.match(/left: ([\d.]+)/)[1])).toBeGreaterThan(50);
+});
+test('contact diagram shows the real fender and damaged bow, then fades while keeping hull damage',async({page})=>{
+ await page.goto('/');await page.locator('#begin-session').click();await page.locator('#pause').click();
+ const states=await page.evaluate(async()=>{
+  const {createBoat,step}=await import('/src/physics.js'),{updateContactInstrument}=await import('/src/contact-instrument.js');
+  function hit(bow){const b=createBoat('berth');b.x=bow?22.7:20.9;b.y=22;b.a=bow?Math.PI:-Math.PI/2;b.vx=bow?-.5:-.2;for(let i=0;i<72;i++)step(b,{},1/120);return b;}
+  const fender=hit(false);updateContactInstrument(fender);const f=document.querySelector(`[data-contact-fender="${fender.lastImpact.fender}"]`);
+  const safe={color:f.getAttribute('fill'),flash:f.dataset.contact,damage:fender.damage};
+  const bow=hit(true);updateContactInstrument(bow);const el=document.querySelector('[data-contact-zone="bow"]');
+  const strike={color:el.getAttribute('stroke'),flash:el.dataset.contact,damage:el.dataset.damage,label:document.querySelector('#impact-info').textContent};
+  bow.time+=2;updateContactInstrument(bow);return{safe,strike,faded:{color:el.getAttribute('stroke'),flash:el.dataset.contact,damage:el.dataset.damage}};
+ });
+ expect(states.safe).toEqual({color:'#66bd8a',flash:'true',damage:0});expect(states.strike.flash).toBe('true');expect(+states.strike.damage).toBeGreaterThan(0);expect(states.strike.label).toContain('Dziób');expect(states.faded.flash).toBe('false');expect(states.faded.color).toBe('#bf6350');expect(states.faded.damage).toBe(states.strike.damage);
+});
+test('phone keeps compact vessel condition below the attitude graphic with legible percentages',async({page})=>{
+ await page.setViewportSize({width:390,height:844});await page.goto('/');await page.locator('#begin-session').click();
+ await page.locator('.condition-compact').scrollIntoViewIfNeeded();await expect(page.locator('.contact-diagram')).toBeVisible();await expect(page.locator('#hull-value')).toHaveText('100%');
+ const bounds=await page.locator('.condition-compact').boundingBox(),attitude=await page.locator('.attitude-svg').boundingBox();expect(bounds.y).toBeGreaterThan(attitude.y+attitude.height);expect(bounds.x+bounds.width).toBeLessThanOrEqual(390);
+ expect(await page.locator('#hull-value').evaluate(el=>parseFloat(getComputedStyle(el).fontSize))).toBeLessThanOrEqual(11);expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);await page.screenshot({path:'/tmp/boat-v8-mobile-condition.png',fullPage:false});
 });

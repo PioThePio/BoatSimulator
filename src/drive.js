@@ -1,4 +1,5 @@
 import {clamp,bottomAt,waveAt} from './world.js';
+import {sampleHullWake} from './wake.js';
 // One control, two mechanisms: 0–40% power trim; 40–100% shallow-water tilt.
 export const TRIM_STOPS=[0,.05,.10,.15,.20,.25,.30,.35,.40,.50,.60,.70,.80,.90,1];
 export function trimStep(value,direction){return direction>0?(TRIM_STOPS.find(v=>v>value+.00001)??1):([...TRIM_STOPS].reverse().find(v=>v<value-.00001)??0);}
@@ -10,7 +11,7 @@ export function driveGeometry(b,en,env={}){
  const shaft=S.jet?S.draft+.03-radius:baseMount+S.referenceDraft+.22-radius;
  const localX=mountX-shaft*Math.sin(angle),localY=en.y;
  const c=Math.cos(b.a),s=Math.sin(b.a),x=b.x+c*localX-s*localY,y=b.y+s*localX+c*localY;
- const surface=waveAt(x,y,b.time,env).eta,floor=bottomAt(x,y);
+ const surface=waveAt(x,y,b.time,env).eta+sampleHullWake(b.wake??[],x,y,b.time).eta,floor=bottomAt(x,y);
  const mountZ=mountHeight+b.heave+.09*b.planing+mountX*Math.sin(b.pitch)+localY*Math.sin(b.roll);
  const propZ=mountZ-shaft*Math.cos(angle),verticalRadius=Math.max(.015,radius*Math.cos(angle));
  const propDepth=surface-propZ,ratio=clamp(propDepth/verticalRadius,-1,1);

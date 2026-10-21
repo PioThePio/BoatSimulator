@@ -1,6 +1,7 @@
 import {bottomAt,bottomGradient,clamp} from './world.js';
 import {driveGeometry} from './drive.js';
 import {point,impulse,inverseMass} from './rigging.js';
+import {recordImpact} from './impacts.js';
 export function propellerPoint(b,engine){const g=driveGeometry(b,engine);return{x:g.x,y:g.y};}
 export function propellerContact(b,engine,dt,notify,env={}){
  const g=driveGeometry(b,engine,env),p=g,floor=g.floor,clearance=g.clearance;
@@ -55,7 +56,8 @@ export function groundContact(b,wave,dt,notify){
  if(speed>.18&&b.time-b.groundEvent>1){
   const roughness=material==='rock'?8:material==='sand'?.15:.06;
   const damage=roughness*speed*speed*clamp(maxPenetration/.15,0,2);
-  b.damage=clamp(b.damage+damage,0,100);b.groundEvent=b.time;
+  const q=samples.reduce((worst,q)=>q.penetration>worst.penetration?q:worst),arm={x:q.p.x-b.x,y:q.p.y-b.y};
+  recordImpact(b,{arm,speed,effective:S.mass,target:'bottom',dock:false,damage});b.groundEvent=b.time;
   notify(`${material==='rock'?'Kadłub uderza w kamienie':'Kadłub osiada na '+(material==='sand'?'piasku':'mule')} · obciążenie dna ${Math.round(b.groundLoad/9.81)} kg.`);
  }
 }

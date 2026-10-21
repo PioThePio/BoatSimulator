@@ -2,6 +2,7 @@ import {TRAFFIC,BOLLARDS,environment,waveAt,clamp} from './world.js';
 import {point,cleat,inverseMass,impulse} from './rigging.js';
 import {hullLateralForces,windForces} from './hydrodynamics.js';
 import {mooringPoint,boomInverse,boomLoad} from './marina.js';
+import {recordImpact} from './impacts.js';
 export function createTraffic(){return TRAFFIC.map(q=>{
  const spec={length:q.length,beam:q.beam,mass:q.mass,draft:q.type==='sail'?.65:q.type==='pwc'?.2:.38,freeboard:q.type==='sail'?1.1:q.type==='pwc'?.3:.65,mx:q.mass*1.08,my:q.mass*1.65,iz:1.55*q.mass*((q.length*.27)**2+(q.beam*.22)**2)};
  const boat={...q,spec,homeX:q.x,homeY:q.y,homeA:q.a,vx:0,vy:0,w:0,heave:0,roll:0};
@@ -42,8 +43,9 @@ export function trafficStep(b,e,dt){
    if(penetration<=0||d<.001)continue;
    const n={x:rx/d,y:ry/d},arm={x:p.x-b.x,y:p.y-b.y},other={x:near.x-q.x,y:near.y-q.y};
    const rel=(b.vx-b.w*arm.y-q.vx+q.w*other.y)*n.x+(b.vy+b.w*arm.x-q.vy-q.w*other.x)*n.y;
-   if(rel<0){const j=-rel/(inverseMass(b,n,arm)+inverseMass(q,n,other));impulse(b,n,j,arm);impulse(q,n,-j,other);
-    if(-rel>.3&&(!b.lastTrafficImpact||b.time-b.lastTrafficImpact>1)){b.damage=clamp(b.damage+(-rel)**2*12,0,100);b.events.unshift({time:b.time,message:`Kontakt z zacumowaną jednostką: ${(-rel).toFixed(2)} m/s.`});b.lastTrafficImpact=b.time;}
+   if(rel<0){const effective=1/(inverseMass(b,n,arm)+inverseMass(q,n,other)),j=-rel*effective;impulse(b,n,j,arm);impulse(q,n,-j,other);
+    const contact={x:arm.x-n.x*r,y:arm.y-n.y*r};
+    recordImpact(b,{arm:contact,speed:-rel,effective,target:'boat-'+q.id,dock:false},message=>{b.events.unshift({time:b.time,message});b.events=b.events.slice(0,12);});
    }
    b.x+=n.x*penetration*.6;b.y+=n.y*penetration*.6;q.x-=n.x*penetration*.2;q.y-=n.y*penetration*.2;
   }

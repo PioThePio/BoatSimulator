@@ -3,9 +3,11 @@ import {engineKey} from './craft.js';
 import {trimStep} from './drive.js';
 import {gauge,attitudeMarkup,updateAttitude} from './instruments.js';
 import {requestRefuel} from './systems.js';
+import {conditionMarkup,updateContactInstrument} from './contact-instrument.js';
 const $=s=>document.querySelector(s);
 export function installCockpit(api){
  $('#instruments').innerHTML=gauge('rpm','OBROTOMIERZ',0,6500,'obr/min')+gauge('rpm2','OBROTY · PRAWY',0,6500,'obr/min')+gauge('speed','PRĘDKOŚĆ',0,60,'kn')+gauge('fuel','PALIWO',0,100,'L/h')+gauge('trim','TRYM',0,100,'%')+gauge('volt','AKUMULATOR',8,16,'V')+gauge('temp','TEMPERATURA',20,140,'°C')+attitudeMarkup();
+ $('.pitch-gauge').insertAdjacentHTML('beforeend',conditionMarkup());
  for(let i=0;i<2;i++){
   $('#ignition-'+i).innerHTML=`<div class="ignition"><span class="key-positions">0 · I · START</span><div class="key-row"><button data-key-turn="-1" data-engine="${i}" aria-label="Silnik ${i+1}: przekręć stacyjkę w lewo">↶</button><button id="key-${i}" class="key-knob" data-engine="${i}" aria-label="Stacyjka silnika ${i+1}: lewa połowa wyłącza, prawa uruchamia"><svg viewBox="0 0 54 54" aria-hidden="true"><circle cx="27" cy="27" r="24"/><g class="key-pointer"><path d="M23 12h8v29h-8Z"/><circle cx="27" cy="14" r="3"/></g></svg></button><button data-key-turn="1" data-engine="${i}" aria-label="Silnik ${i+1}: przekręć stacyjkę w prawo">↷</button></div><small id="key-state-${i}" class="key-state">Wyłączony</small><small id="temperature-${i}" class="engine-temperature">18°C</small></div>`;
  }
@@ -31,6 +33,7 @@ export function installCockpit(api){
   $('#gauge-fuel strong').textContent=b.fuel.litres.toFixed(1)+' l';$('#gauge-fuel small').textContent=b.fuel.flow.toFixed(1)+' L/h';
   $('#gauge-temp').classList.toggle('danger',temperature>=105);$('#gauge-trim').classList.toggle('disabled',!!S.jet);$('#trim-value').textContent=Math.round((b.enginesRaised?1:en[0].trimTarget)*100)+'%';$('#trim-value').title=(en[0].trimTarget<=.4?'Roboczy trym':'Podnoszenie napędu')+' · pozycja zadana';$('#gauge-trim small').textContent='% · '+(trim<=.4?'TRIM':'TILT');
   updateAttitude(b,api.env);
+  updateContactInstrument(b);
   const reserve=b.fuel.litres<b.fuel.capacity*.1,hot=temperature>=105,lowVolt=b.battery.voltage<11.5,highVolt=b.battery.voltage>14.8;
   for(const [id,active,label]of [['fuel',reserve,reserve?'Rezerwa paliwa':'Paliwo powyżej rezerwy'],['temp',hot,hot?'Przegrzanie':'Temperatura poniżej alarmu'],['volt',lowVolt||highVolt,lowVolt?'Niskie napięcie':highVolt?'Za wysokie napięcie':'Napięcie prawidłowe']]){const led=$('#'+id+'-led');led.classList.toggle('lit',active);led.setAttribute('aria-label',label);led.title=label;}
   $('#gauge-volt').classList.toggle('danger',lowVolt||highVolt);$('#gauge-volt small').textContent='V · '+(lowVolt?'NISKIE':highVolt?'WYSOKIE':b.battery.current<0?'ŁADOWANIE':'SPOCZYNEK');

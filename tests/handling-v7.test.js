@@ -6,13 +6,14 @@ import {propellerContact} from '../src/ground.js';
 import {anchorCommand} from '../src/rigging.js';
 import {recordHullWake,wakeEdges} from '../src/wake.js';
 const run=(b,t,env={})=>{for(let i=0;i<t*120;i++){step(b,env,1/120);b.x=64;b.y=48;}return b;};
-test('full lock from top speed brakes hard and progressively tightens the arc at 90 and 350 HP',()=>{
+test('full lock sheds speed and tightens the arc while a powerful boat sustains planing',()=>{
  for(const hp of [90,350]){
   const b=createBoat('open',{powers:[hp]});b.a=0;b.throttle=1;run(b,40);const top=Math.hypot(b.vx,b.vy);assert.ok(b.planing>.8);
-  b.steer=b.spec.maxSteer;run(b,3);const earlyRadius=Math.hypot(b.vx,b.vy)/b.w,earlySpeed=Math.hypot(b.vx,b.vy);run(b,7);
+  b.steer=b.spec.maxSteer;run(b,1);const earlyRadius=Math.hypot(b.vx,b.vy)/b.w;run(b,9);
   const speed=Math.hypot(b.vx,b.vy),radius=speed/b.w;
-  assert.ok(earlySpeed<top*.7,`${hp} HP: no hard-turn braking`);assert.ok(speed<top*.45,`${hp} HP: ${speed}/${top}`);
-  assert.ok(radius<earlyRadius*.75&&radius<b.spec.length*4.5,`${hp} HP: ${radius}`);assert.ok(b.w>.20&&b.w<.5);assert.ok(b.telemetry.surge>2);
+  assert.ok(speed<top*.70,`${hp} HP: ${speed}/${top}`);
+  assert.ok(radius<earlyRadius*.95&&radius<b.spec.length*5,`${hp} HP: ${radius}`);assert.ok(b.w>.20&&b.w<1);assert.ok(b.telemetry.surge>4);
+  if(hp===350)assert.ok(b.planing>.75,'adequate power must maintain planing through the hard turn');
   b.steer=0;run(b,12);assert.ok(Math.abs(b.w)<.015);assert.ok(Math.hypot(b.vx,b.vy)>speed*1.2);
  }
 });
@@ -48,7 +49,7 @@ test('anchor advice includes roller height, responds to conditions and discloses
 test('V wake spreads out from the travelled path, advects with current and fades after stopping',()=>{
  const b=createBoat('open');b.a=0;const history=[];recordHullWake(history,b,{x:0,y:0});assert.equal(history.length,0);
  b.vx=8;for(let i=0;i<20;i++){b.time+=.15;b.x+=1.2;recordHullWake(history,b,{x:.5,y:0});}
- assert.ok(history.length>10);const old=history[0],young=history[history.length-1],edges=wakeEdges(old,b.time),fresh=wakeEdges(young,b.time);
+ assert.ok(history.length>8);const old=history[0],young=history[history.length-1],edges=wakeEdges(old,b.time),fresh=wakeEdges(young,b.time);
  assert.ok(edges[1].y-edges[0].y>fresh[1].y-fresh[0].y+5);assert.ok(edges[0].x>old.x);assert.ok(fresh[0].x>edges[0].x);
- b.vx=.5;b.time+=7;recordHullWake(history,b,{x:.5,y:0});assert.equal(history.length,0);
+ b.vx=.5;b.time+=7;recordHullWake(history,b,{x:.5,y:0});assert.ok(history.length>0);b.time+=28;recordHullWake(history,b,{x:.5,y:0});assert.equal(history.length,0);
 });

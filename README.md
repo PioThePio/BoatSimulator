@@ -1,11 +1,11 @@
-# Przystań — symulator manewrów motorówką v7
+# Przystań — symulator manewrów motorówką v8
 
 Przeglądarkowy symulator z widokiem z góry, bez kont i backendu. Pięć rodzajów
 łodzi, w tym skuter, zmieniane wymiary i masa, jeden lub dwa silniki do 350 KM.
 Nieregularne jezioro 600 × 400 m, wyspa z przesmykiem, plaże, mielizny,
 szuwary, port ze stanowiskami z bojami i ruchomymi Y-bomami szerokości 25 cm.
 
-Uruchom: **https://piothepio.github.io/BoatSimulator/?v=7.0.0**.
+Uruchom: **https://piothepio.github.io/BoatSimulator/?v=8.0.0**.
 
 Model służy do poznawania zależności w manewrach; nie jest skalibrowany dla
 konkretnej łodzi. [Źródła, równania i ograniczenia](docs/PHYSICS.md).
@@ -35,7 +35,10 @@ klawisz R i przycisk „Łódź i start” otwierają ten sam formularz, zachowu
 wcześniejsze wybory. Zamknięcie okna bez rozpoczęcia nie resetuje rejsu.
 Pogodę podczas pływania zmieniaj pod ikoną **☀ na mapie**.
 Formularze łodzi i pogody są w oknach; pod konsolą pozostają cumy i kotwica.
-Stan kadłuba, pomostu i śrub jest bezpośrednio pod mapą.
+Stan kadłuba, pomostu i śrub jest w kokpicie pod schematem uniesienia dziobu.
+Mapa kontaktów pokazuje trafioną część kadłuba lub odbijacz: zielony kontakt,
+pomarańczowe uszkodzenie, czerwone silne uderzenie. Błysk zanika, ślad szkody zostaje.
+Uszkodzenia są zawsze aktywne.
 
 | Działanie | Obsługa |
 | --- | --- |
@@ -101,10 +104,17 @@ Przeciążenie może wymagać podpłynięcia nad kotwicę. Nie ma automatycznego
 
 ## Model i sprawdzanie
 
-Ostry skręt przy dużej prędkości dodaje opór zależny od kwadratu prędkości
-i sinusa kąta napędu. Wraz z wyhamowaniem maleje promień zakrętu; lekkie
-wychylenie zachowuje stabilność. Przy szybkim ruchu za łodzią rozchodzi się
-ślad V, także po zakręcie. Kamera łagodnie oddala widok, a kadłub kołysze się.
+W ostrym zakręcie rufa traci część przyczepności bocznej, a lokalne siły
+kadłuba, ciąg silnika i masa wyznaczają tor. Przy tej samej prędkości wejścia
+słaby silnik traci ślizg, mocniejszy może utrzymać ciaśniejszy zwrot w ślizgu.
+Skuter ma szybszą reakcję pompy i inny uślizg. Odjęcie gazu zmniejsza ciąg,
+łódź zwalnia, zwiększa zanurzenie i nadal płynie przy pozostawionym biegu.
+
+Kilwater V jest wspólny dla rysunku i fizyki: przez maksymalnie 28 s
+rozchodzi się z przebytej trasy, dryfuje z prądem i zanika. Wpłynięcie na
+własną falę zmienia kołysanie, pochylenie i zanurzenie napędu. To uproszczony
+model pakietów falowych, bez pełnej hydrodynamiki powierzchniowej.
+Kamera łagodnie oddala widok przy szybszym płynięciu.
 
 W `tests/` są regresje rozruchu, przyspieszenia, pełzania, hamowania w
 zakręcie, dryfu, masy/paliwa, trymu i zejścia z płycizny, cum, kotwicy,
@@ -113,7 +123,8 @@ odróżnia teoretyczną strukturę modelu od naszych umownych współczynników.
 
 Najważniejsze moduły: `physics.js` i `hydrodynamics.js` — ruch i opory;
 `drive.js` — geometria trymu i sugestia rode; `instruments.js` — wskaźniki
-i schemat; `wake.js` — ślad V; `rigging.js` — cumy i kotwica; `marina.js`
+i schemat; `impacts.js` i `contact-instrument.js` — kontakt i mapa uszkodzeń;
+`wake.js` — fizyczny i widoczny kilwater V; `rigging.js` — cumy i kotwica; `marina.js`
 i `traffic.js` — Y-bomy i zacumowane jednostki; `thermal.js` — chłodzenie.
 
 Zgłoszony wcześniej biały ekran na fizycznym urządzeniu Chrome pozostaje

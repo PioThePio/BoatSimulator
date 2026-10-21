@@ -46,7 +46,7 @@ function toggleLink(){boat.linked=!boat.linked;if(boat.linked)boat.throttle2=boa
 $('#link-engines').onchange=toggleLink;
 function togglePause(){paused=!paused;$('#pause').textContent=paused?'▷':'Ⅱ';$('#paused-label').hidden=!paused;telemetry();}
 $('#pause').onclick=togglePause;$('#fenders').onchange=e=>boat.fenders=e.target.checked;$('#raise-engines').onchange=e=>{boat.enginesRaised=e.target.checked;for(const en of boat.engines){if(boat.enginesRaised)en.trim=en.trimTarget=1;else en.trimTarget=.1;}};
-for(const id of ['help','instructions','limits'])$('#'+id).onclick=()=>$('#info').showModal();$('#close-dialog').onclick=()=>$('#info').close();
+for(const id of ['help','instructions'])$('#'+id).onclick=()=>$('#info').showModal();$('#close-dialog').onclick=()=>$('#info').close();
 let drag=null;const wheel=$('#wheel');
 wheel.onpointerdown=e=>{const q=rimPosition(e.clientX,e.clientY,wheel.getBoundingClientRect());if(q.radius<.25||q.radius>1.08)return;drag={angle:q.angle};wheel.setPointerCapture(e.pointerId);e.preventDefault();};
 wheel.onpointermove=e=>{if(!drag)return;const q=rimPosition(e.clientX,e.clientY,wheel.getBoundingClientRect());if(q.radius>.18){setSteer(boat.steer+angleDelta(drag.angle,q.angle)/wheelRatio());drag.angle=q.angle;}};
@@ -94,7 +94,7 @@ $('#map-ropes').onclick=e=>{const choice=e.target.closest('[data-cleat]'),action
 draggablePopup($('#mooring-picker'),$('#mooring-handle'));
 draggablePopup($('#anchor-picker'),$('#anchor-handle'));
 $('#close-mooring').onclick=()=>$('#mooring-picker').hidden=true;$('#close-anchor').onclick=()=>$('#anchor-picker').hidden=true;
-function showAnchor(){closeWeather();$('#mooring-picker').hidden=true;$('#anchor-picker').hidden=false;$('#map-anchor-target').value=$('#anchor-target').value;}
+function showAnchor(){closeWeather();$('#mooring-picker').hidden=true;$('#anchor-picker').hidden=false;$('#map-anchor-target').value=$('#anchor-target').value;$('#anchor-picker').scrollIntoView({block:'nearest'});}
 $('#show-anchor').onclick=showAnchor;
 for(const id of ['anchor-suggest','map-anchor-suggest'])$('#'+id).onclick=()=>{const advice=anchorAdvice(boat,env);$('#anchor-target').value=$('#map-anchor-target').value=advice.length;};
 for(const id of ['anchor-target','map-anchor-target'])$('#'+id).oninput=e=>$('#'+(id==='anchor-target'?'map-anchor-target':'anchor-target')).value=e.target.value;
@@ -142,7 +142,6 @@ function telemetry(){
  $('#tension').textContent=(boat.maxTension/1000).toFixed(2)+' kN';
  for(const [id,damage]of [['hull',boat.damage],['dock',boat.dockDamage]]){$('#'+id+'-value').textContent=Math.round(100-damage)+'%';$('#'+id+'-bar').style.width=(100-damage)+'%';}
  $('#condition-tag').textContent=boat.grounded?'NA MIELIŹNIE':boat.damage>=100?'NAPĘD WYŁĄCZONY':boat.damage>0?'USZKODZENIA':'BEZ USZKODZEŃ';$('#condition-tag').classList.toggle('danger',boat.damage>0||boat.grounded);
- $('#impact-info').textContent=boat.lastImpact?`Kontakt: ${boat.lastImpact.speed.toFixed(2)} m/s · ${Math.round(boat.lastImpact.energy)} J`:'Celem jest kontakt z minimalną prędkością.';
  if($('#ropes').dataset.signature!==boat.ropes.map(r=>r.end).join(','))renderRopes();
  for(const r of boat.ropes){$('#rope-'+r.end).textContent=ropeInfo(r);const span=$('#map-rope-'+r.end);if(span)span.textContent=ropeInfo(r);}
  if(boat.events.length&&boat.events[0]!==lastEvent){lastEvent=boat.events[0];toast(lastEvent.message);}

@@ -1,4 +1,4 @@
-# Model v7: podstawy, założenia i ograniczenia
+# Model v8: podstawy, założenia i ograniczenia
 
 Model ma odtwarzać **zależności fizyczne w manewrach**, ale nie jest
 zweryfikowanym cyfrowym bliźniakiem konkretnej motorówki. Nie dysponujemy
@@ -42,6 +42,15 @@ Strona instrukcji Hondy, West Marine i podana miniatura wskaźnika trymu
 również zwróciły 403. Skala i zalecenia operacyjne poniżej są jawnym
 przybliżeniem ogólnych zasad, bez deklaracji weryfikacji instrukcji konkretnego silnika.
 
+
+W v8 ponownie odczytano [MSS crossFlowDrag.m](https://github.com/cybergalactic/MSS/blob/master/LIBRARY/modeling/crossFlowDrag.m):
+całkowanie lokalnego przepływu na pasach i momenty tych samych sił.
+Charakterystyka utraty przyczepności w ślizgu jest naszym rozszerzeniem,
+a nie współczynnikiem tego modelu wypornościowego.
+Trzy filmy podane przez użytkownika (OXca-WWzye4, qaLyC21wJVc,
+BEO56pHm9gY) zwróciły HTTP 403 przez politykę sieci; nie obejrzano ich.
+Zmiany uwzględniają opis użytkownika, bez twierdzenia o kalibracji do filmów.
+
 ## Stabilność kierunkowa i bezwładność
 
 Wielkości w SI; świat: x na wschód, y na południe. Kadłub: x do dziobu,
@@ -55,7 +64,7 @@ Równania z masą dodaną i empiryczną kompensacją momentu Munka:
 mx*u_dot = X + m*v*r
 my*v_dot = Y - m*u*r
 Iz*r_dot = N - D_r*r*abs(r) - Iz*(0,16+0,04*abs(u)/L)*r
-D_r = 0,5*rho*B*L^4*(0,004+0,014*udział_ślizgu)
+D_r = 0,5*rho*B*L^4*(0,004+0,003*udział_ślizgu)
 ```
 
 Pochodne przeliczamy z układu obracającego się do świata. Kompensacja
@@ -70,32 +79,39 @@ prędkości lokalnej i momentu. Opór kwadratowy jest przeciwny do lokalnego
 ruchu. Profil zanurzonego boku ma większy udział przy rufie:
 `shape=(0,65+0,35*cos(pi*x/L))*(1-0,50*x/L)`.
 
-Siła każdego pasa, `local=v+r*x`:
-`Y=-0,5*rho*draft*dx*[2,05*shape*(1-0,28*plane)*abs(local)*local
- +(0,50+1,10*plane)*abs(u)*local] - m*0,035/13*local`.
-Współczynnik 2,05 i składnik zależny od ślizgu są naszymi przybliżeniami,
-nie przeniesionymi wartościami z tabel Hoernera. Większy opór poprzeczny
-ogranicza liniowe znoszenie, a dynamiczny składnik poprawia stabilność
-przy szybkim płynięciu.
+Siła każdego pasa, `local=v+r*x`, pozostaje przeciwna do jego ruchu.
+W v8 współczynnik boczny zależy także od lokalnego natarcia i przeciążenia:
 
-Opór zakrętu:
-`q²=v²+(0,4*r*L)²`,
-`D_turn=0,5*rho*draft*L*0,7*q²*abs(u)/sqrt(u²+q²+0,5²)`.
-Działa przeciwnie do `u` i **płynnie zanika przy u→0**. Dawny stały co do
-wartości opór `sign(u)*(v²+(rL)²)` potrafił przytrzymywać prędkość wzdłużną
-blisko zera mimo ciągu naprzód. To była główna przyczyna pełzania bokiem
-i obrotu bez postępu. Mniejsze tłumienie obrotu w ruchu wypornościowym
-pozwala na ciaśniejszy zakręt przy średniej prędkości. W ślizgu opór boczny
-i tłumienie wzrastają, chroniąc przed nagłym obrotem przy lekkim sterze.
-W v7 dochodzi opór przy dużym wychyleniu napędu:
-`X_steer=-0,5*rho*L*draft*0,16*sin(delta)^2*u*abs(u)`.
-To empiryczna powierzchnia zastępcza dla oporów manewrowych, nie wzór
-na opór samego skegu ani współczynnik przeniesiony z modelu Fossena.
-Jest zawsze dyssypatywny, rośnie kwadratowo z prędkością i łagodnie
-zanika przy małym kącie. Pełny skręt z dużej prędkości powoduje wyraźne
-wyhamowanie; mniejsza prędkość i udział ślizgu zmniejszają tłumienie
-obrotu, przez co promień stopniowo maleje. Nie obniżamy prędkości
-odgórnym limitem po wciśnięciu skrętu.
+```
+incidence = hypot(v, 0.35*r*L) / max(2, abs(u))
+release = plane * (jet ? 0.88 : 0.78)
+          * clamp((incidence*(jet ? 3 : 1)-0.004)/0.055)
+grip = 1-release*(0.65+0.33*max(0,-2*x/L))
+stall = 1/sqrt(1+(local/(0.45+0.12*abs(u)))^2)
+Y = -0.5*rho*draft*dx*grip
+    * [2.05*shape*(1-0.28*plane)*abs(local)*local
+       +(0.50+1.10*plane)*stall*abs(u)*local]
+    - m*0.035/13*local
+```
+
+Małe natarcie zachowuje stabilność; przy dużym rufa stopniowo łatwiej
+przesuwa się bokiem, a przednia część kadłuba zachowuje większą część
+oporu. Zmniejszenie współczynników nie zmienia znaku siły: suma
+`Y*(v+r*x)` jest niedodatnia, co sprawdzają testy. Odmienny współczynnik
+skutera przybliża pracę krótkiego kadłuba i łatwiejszy uślizg. To empiryczna
+charakterystyka, nie zmierzona krzywa pochodnych konkretnego kadłuba.
+
+Opór manewrowy zależy od faktycznego ruchu:
+`q²=v²+(0.4*r*L)²`,
+`D_turn=0.5*rho*draft*L*0.12*q²*abs(u)/sqrt(u²+q²+0.5²)`.
+Dodatkowe podparcie w zakręcie: `load=hypot(1,u*r/g)`,
+`D_induced=m*g*0.10*(load²-1)*plane`.
+Oba opory działają przeciwnie do ruchu wzdłużnego. Usunięto stosowany w v7
+osobny opór `sin(delta)²*u²`, który hamował także mocną łódź niezależnie
+od jej rzeczywistego uślizgu. Moc silnika musi pokryć opór, masa i
+przeciążenie zwiększają wymagane podparcie. Przy wystarczającym ciągu łódź
+utrzymuje ślizg w ciaśniejszym łuku; przy słabym silniku kadłub zanurza
+się, rośnie powierzchnia zwilżona i łódź nadal skręca w ruchu wypornościowym.
 Nie ma wymuszonego promienia, obrotu wokół zadanego punktu ani natychmiastowego
 ustawiania prędkości wzdłuż osi kadłuba. Punkt obrotu wynika z sił i ruchu.
 
@@ -139,6 +155,8 @@ narastają ze stałą ok. 0,65–1,3 s, zależną od mocy i obciążenia, opadaj
 ze stałą 0,4 s. Ciąg zależy od kwadratu obrotów, limit mocy od sześcianu.
 Zmiana biegu wymaga zwolnienia wału i co najmniej 0,65 s; polecenie
 manetki nie oznacza natychmiastowego ciągu ani zmiany prędkości.
+Dla skutera pompa narasta ze stałą 0,25–0,43 s, opada z 0,22 s;
+zmiana kierunku deflektora wymaga co najmniej 0,22 s po spadku obrotów.
 
 Ciąg statyczny zaburtowego: `85*KM^0,8 N`, wstecz 58%; sprawność graniczna
 `T*v <= 0,55*P_wału`. Ciąg zależy także od posuwu, szkód i wentylacji.
@@ -162,6 +180,13 @@ falowy, opór podpieranego dynamicznie kadłuba i większy opór zanurzonej rufy
 na wstecznym. Udział ślizgu zależy od liczby Froude’a i ilorazu szacowanego
 podparcia dynamicznego do ciężaru. Podparcie zależy od `u²`, długości,
 szerokości i kąta dennego V. Cięższy kadłub wymaga większej prędkości.
+Wymagane podparcie w zakręcie jest mnożone przez `hypot(1,u*r/g)`.
+Cel udziału ślizgu to iloczyn `clamp((Fn-0.48)/0.4)` i
+`clamp((liftRatio-0.22)/0.43)`; dla skutera drugi czynnik to
+`clamp((liftRatio-0.12)/0.40)`. Ma to przybliżyć próg wynurzenia kadłuba.
+Odjęcie gazu zmniejsza obroty i moc, spada prędkość, zanika podparcie,
+wraca większe zwilżenie i opór wypornościowy. Pozostawiony bieg daje
+pozostały ciąg, bez odgórnego zatrzymania łodzi.
 Narastanie udziału ślizgu: 2,8 s; opadanie: 1,4 s. Profil wypornościowy
 nie przechodzi w ślizg.
 
@@ -354,9 +379,21 @@ wymiarów do kolizji. Paski na powierzchni zmieniają też krzywiznę i lekko
 kołyszą się. To dodatkowe wskazówki wizualne, a nie dodatkowe siły fal.
 
 Ślad V przy prędkości względem wody ponad 2 m/s powstaje z zapisanych
-pozycji rufy co 0,14 s. Brzegi rozchodzą się w bok, dryfują z prądem
-i zanikają po 6 s; po zakręcie zostają na przebytej trasie. To wizualny
-model kilwateru, nie pełna teoria fal Kelvina ani numeryczna powierzchnia wody.
+pozycji rufy nie częściej niż co 0,18 s i dopiero po rzeczywistym przebyciu
+co najmniej `max(0.5,0.1*speed)` m. Brzegi rozchodzą się w bok i dryfują
+z prądem; maksymalny czas życia to 28 s, limit 155 próbek. Ta sama geometria
+zasila rysunek i pole falowe. Gładki pakiet `(1-z²)*exp(-z²/2)` ma grzbiet
+i doliny, amplitudę zależną od prędkości (maks. około 0,31 m przed zanikiem)
+i szerokość rosnącą z wiekiem. Nakładające się sąsiednie próbki są
+uśredniane, aby liczba klatek nie zwiększała wysokości fali.
+
+Próbkowanie w środku, na dziobie i rufie daje wysokość i nachylenie
+spotkanej fali; falę uwzględnia także zanurzenie śruby i wlotu chłodzenia.
+Pakiety młodsze niż 1 s nie działają na emitującą je łódź. Powrót przez
+własny kilwater wywołuje heave/pitch/roll i ograniczoną zmianę przepływu.
+Częstotliwość własna heave rośnie z 4,2 do 7,2 rad/s wraz ze ślizgiem.
+To uproszczenie: brak odbić, interferencji fazowej, łamania i osłaniania
+kilwateru przez ląd; nie rozwiązujemy pełnej teorii fal Kelvina ani CFD.
 
 Echosonda: idealny pomiar dna pod rufą i historia 60 s; fish arches to
 wizualny easter egg, bez symulacji akustyki ani zachowania ryb.
@@ -386,63 +423,69 @@ konkretnego producenta.
 Ślad jest próbkowany po przebyciu 0,35 m, a nie co stały czas: drobne
 drgania pozycji na postoju nie tworzą wiązki nakładających się odcinków.
 
-## Wyniki kontrolne v7
+## Wyniki kontrolne v8
 
-Spokojna woda, bez kolizji terenowych (utrzymywanie pozycji testowej),
-krok 1/120 s. To wyniki równań symulatora, **nie dane osiągowe prawdziwej łodzi**.
+Spokojna woda, 120 Hz. Ta sama motorówka 5,5 m / kadłub 800 kg, prędkość
+wejścia 9 m/s, początkowy udział ślizgu 0,9, rozkręcony silnik, pełny gaz
+i skręt 35°. Po 12 s (pozycja przenoszona po każdym kroku na głęboką wodę,
+żeby wyłączyć kontakt z brzegiem; nie powstaje wtedy nowy kilwater):
 
-Motorówka 5,5 m, trym 10%, pełny gaz: rozpędzenie przez 40 s, następnie
-pełny skręt 35° bez zmiany gazu. Promień to chwilowy `|V|/|r|`.
-
-| Moc [KM] | Na wprost [m/s] | Po 3 s skrętu [m/s] | Po 10 s [m/s] | Promień po 3 s [m] | Promień po 10 s [m] |
+| Moc [KM] | Prędkość [m/s] | Obrót [rad/s] | Promień `V/r` [m] | Udział ślizgu | Ruch boczny środka [m/s] |
 | --- | --- | --- | --- | --- | --- |
-| 90 | 12.00 | 6.13 | 3.84 | 39.00 | 13.78 |
-| 350 | 20.35 | 9.25 | 7.76 | 33.50 | 22.72 |
+| 45 | 6,03 | 0,197 | 30,6 | 0,19 | -0,51 |
+| 60 | 6,73 | 0,228 | 29,6 | 0,38 | -0,57 |
+| 90 | 7,78 | 0,302 | 25,8 | 0,62 | -0,76 |
+| 350 | 10,06 | 0,728 | 13,8 | 0,80 | -2,27 |
 
-Start z postoju, domyślne 90 KM i pełny skręt, po 25 s:
+Prędkość boczna rufy to `v-r*0.44*L`: w mocnej konfiguracji około
+-4,03 m/s, bez obracania łodzi w miejscu; ruch wzdłużny jest ponad
+trzykrotnie większy od bocznego ruchu środka. Ten sam silnik 350 KM
+z kadłubem 2200 kg: obrót około 0,419 rad/s, udział ślizgu 0,22,
+promień 24,1 m. Moc względem masy zmienia możliwość utrzymania ślizgu.
 
-| Manetka | Ruch wzdłużny [m/s] | Ruch boczny [m/s] | Obrót [rad/s] | Promień [m] |
-| --- | --- | --- | --- | --- |
-| 8% | 0.846 | -0.157 | 0.0578 | 14.89 |
-| 25% | 1.662 | -0.340 | 0.1359 | 12.49 |
-| 50% | 2.165 | -0.487 | 0.2023 | 10.97 |
-| 100% | 3.040 | -0.707 | 0.2999 | 10.41 |
+Skuter 170 KM przy analogicznym wejściu: około 9,58 m/s,
+1,05 rad/s, promień 9,2 m. Z postoju przy pełnym gazie i skręcie po 2 s:
+skuter 170 KM około 5,98 m/s, motorówka 170 KM około 0,85 m/s.
+Pompa ma szybsze narastanie obrotów i zmianę kierunku deflektora niż
+przekładnia zaburtowa; ciąg nadal jest ograniczony mocą, napływem i masą.
 
-350 KM na wprost, pełny gaz po 35 s:
+Odjęcie manetki z pełnego gazu do 12% w motorówce 90 KM: przed zmianą
+12,00 m/s; po 6 s 5,57 m/s, udział ślizgu 0,32; po 18 s 2,00 m/s,
+udział ślizgu bliski zeru. Silnik pozostaje na biegu naprzód.
 
-| Trym | Prędkość [m/s] | Wentylacja | Zanurzenie tarczy |
-| --- | --- | --- | --- |
-| 0% | 19.40 | 0% | 100% |
-| 22% | 21.47 | 0% | 100% |
-| 70% | 5.83 | 83% | 100% |
-| 100% | 0.00 | 100% | 0% |
-
-To wyniki konkretnej próby symulatora, nie poprawny dobór 350 KM do tej
-łodzi ani pomiar ustalonej średnicy zwrotu prawdziwej jednostki. Przy
-pełnym podniesieniu od początku śruba jest poza wodą i łódź nie rusza.
-Test zejścia z piasku: start `(8;155)`, dziób na zachód, trym 70%,
-po ustaleniu podparcia gaz wstecz 60% przez 40 s: x rośnie do około
-48,5 m, łódź jest na wodzie, śruba pozostaje nieuszkodzona.
+Test powrotu przez własną falę to rzeczywisty ruch po jeziorze przy
+350 KM po rozbiegu i pełnym skręcie, bez fal pogodowych. Sprawdzamy
+spotkanie fali >4 cm, heave >1 cm, ograniczoną amplitudę i skończone stany.
+Są to wyniki symulatora, nie dane z prób morskich ani gwarantowane osiągi.
 
 ## Kolizje
 
 Prędkość normalna punktu kontaktu uwzględnia ruch i obrót; energia
 `0,5*m_ef*v_normalna²`. Zachowano umowne progi dydaktyczne:
-bez szkód do 0,15 m/s, z burtowymi odbijaczami do 0,30 m/s; zniszczenie
+bez szkód do 0,15 m/s, z kontaktem przez odbijacz do 0,30 m/s; zniszczenie
 od 1,50 / 1,80 m/s. To nie są potwierdzone bezpieczne prędkości prawdziwej
 łodzi, pomostu ani rzeczywistych odbijaczy. Celem manewru jest kontakt bliski zeru.
 Kolizje z Y-bomami używają odcinka o rzeczywistej szerokości,
 z ruchem punktu kontaktu, bezwładnością obrotu i reakcją na zawiasie.
+Cztery odbijacze mają osobne okręgi kontaktu, zgodne z pozycjami na mapie.
+Rozwiązywane są przed kadłubem: przy równoległym dobijaniu odsuwają łódź,
+a wystający dziób lub pawęż nadal może uderzyć bez osłony. Kolor zielony
+sygnalizuje łagodny kontakt, pomarańczowy szkody, czerwony silną kolizję.
+Błysk zanika w 1,6 s; mapa ośmiu stref zachowuje przyciemniony ślad
+rzeczywistej szkody. Niezależne punkty nie współdzielą globalnej blokady
+sygnalizacji; ponowne drganie tej samej strefy ma odstęp 0,45 s. Dotyczy
+to pomostów, Y-bomów, innych łodzi i kontaktu z dnem. Nie ma wyłącznika szkód.
 Kadłuby przybliżają podłużne kapsuły i impuls. Nie liczymy deformacji materiałów. Zniszczony
 pomost nadal jest przeszkodą.
 
-## Układ interfejsu v7
+## Układ interfejsu v8
 
 Menu startowe zawiera łódź, wyposażenie, miejsce startu i pogodę. R i „Nowa
 próba” otwierają je z zachowaniem wyborów; dopiero „Rozpocznij rejs” tworzy
 nową próbę. Zamknięcie okna wraca do aktualnego rejsu. Pogoda jest także
-w przesuwalnym oknie pod ikoną na mapie. Stan jednostki jest pod mapą,
-a niżej pozostają konsola, cumy i kompaktowy panel kotwicy.
+w przesuwalnym oknie pod ikoną na mapie. Stan jednostki i mapa kontaktów są
+w kokpicie pod schematem uniesienia dziobu. Pod konsolą pozostają cumy
+i kompaktowy panel kotwicy; usunięto osobny przycisk założeń uszkodzeń.
 
 Nad kołem są osobne znaczniki zadanego i rzeczywistego kąta napędu.
 Wskaźnik paliwa ma E/F i kontrolkę poniżej 10%. Temperatura: niebieski

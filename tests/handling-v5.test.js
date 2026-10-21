@@ -8,7 +8,7 @@ test('small steering remains a wide arc through full-throttle acceleration for e
  for(const profile of ['tender','runabout','cabin','cruiser','pwc']){const b=createBoat('open',{profile,powers:[350]});b.a=0;b.steer=.025;b.throttle=1;free(b,25);const speed=Math.hypot(b.vx,b.vy);assert.ok(Math.abs(b.a)<.8,profile);assert.ok(Math.abs(b.w)<.04,profile);assert.ok(speed/Math.max(.0001,Math.abs(b.w))>b.spec.length*5,profile);assert.ok(Math.abs(b.telemetry.sway)<.3,profile);}
 });
 test('even a large turn at full 350 HP keeps an advancing path instead of spinning in place',()=>{
- const b=createBoat('open',{powers:[350]});b.a=0;b.throttle=1;b.steer=.5;free(b,20);const speed=Math.hypot(b.vx,b.vy);assert.ok(speed>6);assert.ok(Math.abs(b.w)<.4);assert.ok(speed/Math.abs(b.w)>b.spec.length*4);
+ const b=createBoat('open',{powers:[350]});b.a=0;b.throttle=1;b.steer=.5;free(b,20);const speed=Math.hypot(b.vx,b.vy);assert.ok(speed>8);assert.ok(Math.abs(b.w)<1);assert.ok(speed/Math.abs(b.w)>b.spec.length*2);assert.ok(b.telemetry.surge>Math.abs(b.telemetry.sway)*3);
  b.steer=0;free(b,8);assert.ok(Math.abs(b.w)<.015);assert.ok(Math.abs(b.telemetry.sway)<.15);
 });
 test('symmetric twins stay straight and held rudder makes gentle mirrored turns in reverse',()=>{

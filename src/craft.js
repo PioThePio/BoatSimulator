@@ -64,11 +64,11 @@ export function updateEngine(en,command,inflow,dt,damage=0,context={}){
  en.ventilation+=(trimVent-en.ventilation)*(1-Math.exp(-dt/.35));
  const advanceLoad=clamp(1-Math.abs(inflow)/(4+12*en.n),.15,1);
  en.load=advanceLoad*(1-en.ventilation)*(context.immersion??1);
- if(desired!==en.gear){en.n*=Math.exp(-dt/.28);en.shift+=dt;if(en.n<.055&&en.shift>=.65){en.gear=desired;en.shift=0;}}
+ if(desired!==en.gear){en.n*=Math.exp(-dt/(context.jet?.14:.28));en.shift+=dt;if(en.n<.055&&en.shift>=(context.jet?.22:.65)){en.gear=desired;en.shift=0;}}
  else{
   en.shift=0;const demand=desired?.23+.77*clamp((Math.abs(cmd)-.08)/.92,0,1)**.65:0;
   const target=clamp(demand*(1-.035*en.load)+en.ventilation*.13,0,1);
-  const tau=target>en.n?.65+.30*(en.hp/350)**.3+.35*en.load:.4;
+  const tau=target>en.n?(context.jet?.25+.18*en.load:.65+.30*(en.hp/350)**.3+.35*en.load):(context.jet?.22:.4);
   en.n+=(target-en.n)*(1-Math.exp(-dt/tau));
  }
  const n=en.n,gear=en.gear;
