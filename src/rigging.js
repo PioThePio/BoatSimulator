@@ -11,10 +11,12 @@ export function cleat(b,end){const p=cleatLocal(b.spec,end);return point(b,p.x,p
 export function inverseMass(b,n,arm){
  const c=Math.cos(b.a),s=Math.sin(b.a),u=n.x*c+n.y*s,v=-n.x*s+n.y*c;
  const lever=arm.x*n.y-arm.y*n.x;
- return u*u/b.spec.mx+v*v/b.spec.my+lever*lever/b.spec.iz;
+ const wet=b.wetFraction??1,mx=b.spec.mass+(b.spec.mx-b.spec.mass)*wet,my=b.spec.mass+(b.spec.my-b.spec.mass)*wet;
+ return u*u/mx+v*v/my+lever*lever/b.spec.iz;
 }
 export function impulse(b,n,j,arm){
- const c=Math.cos(b.a),s=Math.sin(b.a),u=(n.x*c+n.y*s)*j/b.spec.mx,v=(-n.x*s+n.y*c)*j/b.spec.my;
+ const wet=b.wetFraction??1,mx=b.spec.mass+(b.spec.mx-b.spec.mass)*wet,my=b.spec.mass+(b.spec.my-b.spec.mass)*wet;
+ const c=Math.cos(b.a),s=Math.sin(b.a),u=(n.x*c+n.y*s)*j/mx,v=(-n.x*s+n.y*c)*j/my;
  b.vx+=c*u-s*v;b.vy+=s*u+c*v;b.w+=(arm.x*n.y-arm.y*n.x)*j/b.spec.iz;
 }
 export function attachRope(b,end,bollard=null){
@@ -22,6 +24,7 @@ export function attachRope(b,end,bollard=null){
  const p=cleat(b,end);
  if(bollard===null){let best=Infinity;BOLLARDS.forEach((_,i)=>{const q=mooringPoint(b,i),d=Math.hypot(p.x-q.x,p.y-q.y);if(d<best){best=d;bollard=i;}});}
  const q=mooringPoint(b,bollard);if(!q)return{ok:false,message:'Wybierz poler na mapie albo z listy.'};
+ if(q.trailer&&b.towRig?.postBroken)return{ok:false,message:'Poler PRZ jest wyłamany · nie można założyć cumy.'};
  const d=Math.hypot(p.x-q.x,p.y-q.y);
  if(d>6)return{ok:false,message:`${q.label} jest poza zasięgiem rzutu (6 m od knagi).`};
  b.ropes.push({end,bollard,length:d+.35,targetLength:d+.35,tension:0,control:0,effortTime:0,manualForce:0,blocked:false,rate:0});

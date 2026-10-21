@@ -1,4 +1,4 @@
-# Model v13: podstawy, założenia i ograniczenia
+# Model v14: podstawy, założenia i ograniczenia
 
 Model ma odtwarzać **zależności fizyczne w manewrach**, ale nie jest
 zweryfikowanym cyfrowym bliźniakiem konkretnej motorówki. Nie dysponujemy
@@ -790,3 +790,90 @@ załadunek i jego warunki, reakcję ruchomego polera, mokrą przyczepność,
 przeciążony zestaw na stromym slipie, zanurzenie dolotu oraz pełny cykl
 wodowania i powrotu na ląd. Testy przeglądarkowe obejmują przełączanie
 kokpitu, trzymane pedały, klawiaturę, pogodę, kąt rampy i ekran telefonu.
+
+## Poprawki zestawu i podparcie kadłuba w v14
+
+Poniższy opis zastępuje odpowiednie uproszczenia v13. Parametry są jawnymi
+założeniami treningowymi, nadal bez kalibracji dla konkretnego pojazdu.
+
+Pedał przyspieszenia narasta liniowo 1,5/s, hamulec 2,2/s; zwalnianie
+5/s i 6/s. Po lewej jest hamulec, po prawej gaz. Spacja przełącza ręczny
+na tylnej osi; S/↓ to osobny hamulec nożny. Q/E przesuwa wybór PRND,
+z zachowaniem blokady zmiany kierunku podczas ruchu. Alarm silnika na
+zapłonie pozostaje w łodzi, a jest wyłączony w torze audio SUV-a.
+
+Osie SUV-a mają oddzielne naciski: ciężar na haku obciąża tył i odciąża
+przód, dochodzi transfer na pochyłości i utrata nacisku przez zanurzenie.
+Domyślny napęd 2WD działa na tył, przełącznik 4×4 dzieli zapotrzebowanie
+na obie osie. Wspólny limit koła tarcia obejmuje siłę wzdłużną i boczną
+na każdej osi. Powstały poślizg boczny zmniejsza dostępny ciąg; w 2WD
+przód zachowuje sterowanie, gdy tył traci przyczepność od gazu. Przy 4×4
+każda oś może osiągnąć swój limit. Pomoc przedniej suchej osi na mokrym
+slipie wynika z jej nacisku i μ, nie mnożnika siły silnika.
+
+Piasek ma μ=0,45 i opór toczenia 0,085 nacisku, asfalt/beton 0,80 i 0,014.
+Na mokrym betonie μ maleje 0,44→0,22. Pas do prób piasku leży na parkingu
+x=145–161, y=−43–−14. Przy małej prędkości i buksowaniu koleina rośnie
+maksymalnie 0,13 m/s pomnożone przez poślizg i pedał, do 45 cm.
+Nacisk osi powyżej nominalnego dodatkowo zmniejsza przyczepność piasku;
+koleina zwiększa opór i dalej zmniejsza μ. Jazda oczyszcza koleinę z
+szybkością 0,015*V m/s, twarde podłoże stopniowo usuwa obciążenie koleiny.
+Bardzo przeciążone auto może pozostać zakopane również po dołączeniu 4×4.
+
+Środek osi przyczepy jest teraz 0,14 L za środkiem łodzi (zamiast 0,08 L),
+a zaczep 1,45 m przed dziobem. Dłuższy dyszel i masa zachowują rzeczywiste
+ramiona momentów. Odczepienie wymaga postoju i suchego podłoża pod
+przyczepą. Odłączona przyczepa otrzymuje hamulec i podporę; przegub nie
+przenosi już sił na SUV-a. Przyłączenie: do 55 cm i 0,5 rad różnicy kursów.
+Złożenie powyżej około 70° podczas kontaktu/ruchu nalicza szkody SUV-a,
+przyczepy i zaczepu. Ograniczenie przy 80° pozostaje kontaktem mechanicznym.
+Postój sam w sobie nie nalicza kolejnych szkód. Zniszczony zaczep rozłącza
+zestaw; szkody pojazdu ograniczają dostępny napęd.
+
+SUV ma wysokość i pitch z dwóch punktów pod osiami. Przyczepa ma osobną
+wysokość osi i pitch z zaczepu (lub podpory po odłączeniu). Całe grafiki,
+z kołami i nadwoziem/ramą, są obracane o te kąty, bez spłaszczania ramy.
+Kadłub używa swojego heave/pitch/roll i nie kopiuje kąta przyczepy po
+zwolnieniu pasów. Widok przy łodzi również pokazuje przyczepę, gdy jest
+ona w zasięgu manewru. Po odczepieniu kokpit SUV-a pokazuje auto solo.
+
+Zapięte pasy blokują kadłub względem ramy. Po ich zwolnieniu łódź jest
+osobnym ciałem, także na lądzie i w ruchu. Trzy sekcje wodnicy mają wagi
+0,32/0,36/0,32 i lokalny wypór zależny od rzeczywistego zanurzenia.
+Sześć kontaktów (dwie belki × trzy sekcje) daje jednostronne siły podpór
+z momentem przegłębienia i przechyłu. Podparcie o efektywnym ugięciu
+2,5 cm ma tłumienie i stabilizację na kroku 1/120 s. Tarcie wzdłuż rolek
+μ=0,035, poprzecznie μ=0,30. Ramy znajdują się poniżej belek: nie tworzą
+niewidzialnych wysokich ścian, które utrzymałyby zsuwającą się łódź.
+Przesunięty kadłub traci podparcie jednej strony, przechyla się i może spaść.
+
+Wypór stopniowo odciąża każdą sekcję. Rufa może pływać, gdy dziób nadal
+opiera się na belkach. Wskaźnik sumuje naciski i podaje kg, osobno wypór
+rufy. Po utracie podpór łódź zachowuje położenie, prędkość oraz zwykłą
+cumę dziobową do PRZ. Nie ma teleportacji ani jednolitego progu głębokości
+zwalniającego całą łódź. Początkowa cuma ma 35 cm luzu; siła i zerwanie
+używają tego samego solvera co pozostałe cumy. Na lądzie masa dodana
+hydrodynamiczna zanika wraz z zanurzeniem. Spadający kadłub podlega
+grawitacji, kontaktowi z gruntem, tarciu i uszkodzeniom dna. Granicę świata
+przesunięto poza parking, aby nie wypychała zwolnionej łodzi z obszaru ćwiczeń.
+
+Podpory i niezapięty kadłub przekazują wzajemne impulsy. Kontakt z ramą,
+wspornikiem dziobowym i SUV-em ma prędkość względną punktów, ramiona i
+masę efektywną. Szybkość ponad 1,8 m/s może wyłamać wspornik: znika
+przeszkoda i cuma na zniszczonym PRZ. Łódź może wtedy uderzyć w SUV-a.
+Cofający pojazd również może pchnąć i uszkodzić łódź. To oddzielne szkody
+od pomostu; nie zużywają wskaźnika stanu pomostu.
+
+Start transportowy podnosi zaburtowe do 100% trymu. Rozruch na przyczepie
+jest dozwolony. Zanurzenie śruby i wlotu chłodzenia liczymy z faktycznej
+geometrii. Suchy wlot przy transportowej pracy dodaje 0,65 + 0,8*n °C/s
+do empirycznego bilansu ciepła, więc alarm i odcięcie termiczne następują
+znacznie wcześniej niż przy zanurzonym chłodzeniu. Wpływ ciągu zanurzonego
+napędu z zapiętymi pasami przenosi się na przyczepę.
+
+Testy obejmują nacisk i unoszenie rufy, pozostawanie na cumie dziobowej po
+zwodowaniu, zsunięcie i upadek w ostrym zakręcie, rozruch i brak chłodzenia,
+kolizje dziobu/SUV-a, ramę poniżej belek, odpinanie i ponowne przyczepianie,
+koło tarcia osi, pomoc 4×4, zakopanie w piachu, szkody przegubu, stopniowe
+pedały i poprawne obroty całych sylwetek. Model nie obejmuje pełnej dynamiki
+zawieszenia, deformacji opon, rozkładu ciśnienia gleby ani sprężystości ramy.

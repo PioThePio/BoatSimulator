@@ -23,7 +23,7 @@ export function soundParameters(b,e={}){
   wash:clamp(speed/22,0,1)*(.012+.07*b.planing)+clamp(Math.abs(b.telemetry.thrust??0)/7000,0,1)*.018,
   waterCutoff:500+clamp(speed/8,0,1)*650,
   skimming,spray:skimming*clamp(speed/16,0,1)*.14,sprayCutoff:1400+clamp(speed/22,0,1)*1300,
-  ignitionAlarm:b.engines.some(en=>en.key==='ignition'),
+  ignitionAlarm:!b.suppressIgnitionAlarm&&b.engines.some(en=>en.key==='ignition'),
   trimPump:b.spec.jet?0:clamp(Math.max(...b.engines.map(en=>Math.abs(en.trimRate??0)))/.1,0,1),
   thrusters:['bow','stern'].map(end=>Math.abs(b.thrusters[end+'Actual']??0)*.085),pump:b.fuel.refueling?.025:0};
 }

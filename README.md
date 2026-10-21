@@ -1,11 +1,11 @@
-# Przystań — symulator manewrów motorówką v13
+# Przystań — symulator manewrów motorówką v14
 
 Przeglądarkowy symulator z widokiem z góry, bez kont i backendu. Pięć rodzajów
 łodzi, w tym skuter, zmieniane wymiary i masa, jeden lub dwa silniki do 350 KM.
 Nieregularne jezioro 600 × 400 m, wyspa z przesmykiem, plaże, mielizny,
 szuwary, port ze stanowiskami z bojami i ruchomymi Y-bomami szerokości 25 cm.
 
-Uruchom: **https://piothepio.github.io/BoatSimulator/?v=13.0.0**.
+Uruchom: **https://piothepio.github.io/BoatSimulator/?v=14.0.0**.
 
 Model służy do poznawania zależności w manewrach; nie jest skalibrowany dla
 konkretnej łodzi. [Źródła, równania i ograniczenia](docs/PHYSICS.md).
@@ -86,19 +86,35 @@ bezwładnością; zanurzony zaburtowy nadal reaguje na przepływ wody.
 Wybierz start **Parking · łódź na przyczepie** albo **Slip · załadunek z wody**.
 Przycisk na mapie, wybór stanowiska w konsoli lub **V** przełącza łódź/SUV.
 Koło i wskaźniki pozostają na swoich miejscach, manetki zastępują gaz,
-hamulec i **PRND**. W/↑ gaz, S/↓ lub Spacja hamulec, 1/2/3/4 wybiera
-P/R/N/D. Stacyjka: klik w prawo zapłon/rozruch, w lewo całkowite wyłączenie.
+hamulec i **PRND**. W/↑ gaz, S/↓ hamulec nożny. **Spacja przełącza
+ręczny**, **Q/E** poprzedni/następny bieg; działają też 1/2/3/4 = P/R/N/D. Stacyjka: klik w prawo zapłon/rozruch, w lewo całkowite wyłączenie.
 Zatrzymaj zestaw przed zmianą kierunku i przesiadką. Pedały puszczają po
 zwolnieniu przycisku, suwaka albo klawisza.
 
-Cofnij przyczepę na slip, zatrzymaj w P i zwolnij zabezpieczenia.
-Łódź odpłynie dopiero po zanurzeniu podpór. Do załadunku wprowadź ją
+Cofnij przyczepę na slip i zwolnij zabezpieczenia. Nacisk podpór w kg
+stopniowo maleje: rufa zaczyna pływać, gdy dziób nadal jest oparty.
+Przy zerowym nacisku łódź pływa, a początkowa cuma dziobowa do PRZ
+utrzymuje ją przy przyczepie. Odepnij cumę, jeśli chcesz odpłynąć. Do załadunku wprowadź ją
 prosto między prowadnice, załóż cumę dziobową na **PRZ**, zatrzymaj,
 wyłącz silniki i wybierz **Zabezpiecz łódź**. Zbyt płytka/głęboka przyczepa
 utrudnia operację. Przed wyjazdem odczep cumy od pomostu i wybierz kotwicę.
 Kąt slipu 4–18° ustawisz na starcie lub w panelu poniżej. Obciążenie,
 przegub, hamowanie, opory, wypór i mokra trakcja wpływają na ruch;
-parking z liniami służy do ćwiczenia cofania i parkowania.
+parking z liniami służy do ćwiczenia cofania i parkowania. Na lądzie
+możesz odczepić przyczepę i jeździć samym SUV-em, następnie podjechać
+hakiem do zaczepu i przyczepić ją ponownie. Przycisk 4×4 pomaga na
+mokrym slipie. Pas piasku na parkingu pozwala ćwiczyć trakcję i zakopanie
+kół. Zbyt duże złożenie zestawu powoduje uszkodzenia.
+
+Gaz i hamulec narastają liniowo. Alarm zapłonu SUV-a jest wyłączony.
+Łódź zaczyna na przyczepie z maksymalnym trymem, może uruchomić silnik,
+ale brak wody przy stopie oznacza brak chłodzenia i szybsze przegrzanie.
+Pasy można zwolnić także podczas jazdy: niezabezpieczona łódź może spaść,
+a cuma zerwać się pod przeciążeniem. Za szybki załadunek uszkadza dziób;
+wyłamanie wspornika może skończyć się uderzeniem w samochód.
+Diagram zanurzenia oddzielnie przechyla całe nadwozie, przyczepę i łódź;
+pokazuje też stopniowe unoszenie rufy i kontakt z podporami. Ten sam
+widok jest dostępny w kokpicie łodzi, gdy podpływasz na przyczepę.
 
 Knagi w menu cumowania: **jasna** wolna, **zielona** połączona z wybranym
 polerem, **beżowa** z innym. Naciąg pokazuje wartość w kN i kolor liny na
@@ -116,7 +132,7 @@ W v11 silniki mają łagodniejsze, cichsze brzmienie i więcej szumu wydechu,
 a kliknięcia manetki, stacyjki i uderzenia są wyraźniejsze. Strumieniowy
 szumi wodą; wejście w ślizg dodaje osobny, szerszy rozbryzg i ogranicza
 niższy szum wypornościowy. Zapłon bez pracującego silnika uruchamia
-ciągły brzęczyk, również po zgaśnięciu; START, praca silnika i pozycja
+ciągły brzęczyk łodzi, również po zgaśnięciu (SUV bez brzęczyka); START, praca silnika i pozycja
 0 wyłączają go. Zimny silnik lekko faluje na wolnych obrotach, a efekt
 zanika przy rozgrzaniu i zwiększeniu gazu. Okno cumowania otwiera się dalej
 od kadłuba, z zachowaniem możliwości przesuwania i obsługi na telefonie.

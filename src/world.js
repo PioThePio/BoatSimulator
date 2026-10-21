@@ -22,7 +22,7 @@ export const YBOOMS=Array.from({length:6},(_,i)=>({id:i,x1:76+i*5,y1:12.8,x2:76+
 export const BUOY_SLIPS=[35.5,41,46.5].map((x,i)=>({x,y:26,id:`B${i+1}`}));
 export const FUEL_STATION={x:51.8,y:20,pumpX:50.4,pumpY:18,alongMin:15,alongMax:28,maxGap:1.4};
 export const FUEL_FENDERS=[16,18.5,21,23.5,26].map((y,id)=>({x:51.8,y:y-.35,w:.22,h:.7,fender:true,id:'fuel-fender-'+id}));
-export const SOLIDS=[...DOCKS,...FUEL_FENDERS,...BUILDINGS,{x:-45,y:-45,w:700,h:20},{x:-45,y:-25,w:20,h:480},{x:-25,y:434,w:680,h:20},{x:634,y:-25,w:20,h:480}];
+export const SOLIDS=[...DOCKS,...FUEL_FENDERS,...BUILDINGS,{x:-45,y:-72,w:700,h:12},{x:-45,y:-60,w:20,h:515},{x:-25,y:434,w:680,h:20},{x:634,y:-60,w:20,h:515}];
 export const BEACHES=[{edge:'north',from:105,to:190,name:'Plaża Północna'},{edge:'west',from:125,to:205,name:'Plaża Sosnowa'},{edge:'south',from:420,to:520,name:'Plaża Południowa'}];
 export const REEDS=[{x:25,y:245,r:10},{x:190,y:375,r:13},{x:550,y:345,r:12},{x:278,y:268,r:9}];
 export const SHOALS=[{x:91,y:64,rx:16,ry:12,drop:7.1},{x:440,y:285,rx:42,ry:26,drop:7.8},{x:420,y:120,rx:25,ry:19,drop:7.6},{x:115,y:290,rx:24,ry:17,drop:7.4}];

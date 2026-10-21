@@ -1,0 +1,26 @@
+import {bottomAt,clamp,BOLLARDS} from './world.js';
+import {bodyPoint,bodyLocal,bunkZ} from './tow-geometry.js';
+import {driveGeometry} from './drive.js';
+export function towProfile(r,b,{focusCar=false}={}){
+ if(focusCar&&!r.attached)return soloCarProfile(r);
+ const t=r.trailer,c=r.car,L=b.spec.length,near=Math.hypot(b.x-t.x,b.y-t.y)<L*1.4,showCar=r.attached||Math.hypot(c.x-t.x,c.y-t.y)<20;
+ const carU=bodyLocal(t,c).x,boatU=bodyLocal(t,b).x,lo=Math.min(t.offset-L*.57,near?boatU-L*.6:Infinity),hi=Math.max(t.hitch,showCar?carU+2.8:-Infinity,near?boatU+L*.55:-Infinity);
+ const ground=Array.from({length:33},(_,i)=>{const u=hi+(lo-hi)*i/32,p=bodyPoint(t,u);return{u,z:-bottomAt(p.x,p.y).depth};});
+ const high=Math.max(...ground.map(p=>p.z),showCar?c.z+1.6:-10,near?b.heave+b.spec.freeboard:-10),low=Math.min(-.3,...ground.map(p=>p.z),near?b.heave-b.spec.draft:-.3)-.35;
+ const scale=Math.min(310/(hi-lo),120/Math.max(2,high-low)),left=(340-(hi-lo)*scale)/2,X=u=>left+(hi-u)*scale,Z=z=>16+(high-z)*scale;
+ const group=(name,u,z,pitch,body)=>`<g data-profile-body="${name}" data-pitch="${pitch*180/Math.PI}" transform="translate(${X(u)} ${Z(z)}) scale(${-scale} ${-scale}) rotate(${pitch*180/Math.PI})">${body}</g>`;
+ const car=showCar?group('suv',carU,c.z,c.pitch,`<path d="M-2.4 0H2.4V.6L1.6 .85 .95 .85 .52 1.38H-1.48L-1.95 .85H-2.4Z" fill="#d6dfd1" stroke="#557664" stroke-width=".06"/><path d="M.8 .9 .42 1.25H-1.4L-1.7 .9Z" fill="#789c91"/>${[-1.45,1.45].map(x=>`<circle cx="${x}" cy="-.12" r=".32" fill="#415a50"/>`).join('')}<path d="M-2.4 .1H-2.75" stroke="#7a8d75" stroke-width=".08"/>`):'';
+ const front=t.offset+L*.46+.2,rear=t.offset-L*.52,bunks=t.bunkHeight-.4;
+ const trailer=group('trailer',0,t.z,t.pitch,`<path d="M${rear} 0H${front-.3}L${t.hitch} 0" fill="none" stroke="#69877b" stroke-width=".09"/><path d="M${rear+.2} ${bunks}H${front-.2}" stroke="#a59164" stroke-width=".13"/>${Array.from({length:t.axles},(_,i)=>`<circle cx="${(i-(t.axles-1)/2)*.62}" cy="-.1" r=".30" fill="#4c6658"/>`).join('')}${r.postBroken?'':`<path d="M${front} 0V${bunks+.7}" stroke="#9c845a" stroke-width=".09"/>`}${!r.attached?`<path d="M${t.hitch-.4} 0V-.5h.4" fill="none" stroke="#748a70" stroke-width=".09"/>`:''}`);
+ const boat=near?group('boat',boatU,b.heave,b.pitch,`<path d="M${L*.50} ${b.spec.freeboard*.45}Q${L*.43} ${-b.spec.draft} ${L*.27} ${-b.spec.draft}H${-L*.46}L${-L*.50} ${b.spec.freeboard*.3}Z" fill="${b.spec.color}" stroke="#5b7c67" stroke-width=".055"/><path d="M${-L*.1} ${b.spec.freeboard*.35}V${b.spec.freeboard*.9}H${L*.18}V${b.spec.freeboard*.35}Z" fill="#a5bdad"/>`):'';
+ const supports=near?(b.trailerSupport?.samples??[]).filter(q=>q.inside).map(q=>`<circle cx="${X(q.p.x)}" cy="${Z(q.bed)}" r="2.4" fill="${q.load>20?'#c2a15c':'#7fb5a2'}"/>`).join(''):'';
+ let drive='';if(near&&!b.spec.jet){const en=b.engines[0],g=driveGeometry(b,en),mount=bodyPoint(b,g.mountX),prop=bodyPoint(b,g.localX);drive=`<path d="M${X(bodyLocal(t,mount).x)} ${Z(g.mountZ)}L${X(bodyLocal(t,prop).x)} ${Z(g.propZ)}" stroke="#536c5c" stroke-width="2.5"/><circle cx="${X(bodyLocal(t,prop).x)}" cy="${Z(g.propZ)}" r="2.8" fill="${g.intake>.3?'#7faaa0':'#ca965c'}"/>`;}
+ let line='';if(near&&!r.postBroken&&b.ropes.some(q=>q.end==='bow'&&BOLLARDS[q.bollard]?.trailer)){const bow=bodyPoint(b,L*.39),x1=X(bodyLocal(t,bow).x),z1=Z(b.heave+L*.39*Math.sin(b.pitch)+b.spec.freeboard*.3),x2=X(front),z2=Z(bunkZ(t,front)+.65);line=`<path d="M${x1} ${z1}Q${(x1+x2)/2} ${Math.max(z1,z2)+3} ${x2} ${z2}" fill="none" stroke="#b49c62" stroke-width="1.2"/>`;}
+ const floorPath='M'+ground.map(p=>`${X(p.u)} ${Z(p.z)}`).join('L'),water=Z(0),load=Math.round((b.trailerSupport?.load??0)/9.81),stern=b.trailerSupport?.sternFloat??0;
+ return`<path d="${floorPath}V156H5Z" fill="#c7b997"/><path d="${floorPath}" fill="none" stroke="#8e987d" stroke-width="1"/>${car}${trailer}${boat}${drive}${line}<path d="M4 ${water}H336V156H4Z" fill="#8fc8c338"/><path d="M4 ${water}H336" stroke="#76a9a0" stroke-dasharray="4 3"/><text x="6" y="${clamp(water-4,10,151)}" fill="#6f968d" font-size="7">WODA</text>${supports}<text x="8" y="168" fill="#758c6b" font-size="8">${load} kg na podporach${near&&stern>.3?' · rufa wypierana przez wodę':''}</text>`;
+}
+function soloCarProfile(r){
+ const c=r.car,scale=32,ground=Array.from({length:21},(_,i)=>{const x=4-i*.4,p=bodyPoint(c,x);return{x,z:-bottomAt(p.x,p.y).depth};}),high=Math.max(c.z+1.5,...ground.map(p=>p.z)),X=x=>170-x*scale,Z=z=>18+(high-z)*scale;
+ const path='M'+ground.map(p=>`${X(p.x)} ${Z(p.z)}`).join('L'),water=Z(0);
+ return`<path d="${path}V155H4Z" fill="#c7b997"/><path d="${path}" fill="none" stroke="#8d987b"/><g data-profile-body="suv" data-pitch="${c.pitch*180/Math.PI}" transform="translate(170 ${Z(c.z)}) scale(-32 -32) rotate(${c.pitch*180/Math.PI})"><path d="M-2.4 0H2.4V.6L1.6 .85 .95 .85 .52 1.38H-1.48L-1.95 .85H-2.4Z" fill="#d6dfd1" stroke="#557664" stroke-width=".06"/><path d="M.8 .9 .42 1.25H-1.4L-1.7 .9Z" fill="#789c91"/>${[-1.45,1.45].map(x=>`<circle cx="${x}" cy="-.12" r=".32" fill="#415a50"/>`).join('')}</g><path d="M4 ${water}H336V155H4Z" fill="#8fc8c338"/><path d="M4 ${water}H336" stroke="#76a9a0" stroke-dasharray="4 3"/><text x="8" y="168" font-size="8" fill="#758c6b">SUV solo · przyczepa zaparkowana</text>`;
+}

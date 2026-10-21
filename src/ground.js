@@ -34,7 +34,7 @@ export function groundContact(b,wave,dt,notify){
  for(const x of [-.4*S.length,-.2*S.length,0,.2*S.length,.4*S.length])for(const y of [-.32*S.beam,0,.32*S.beam]){
   const p=point(b,x,y),floor=bottomAt(p.x,p.y),rise=.10*(Math.abs(x)/(.4*S.length))**2+.08*(Math.abs(y)/(.32*S.beam))**2;
   const hullDraft=S.draft-rise-x*Math.sin(b.pitch)-y*Math.sin(b.roll);
-  const restPenetration=Math.max(0,hullDraft-Math.min(wave.eta,b.heave)-floor.depth),actual=floor.depth+b.heave-hullDraft;
+  const restPenetration=Math.max(0,hullDraft-(b.launchMotion?b.heave:Math.min(wave.eta,b.heave))-floor.depth),actual=floor.depth+b.heave-hullDraft;
   clearance=Math.min(clearance,actual);support=Math.max(support,hullDraft-floor.depth);
   if(restPenetration>maxPenetration){maxPenetration=restPenetration;material=floor.material;}
   if(restPenetration>0){
@@ -44,13 +44,13 @@ export function groundContact(b,wave,dt,notify){
    samples.push({p,floor,penetration:restPenetration,closing,gradient,arm});
   }
  }
- b.underKeel=clearance;b.grounded=maxPenetration>.003;b.groundMaterial=material;
+ b.underKeel=clearance;b.grounded=maxPenetration>(b.launchMotion?.0001:.003);b.groundMaterial=material;
  b.groundLoad=0;
  if(!b.grounded)return;
  // Seabed replaces lost hydrostatic support; the boat rides up rather than sinking through sand.
  b.heave=Math.max(b.heave,support);b.underKeel=Math.max(0,clearance);if(b.heave<=support+.001)b.heaveVelocity=Math.max(0,b.heaveVelocity);
  for(const q of samples){
-  const load=S.mass*9.81/15*clamp(q.penetration/(S.draft*.7),0,1),arm={x:q.p.x-b.x,y:q.p.y-b.y};b.groundLoad+=load;
+  const load=b.launchMotion?S.mass*9.81*clamp(1-(b.wetFraction??0),.05,1)/samples.length:S.mass*9.81/15*clamp(q.penetration/(S.draft*.7),0,1),arm={x:q.p.x-b.x,y:q.p.y-b.y};b.groundLoad+=load;
   const gradient=q.gradient,slope=Math.hypot(gradient.x,gradient.y);
   if(slope>.0001){const n={x:gradient.x/slope,y:gradient.y/slope};impulse(b,n,Math.min(slope,.8)*load*dt,arm);}
   const vx=b.vx-b.w*arm.y,vy=b.vy+b.w*arm.x,speed=Math.hypot(vx,vy);
