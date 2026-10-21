@@ -86,13 +86,19 @@ export function step(b,e,dt){
  b.engines.forEach((engine,i)=>{
   const x=S.engineLever,y=engine.y,delta=b.actualSteer;
   const inflow=(u-b.w*y)*Math.cos(delta)-(v+b.w*x)*Math.sin(delta);
+  const lateral=(u-b.w*y)*Math.sin(delta)+(v+b.w*x)*Math.cos(delta);
   propellerContact(b,engine,dt,m=>event(b,m),e);
-  let thrust=updateEngine(engine,i===0?b.throttle:b.throttle2,inflow,dt,b.damage,{noFuel:b.fuel.litres<=0,jet:S.jet,grounded:b.grounded,moored:b.ropes.length>0,raised:b.enginesRaised,speed:Math.hypot(ur,vr),immersion:engine.immersion,intake:engine.intake});
+  // Encounter rate includes moving into a wave, not just its time oscillation.
+  // Subtract hull heave/pitch/roll so following the surface does not add load.
+  const g=engine.drive,surfaceRate=engine.lastSurface==null?0:(g.surface-engine.lastSurface)/dt;
+  engine.lastSurface=g.surface;
+  const vertical=b.heaveVelocity+g.mountX*Math.cos(b.pitch)*b.pitchVelocity+engine.y*Math.cos(b.roll)*b.rollVelocity;
+  const waveLoad=clamp(2.5*Math.abs(u)*Math.max(0,surfaceRate-vertical)/(9.81*S.length),0,.25);
+  let thrust=updateEngine(engine,i===0?b.throttle:b.throttle2,inflow,dt,b.damage,{noFuel:b.fuel.litres<=0,jet:S.jet,grounded:b.grounded,moored:b.ropes.length>0,raised:b.enginesRaised,speed:Math.hypot(ur,vr),immersion:engine.immersion,intake:engine.intake,crossflow:lateral,waveLoad});
   if(b.enginesRaised){thrust=0;engine.thrust=0;}
   thrust*=S.jet?1:Math.cos(trimAngle(engine.trim));
   force(thrust*Math.cos(delta),-thrust*Math.sin(delta),x,y);totalThrust+=thrust;
   // Submerged skeg: flow creates steering even in neutral; stalls at large incidence.
-  const lateral=(u-b.w*y)*Math.sin(delta)+(v+b.w*x)*Math.cos(delta);
   const axial=(u-b.w*y)*Math.cos(delta)-(v+b.w*x)*Math.sin(delta);
   const skeg=(b.enginesRaised||S.jet?0:engine.immersion)*-.5*1000*(.022+engine.hp*.00012)*1.1*Math.hypot(axial,lateral)*lateral;
   force(skeg*Math.sin(delta),skeg*Math.cos(delta),x,y);

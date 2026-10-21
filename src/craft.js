@@ -31,7 +31,7 @@ export function updateMass(spec,fuelLitres){
  spec.mx=spec.mass*1.08;spec.my=spec.mass*1.65;spec.iz=spec.inertia*1.55;
  return spec;
 }
-export function engineState(hp,y=0,coldStart=false){return{hp,y,clock:0,command:0,gear:0,n:0,shift:0,thrust:0,rpm:coldStart?0:750,propDamage:0,propContact:false,propClearance:10,lastStrike:-10,key:coldStart?'off':'running',startTime:0,trim:.10,trimTarget:.10,immersion:1,intake:1,propDepth:.4,ventilation:0,load:0,fuelFlow:0,temperature:18,cooling:0,overheated:false,thermalLimit:1,thermalTrip:false};}
+export function engineState(hp,y=0,coldStart=false){return{hp,y,clock:0,command:0,gear:0,n:0,shift:0,thrust:0,rpm:coldStart?0:750,propDamage:0,propContact:false,propClearance:10,lastStrike:-10,key:coldStart?'off':'running',startTime:0,trim:.10,trimTarget:.10,trimRate:0,immersion:1,intake:1,propDepth:.4,ventilation:0,load:0,governorLoad:0,inflow:0,opposingFlow:0,waveLoad:0,fuelFlow:0,temperature:18,cooling:0,overheated:false,thermalLimit:1,thermalTrip:false};}
 export function engineKey(b,index,action){
  const en=b.engines[index];if(!en)return{ok:false,message:'Brak silnika.'};
  if(action==='off'){en.key='off';en.startTime=0;en.gear=0;en.thrust=0;return{ok:true,message:'Silnik wyłączony.'};}
@@ -50,25 +50,38 @@ export function engineKey(b,index,action){
 }
 export function updateEngine(en,command,inflow,dt,damage=0,context={}){
  en.clock+=dt;
- en.trim+=clamp(en.trimTarget-en.trim,-(en.trim>.4?.16:.10)*dt,(en.trim>.4?.16:.10)*dt);
+ const trimStep=clamp(en.trimTarget-en.trim,-(en.trim>.4?.16:.10)*dt,(en.trim>.4?.16:.10)*dt);
+ en.trim+=trimStep;en.trimRate=dt>0?trimStep/dt:0;en.inflow=inflow;
  const cmd=clamp(command,-1,1);en.command=cmd;
  thermalStep(en,dt,context);
  if(en.key==='starting'){
   en.startTime+=dt;en.rpm=260;en.thrust=0;en.gear=0;
   if(en.startTime>1.15)en.key='running';return 0;
  }
- if(en.key!=='running'||context.noFuel){en.n*=Math.exp(-dt/.35);en.rpm=en.key==='off'?0:0;en.thrust=0;en.gear=0;if(context.noFuel)en.key='ignition';return 0;}
+ if(en.key!=='running'||context.noFuel){en.n*=Math.exp(-dt/.35);en.rpm=0;en.thrust=0;en.gear=0;en.load=0;en.governorLoad=0;en.opposingFlow=0;en.waveLoad=0;if(context.noFuel)en.key='ignition';return 0;}
  const desired=Math.abs(cmd)<.035?0:Math.sign(cmd);
  const airExposure=1-(context.immersion??1);
  const highAngle=clamp((trimAngle(en.trim)*180/Math.PI-10)/38,0,1);
  const trimVent=context.jet?0:Math.max(airExposure,highAngle*(.15+.85*clamp((Math.abs(inflow)-.5)/6,0,1)))*clamp(en.n/.5,0,1)*(.2+.8*Math.abs(cmd));
  en.ventilation+=(trimVent-en.ventilation)*(1-Math.exp(-dt/.35));
- const advanceLoad=clamp(1-Math.abs(inflow)/(4+12*en.n),.15,1);
- en.load=advanceLoad*(1-en.ventilation)*(context.immersion??1);
+ // Signed advance matters: backing against forward motion loads the propeller
+ // more than running with the same inflow. Steering alone cannot create load.
+ // A PWC reverses its deflector, not the pump's rotation or inlet flow.
+ const loadAdvance=context.jet?Math.abs(inflow):en.gear*inflow,crossflow=context.crossflow??0;
+ const advanceLoad=clamp(1-loadAdvance/(4+12*en.n),.15,1);
+ const crossLoad=clamp(.65*crossflow**2/(inflow**2+(3+9*en.n)**2),0,.25);
+ en.waveLoad=clamp(context.waveLoad??0,0,.25);
+ en.opposingFlow=en.gear?Math.max(0,-en.gear*inflow):0;
+ const load=en.gear?clamp((advanceLoad+crossLoad+en.waveLoad)*(1-en.ventilation)*(context.immersion??1),0,1):0;
+ en.load+=(load-en.load)*(1-Math.exp(-dt/.14));
+ // Limited torque reserve: a new load first pulls RPM down; the slow governor
+ // recovers part of that dip. The resulting shaft speed also determines thrust.
+ en.governorLoad+=(en.load-en.governorLoad)*(1-Math.exp(-dt/1.4));
+ const transientLoad=Math.max(0,en.load-en.governorLoad);
  if(desired!==en.gear){en.n*=Math.exp(-dt/(context.jet?.14:.28));en.shift+=dt;if(en.n<.055&&en.shift>=(context.jet?.22:.65)){en.gear=desired;en.shift=0;}}
  else{
   en.shift=0;const demand=desired?.23+.77*clamp((Math.abs(cmd)-.08)/.92,0,1)**.65:0;
-  const target=clamp(demand*(1-.035*en.load)+en.ventilation*.13,0,1);
+  const target=clamp(demand*(1-.035*en.load-.025*transientLoad)+en.ventilation*.13,0,1);
   const tau=target>en.n?(context.jet?.25+.18*en.load:.65+.30*(en.hp/350)**.3+.35*en.load):(context.jet?.22:.4);
   en.n+=(target-en.n)*(1-Math.exp(-dt/tau));
  }

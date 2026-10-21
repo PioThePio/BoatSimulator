@@ -1,4 +1,4 @@
-# Model v9: podstawy, założenia i ograniczenia
+# Model v10: podstawy, założenia i ograniczenia
 
 Model ma odtwarzać **zależności fizyczne w manewrach**, ale nie jest
 zweryfikowanym cyfrowym bliźniakiem konkretnej motorówki. Nie dysponujemy
@@ -556,3 +556,62 @@ modelu akustyki przestrzennej i kalibracji do rzeczywistego silnika.
 Test OfflineAudioContext sprawdza sygnał, zmianę częstotliwości, brak
 przesterowania oraz ciszę po wyciszeniu i pauzie; nie zastępuje odsłuchu
 na różnych fizycznych głośnikach.
+
+## Obciążenie i dźwięk w v10
+
+Przybliżenie momentu obciążającego śrubę używa **posuwu ze znakiem**
+`advance = bieg * napływ`. Przy wstecznym podczas ruchu do przodu posuw
+jest ujemny, rośnie obciążenie i struga wytraca energię ruchu łodzi.
+Skuter zachowuje posuw pompy od napływu na wlot: wsteczny zmienia kierunek
+strugi deflektorem, nie odwraca obrotów pompy.
+Nie powstaje ciąg ani bulgot hamowania w czasie oczekiwania na przekładnię.
+Bazowy wskaźnik obciążenia to `clamp(1-advance/(4+12*n),0.15,1)`.
+Dodajemy do niego do 0,25 z opływu poprzecznego śruby:
+`0.65*crossflow²/(inflow²+(3+9*n)²)`. Nie zależy wprost od kąta koła.
+
+Próbkowana powierzchnia wody przy każdym napędzie obejmuje fale pogodowe
+i własny kilwater. Pochodna jej wysokości wzdłuż trasy, pomniejszona o
+pionowy ruch rufy z heave/pitch/roll, wyznacza szybkość spotkania wody.
+Przy napływającej wodzie dodajemy `clamp(2.5*abs(u)*max(0,encounter)/(g*L),0,0.25)`.
+To empiryczna poprawka obciążenia, bez rozwiązywania uderzeń hydrodynamicznych,
+pełnych charakterystyk śruby lub map momentu konkretnego silnika. Współczynników
+nie traktujemy jako danych producenta. Całość maleje przy częściowym
+zanurzeniu i napowietrzeniu; na luzie obciążenie śrubą dąży do zera.
+
+Obciążenie wygładzamy przez 0,14 s. Powolny stan regulatora (1,4 s)
+oddziela nowy skok obciążenia od pracy ustalonej. Zadane `n` zmniejszamy
+o `demand*(0.035*load+0.025*max(0,load-governorLoad))`; te same obroty
+wału wpływają na ciąg, ograniczenie mocą, paliwo, temperaturę i dźwięk.
+Nie dodajemy losowego falowania RPM udającego obciążenie. Dotychczasowy
+mały puls spalania pozostaje osobnym składnikiem wskazania obrotomierza.
+W próbie silnika 200 KM, manetki 80% i napływu 8 m/s skok przepływu
+poprzecznego do 8 m/s powoduje spadek około 50–60 RPM; zdjęcie dodatkowego
+obciążenia pozwala odzyskać obroty. To wynik tego modelu, nie pomiar silnika.
+Przy napowietrzeniu możliwe są wzrost RPM i równoczesny spadek ciągu.
+
+Barwa **V8** jest stylizacją akustyczną wybraną dla każdego zaburtowego
+od 150 KM osobno, niezależnie od sumy mocy instalacji. Nie oznacza,
+że każdy prawdziwy silnik 150 KM ma osiem cylindrów. Skuter zawsze ma
+wyższy ton. Głos V8 ma niższy puls wału, silny czwarty rząd, dodatkowy
+bas i niższe odcięcie; głos małego silnika/strugi pozostaje brzęczący.
+Obciążenie zwiększa wyższe harmoniczne, filtrowany szum wydechu i jego
+poziom. Dzięki temu słychać pracę pod obciążeniem nawet przy małej zmianie RPM.
+
+Osobna, pulsująca warstwa szumu daje bulgot: moc hamowania w wodzie
+`abs(T)*max(0,-bieg*inflow)`, napowietrzona ale jeszcze zanurzona śruba
+i rzeczywista szybkość podnoszenia częściowo zanurzonego napędu.
+Bez pracującego silnika i załączonego biegu nie ma tej warstwy; całkowicie
+sucha śruba nie bulgocze pod wodą. Nie zmieniono dotychczasowego szumu
+opływu i ślizgu. Głosy dwóch silników pozostają niezależne i lekko rozstawione
+w stereo. Wszystkie warstwy przechodzą przez wspólny poziom, pauzę i wyciszenie.
+Testy renderują rzeczywisty sygnał w OfflineAudioContext, porównują udział
+basu i jasność V8/małego silnika/skutera, reakcję na obciążenie oraz obecność
+bulgotu i jego zanik po wynurzeniu. To nadal synteza bez nagrań V8.
+
+Odczyt zanurzenia kadłuba pokazuje `spec.draft`, czyli nominalne zanurzenie
+w spoczynku po uwzględnieniu aktualnego paliwa. Nie obejmuje wystającej śruby.
+Osobno podajemy bieżące `underKeel` z tych samych 15 punktów kadłuba,
+których używa kontakt z dnem: uwzględnia rzeczywiste pochylenie, przechył,
+heave i lokalną głębokość. Prześwit poniżej 0,20 m jest żółty, osiadanie
+czerwone. To odczyt aktualnego modelu dna pod łodzią, bez przewidywania
+głębokości przed dziobem ani dodatkowego marginesu bezpieczeństwa.

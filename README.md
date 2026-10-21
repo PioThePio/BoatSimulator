@@ -1,11 +1,11 @@
-# Przystań — symulator manewrów motorówką v9
+# Przystań — symulator manewrów motorówką v10
 
 Przeglądarkowy symulator z widokiem z góry, bez kont i backendu. Pięć rodzajów
 łodzi, w tym skuter, zmieniane wymiary i masa, jeden lub dwa silniki do 350 KM.
 Nieregularne jezioro 600 × 400 m, wyspa z przesmykiem, plaże, mielizny,
 szuwary, port ze stanowiskami z bojami i ruchomymi Y-bomami szerokości 25 cm.
 
-Uruchom: **https://piothepio.github.io/BoatSimulator/?v=9.0.0**.
+Uruchom: **https://piothepio.github.io/BoatSimulator/?v=10.0.0**.
 
 Model służy do poznawania zależności w manewrach; nie jest skalibrowany dla
 konkretnej łodzi. [Źródła, równania i ograniczenia](docs/PHYSICS.md).
@@ -36,6 +36,10 @@ wcześniejsze wybory. Zamknięcie okna bez rozpoczęcia nie resetuje rejsu.
 Pogodę podczas pływania zmieniaj pod ikoną **☀ na mapie**.
 Formularze łodzi i pogody są w oknach; pod konsolą pozostają cumy i kotwica.
 Stan kadłuba, pomostu i śrub jest w kokpicie pod schematem uniesienia dziobu.
+Obok schematu widać zanurzenie kadłuba w spoczynku z aktualnym paliwem
+oraz bieżący prześwit pod stępką. Ten drugi uwzględnia przechył, kołysanie
+i dno pod całym kadłubem; ostrzega poniżej 20 cm i pokazuje osiadanie.
+Śruba może sięgać głębiej — jej osobny odczyt pozostaje nad tymi wartościami.
 Mapa kontaktów pokazuje trafioną część kadłuba lub odbijacz: zielony kontakt,
 pomarańczowe uszkodzenie, czerwone silne uderzenie. Błysk zanika, ślad szkody zostaje.
 Uszkodzenia są zawsze aktywne.
@@ -131,6 +135,21 @@ Przeciążenie może wymagać podpłynięcia nad kotwicę. Nie ma automatycznego
 „przyciągnij łódź”. Dolny panel pokazuje skrócony profil rode.
 
 ## Model i sprawdzanie
+
+Zaburtowe od **150 KM każdy** mają głębsze, syntetyczne brzmienie w stylu
+V8. Mniejsze silniki i skuter zachowują wyższy, brzęczący ton; dwa silniki
+90 KM nie zmieniają się w jeden duży. To wybór barwy, a nie deklaracja
+liczby cylindrów rzeczywistego silnika danej mocy. Dotychczasowy szum
+płynięcia pozostaje. Osobno słychać bulgot przy hamowaniu przeciwnym
+biegiem oraz napowietrzaniu/podnoszeniu pracującej śruby; po pełnym
+wynurzeniu ustaje podwodny bulgot.
+
+Obciążenie napędu uwzględnia kierunek napływu na śrubę, rzeczywisty
+przepływ poprzeczny w zakręcie i spotykaną falę. Nowe obciążenie lekko
+obniża obroty wału, zmienia ciąg i barwę wydechu; regulator odzyskuje
+część obrotów. Napowietrzenie odwrotnie: odciąża śrubę, obroty mogą wzrosnąć,
+a ciąg spada. Zakręt lub fala nie oznaczają zawsze spadku RPM — zależy
+to również od gazu, prędkości i zanurzenia napędu.
 
 W ostrym zakręcie rufa traci część przyczepności bocznej, a lokalne siły
 kadłuba, ciąg silnika i masa wyznaczają tor. Przy tej samej prędkości wejścia
