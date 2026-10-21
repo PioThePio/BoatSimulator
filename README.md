@@ -1,161 +1,123 @@
-# Przystań — symulator manewrów motorówką v6
+# Przystań — symulator manewrów motorówką v7
 
-Przeglądarkowy symulator z widokiem z góry. Pięć profili kadłuba (w tym skuter wodny),
-zmieniane wymiary i masa, jeden lub dwa silniki do 350 KM każdy,
-niezależne/sprzężone pionowe manetki, wiatr, prąd, fale, cumy, kotwica i echosonda.
-Nieregularne jezioro 600 × 400 m z większą wyspą i przesmykiem, portem z Y-bomami,
-bojami, stacją paliw, pomostami na plaży i wyspie, szuwarami, mieliznami,
-drzewami do cumowania, osiadaniem
-kadłuba na dnie i osobnymi uszkodzeniami każdej śruby.
-Bez kont i backendu. Aplikacja nie pobiera zewnętrznych zasobów w czasie działania.
+Przeglądarkowy symulator z widokiem z góry, bez kont i backendu. Pięć rodzajów
+łodzi, w tym skuter, zmieniane wymiary i masa, jeden lub dwa silniki do 350 KM.
+Nieregularne jezioro 600 × 400 m, wyspa z przesmykiem, plaże, mielizny,
+szuwary, port ze stanowiskami z bojami i ruchomymi Y-bomami szerokości 25 cm.
 
-**Model szkoleniowy, bez kalibracji dla konkretnego kadłuba.**
-[Podstawy, źródła, wzory, liczby kontrolne i ograniczenia](docs/PHYSICS.md).
+Uruchom: **https://piothepio.github.io/BoatSimulator/?v=7.0.0**.
 
-## Uruchomienie
+Model służy do poznawania zależności w manewrach; nie jest skalibrowany dla
+konkretnej łodzi. [Źródła, równania i ograniczenia](docs/PHYSICS.md).
+
+## Uruchomienie lokalne
 
 Node.js 20.19+ (zalecane 24), npm:
 
 ```sh
 npm ci --cache /tmp/boat-npm-cache
 npm run dev
+npm test
+npm run test:e2e
+npm run test:production
 ```
 
-Otwórz port Vite (domyślnie 5173). `npm run build` tworzy statyczny katalog
-`dist`. Względne adresy zasobów działają także pod `/BoatSimulator/`.
-Nie otwieraj źródłowego HTML przez `file://`.
-
-```sh
-npm test           # testy fizyki i regresji manewrów
-npm run test:e2e   # rzeczywiste sterowanie w Chromium
-npm run build     # samodzielny dist/index.html, z kodem i stylami w środku
-npm run test:production # sprawdzenie gotowego pliku, także bez osobnych zasobów
-```
-
-E2E używa `/usr/bin/chromium`, alternatywę wskaż przez `CHROMIUM_PATH`.
-Playwright uruchamia Vite lub używa działającego serwera na 5173.
-Push do `main` uruchamia `.github/workflows/pages.yml` i publikację Pages.
-Repozytorium musi mieć aktywne Settings → Pages → Source: GitHub Actions.
+Vite działa domyślnie na porcie 5173. Playwright używa `/usr/bin/chromium`;
+inną przeglądarkę wskaż przez `CHROMIUM_PATH`. `npm run build` tworzy jeden
+samodzielny `dist/index.html`, z JS i CSS w środku. Nie otwieraj źródłowego
+HTML przez `file://`. Push do `main` uruchamia testy i publikację Pages.
 
 ## Obsługa
 
-Po otwarciu wybierz łódź, wyposażenie i pogodę w menu startowym, następnie
-„Rozpocznij rejs”. Te same formularze pozostają pod konsolą. „Łódź i pogoda”
-ponownie otwiera menu. Kamera zaczyna z łodzią w środku; ◎ centruje ją ponownie.
-Dane ruchu i kompaktowa echosonda są na mapie; echosondę wyłącza przełącznik
-w konsoli. Obok kierownicy są strumieniowe, dalej manetki, wspólne pionowe
-przyciski biegów i trymu, stacyjki oraz wskaźniki. Spalanie jest pod paliwem
-w L/h. Dwa silniki mają dwa niezależne obrotomierze, a sylwetka pokazuje równocześnie przegłębienie i kąt napędu.
+Na początku wybierz łódź, wyposażenie, **miejsce startu** i pogodę.
+„Rozpocznij rejs” rozpoczyna próbę z wyłączonymi silnikami. „Nowa próba”,
+klawisz R i przycisk „Łódź i start” otwierają ten sam formularz, zachowując
+wcześniejsze wybory. Zamknięcie okna bez rozpoczęcia nie resetuje rejsu.
+Pogodę podczas pływania zmieniaj pod ikoną **☀ na mapie**.
+Formularze łodzi i pogody są w oknach; pod konsolą pozostają cumy i kotwica.
+Stan kadłuba, pomostu i śrub jest bezpośrednio pod mapą.
 
-
-| Działanie | Klawiatura / mysz |
+| Działanie | Obsługa |
 | --- | --- |
-| Koło | A/D lub ←/→, chwyt obręczy lub pola między ramionami, poza piastą, prowadzenie po łuku |
+| Koło | A/D lub ←/→; chwyt obręczy albo pola między ramionami poza piastą, prowadzenie po łuku |
+| Pozycja napędu | Pasek L–P nad kołem: zielony znacznik rzeczywistego kąta, cienki złoty — pozycja zadana |
 | Wyprostuj | C lub przycisk |
-| Wybrana manetka | Krótko W/S lub ↑/↓: bieg pełzający / luz; przytrzymanie: płynna zmiana gazu; pionowa dźwignia |
-| Wybór manetki klawiaturą | 1 / 2 lub kliknięcie manetki; wspólny zestaw ▲ / N / ▼ zmienia wybraną, a przy spięciu obie |
-| Sprzężenie manetek | T lub przełącznik |
-| Obydwa silniki na luz | Spacja lub „Luz” |
-| Odbijacze | F lub przełącznik |
-| Pauza / nowa próba | P / R lub przyciski |
-| Punkt cumowania | Kliknij poler P / Y, boję B lub drzewo D na mapie, następnie kliknij knagę na rysunku łodzi; okno można przesuwać za nagłówek |
-| Założenie cumy | Pięć knag; alternatywnie cel z listy i + przy knadze; rzut do 6 m z 35 cm luzu |
-| Wybieranie / luzowanie | − / + po założeniu: cel ±0,5 m, wykonywany stopniowo |
-| Odczepienie | × przy cumie w panelu albo przy klikniętym polerze |
-| Rozruch / gaszenie | Graficzna stacyjka w prawo: 0 → I → START na luzie; w lewo: I → 0, zgaszenie i wyłączenie zapłonu jednym ruchem |
-| Trym napędu | Wspólne pionowe ▲ / ▼ dla obu silników, niezależnie od spięcia manetek |
-| Strumieniowe | Przytrzymaj ◀ / ▶; Q/E dziób, Z/X rufa; wyposażenie opcjonalne i wymagany zapłon |
-| Paliwo | Tankuj przy ⛽, prędkość <0,15 m/s, silniki zgaszone |
-| Ślad / łodzie portowe | Przycisk Ślad na mapie / przełącznik w warunkach |
-| Kotwica | Kliknij dziób łodzi albo przycisk ⚓ w konsoli; długość i „Wydaj”, „Stop”, „Wybierz”; dolny panel też działa |
+| Manetka | Krótko W/S lub ↑/↓: pełzający/luz, przytrzymanie: płynny gaz; pionowa dźwignia i ▲ / N / ▼ |
+| Wybór silnika | 1/2 lub kliknięcie manetki; T spina/rozdziela manetki |
+| Obydwa silniki na luz | Spacja lub N |
+| Stacyjka | W prawo 0 → I → START, na luzie; w lewo I → 0, silnik i zapłon wyłączone |
+| Trym | ▲/▼ wspólnie dla obu silników, 0–40% co 5 punktów, dalej co 10; przyciski pokazują cel, wskaźnik aktualną pozycję |
+| Strumieniowe | Przytrzymaj ◀/▶; Q/E dziób, Z/X rufa; wymagają wyposażenia i zapłonu |
+| Odbijacze / pauza | F / P lub przełączniki |
+| Cumy | Kliknij poler P/Y, boję B lub drzewo D, następnie knagę na rysunku; − wybiera, + luzuje, × odpina |
+| Kotwica | Kliknij dziób lub ⚓; zadana długość i Wydaj/Stop/Wybierz, również w dolnym panelu |
+| Okna na mapie | Przesuwanie za nagłówek myszą/dotykiem; także strzałkami po ustawieniu fokusu na nagłówku |
+| Tankowanie | Przy ⛽, prędkość <0,15 m/s i zgaszone silniki |
+| Widok | ◎ centruje łódź, minimapa przesuwa widok, „Cały akwen” pokazuje jezioro, „Ślad” przełącza linię trasy |
 
-Koło ma dwa i pół obrotu od oporu do oporu. Koło i manetki nie wracają samoczynnie do zera. Silnik ma osobny rzeczywisty
-kąt, obroty, naciąg i opóźnienie zmiany biegu. Luz nie hamuje łodzi.
-Przy równych przeciwnych manetkach łódź może dryfować podczas obrotu,
-bo wsteczny ciąg jest słabszy. W formularzach strzałki obsługują dane pole.
+Koło ma 2½ obrotu między oporami i nie wraca do zera. Manetki też pozostają
+w zadanej pozycji. Dwa silniki mają osobne obrotomierze, obciążenie i ciąg.
+Wsteczny ciąg jest słabszy, a zmiana biegu wymaga czasu. Luz pozwala płynąć
+bezwładnością; zanurzony zaburtowy nadal reaguje na przepływ wody.
 
-„Zastosuj” po zmianie kadłuba/napędu rozpoczyna nową próbę. Wymiary i moc
-są ograniczone zakresem formularza. Masa w podsumowaniu obejmuje silniki
-i 150 kg załogi (85 kg na skuterze), masę zbiorników i paliwa. Paliwo zmienia masę, bezwładność i zanurzenie. Zbiorniki: jeden lub dwa, pojemność łączna 10–800 l. Start z 75% paliwa. Pozycja „Przy pomoście” ułatwia ćwiczenie cum, „Jezioro”
-próbę napędu. Akwen ma 600 × 400 m. Przycisk „Cały akwen” pokazuje wyspę i plaże,
-kliknięcie minimapy przesuwa widok, ◎ przywraca śledzenie łodzi.
-Pozycje „Plaża” i „Wyspa” ułatwiają próby cumowania do brzegu.
+## Trym, płycizna i wskaźniki
 
-Przy ręcznym wybieraniu naciąg ogranicza dostępna siła: 220 N, 40 W,
-do 0,18 m/s. Knaga może utrzymać większy naciąg, ale ręka go nie wybierze.
-Luzowanie odbywa się do 0,30 m/s. Echosonda pokazuje zmienne dno pod rufą
-i historię, prześwit pod stępką to minimum dla całej długości kadłuba.
-Brzeg stopniowo się wypłyca. Kadłub może oprzeć się na piasku i wyhamować,
-a śruba (sięgająca niżej) może ucierpieć wcześniej. Kamienie są znacznie
-groźniejsze niż piasek. Stan obu śrub jest widoczny osobno. „Podnieś napędy”
-wyłącza ciąg i pozwala podpłynąć dryfem tam, gdzie mieści się sam kadłub.
+0–40% to umowny **roboczy zakres trymu**: −4° do +12°. Przy ruszaniu,
+wchodzeniu w ślizg i wolnych manewrach zwykle używa się niskiej pozycji.
+W ślizgu umiarkowane podniesienie może zmniejszyć opór. Powyżej 40% zaczyna
+się podnoszenie napędu (tilt), do 78° przy 100%. Konkretne silniki mają
+własne ograniczenia pracy w tym zakresie — nasza skala jest przybliżeniem.
 
-Kotwica jest wydawana stopniowo, opada, osadza się i może wlec lub zerwać
-rode. Winda ma limit 2,2 kN / 650 W, wybiera do 0,35 m/s. Przewiduje
-obciążenie przed skróceniem łańcucha i przechodzi przez fazę oderwania
-kotwicy od dna. Przy przeciążeniu trzeba podpłynąć w kierunku kotwicy. Łańcuch ma ciężar, lina sprężystość, a profil
-pokazuje zwis i odcinek na dnie. To przybliżenie quasi-statyczne, nie pełna
-dynamika poszczególnych ogniw. Nie istnieje automatyczne „przyciągnij łódź”.
+Położenie śruby uwzględnia kąt, długość kolumny, przegłębienie, przechył,
+kołysanie i lokalne dno. Częściowo podniesiony, zanurzony napęd może pomóc
+wycofać łódź z piasku. Kontakt z kamieniami jest groźniejszy niż z piaskiem.
+Śruba wynurzona nie wytwarza ciągu; utrata zanurzenia wlotu ogranicza
+chłodzenie. Schemat pokazuje wodę, śrubę i płytkie dno, a napis sygnalizuje
+kontakt. Duży trym przy prędkości może powodować wentylację i utratę ciągu.
 
-Kierunki wiatru/prądu/fali oznaczają **dokąd**, a nie meteorologiczne „skąd”.
-Wysokość fali może zależeć od wiatru albo być ustawiona ręcznie.
-Kołysanie i przegłębienie są widoczne i mierzone. Parametry nie są prognozą
-falowania prawdziwego jeziora.
+Wskaźniki mają ikony i kolorowe zakresy. Paliwo: E–F, rezerwa poniżej 10%
+i spalanie w L/h. Temperatura: umowny roboczy zakres 64–95°C, ostrzeganie
+95–105°C, alarm od 105°C. Napięcie: ostrzeganie poniżej 11,5 V i powyżej
+14,8 V oraz informacja o ładowaniu. Paliwo zmienia masę, bezwładność i
+zanurzenie; jeden lub dwa zbiorniki, razem 10–800 l, start z 75% paliwa.
 
-Przy zbyt wysokim trymie pojawia się spieniona struga i spada ciąg.
-Utrata chłodzenia lub długotrwałe pełne obciążenie na cumach/mieliźnie
-podnosi temperaturę. Czerwony alarm i redukcja mocy od 105°C; przy 145°C
-silnik zatrzymuje się. Rozruch możliwy po ostygnięciu poniżej 110°C.
-To umowne progi modelu, nie instrukcja użytkowania konkretnego silnika.
+## Cumy i kotwica
 
-## Pliki
+Rzut cumy do 6 m pozostawia 35 cm luzu, bez przyciągania łodzi. Ręczne
+wybieranie jest stopniowe, do 220 N, 40 W i 0,18 m/s; luzowanie do 0,3 m/s.
+Cumy zaparkowanych jednostek łączą rzeczywiste knagi i polery, reagują na
+wiatr/prąd i pozwalają na ograniczony obrót. Y-bomy reagują na kontakt i cumy.
 
-- `src/physics.js` — dynamika kadłuba, kolizje i całkowanie.
-- `src/craft.js` — profile, masa i napęd.
-- `src/hydrodynamics.js` — rozłożone siły oporu poprzecznego i wiatru.
-- `src/marina.js` — ruch Y-bomów i wspólne punkty zaczepienia cum.
-- `src/popup.js` — przesuwanie okna cumowania myszą i dotykiem.
-- `src/thermal.js` — bilans ciepła, chłodzenie i ochrona termiczna.
-- `src/layout.js` — konsola, mapa, formularze i menu startowe.
-- `src/trail.js` — ślad z odległości, bez powielania punktów na postoju.
-- `src/systems.js` — zbiorniki, tankowanie, akumulator, ładowanie i strumieniowe.
-- `src/cockpit.js` — dotykowe manetki, stacyjki i wskaźniki.
-- `src/traffic.js` — zacumowane jednostki, reakcja na środowisko i kolizje.
-- `src/rigging.js` — cumy, wysiłek człowieka, kotwica i solver rode.
-- `src/world.js` — akwen, wyspa, plaże, drzewa, dno i fale.
-- `src/ground.js` — podparcie i tarcie kadłuba, kontakt i uszkodzenia śrub.
-- `src/controls.js` — obręcz koła i zatrzaski manetek.
-- `src/render.js` — mapa, minimapa, strugi, kil i lokalne ślady ruchu wody.
-- `src/main.js`, `src/style.css` — panel i Canvas.
-- `tests/` — regresje fizyki oraz przeglądarki.
-- `docs/PHYSICS.md` — źródła i jawne założenia modelu.
+Okno kotwicy sugeruje orientacyjnie **5:1**, a przy silniejszym wietrze,
+prądzie lub fali **7:1**, od dna do rolki dziobowej. Uwzględnia dostępny
+zapas i ostrzega, jeżeli jest za krótki. Sugestia nie gwarantuje trzymania;
+znaczenie ma też dno, typ kotwicy i przestrzeń do obrotu łodzi. 3:1 nie
+jest uniwersalną regułą dla połączenia łańcucha z liną.
 
-## Zakres wydania v6 i ładowanie w Chrome
+Kotwica ma ciężki łańcuch i lekką linę, zwis, osadzenie i wleczenie.
+Winda: wydawanie do 0,65 m/s, wybieranie do 0,35 m/s / 650 W / 2,2 kN.
+Przeciążenie może wymagać podpłynięcia nad kotwicę. Nie ma automatycznego
+„przyciągnij łódź”. Dolny panel pokazuje skrócony profil rode.
 
-Wydanie v6 poprawia skręcanie, ruch na pełzającym, opór boczny i obrót przy wietrze.
-Dodaje osobne obrotomierze, żywe obroty biegu jałowego, przesuwalny diagram cum,
-stanowiska z bojami i wąskie ruchome Y-bomy. Łodzie portowe trzymają rzeczywiste
-cumy do widocznych punktów. Woda delikatnie faluje, kadłub zmienia skalę podczas
-kołysania, kamera płynnie oddala się przy szybszym płynięciu. Zgłoszony problem białego ekranu
-na konkretnym urządzeniu użytkownika pozostaje do osobnej diagnozy, zgodnie
-z jego prośbą. Poniższe zabezpieczenia pochodzą z v3.0.1.
+## Model i sprawdzanie
 
+Ostry skręt przy dużej prędkości dodaje opór zależny od kwadratu prędkości
+i sinusa kąta napędu. Wraz z wyhamowaniem maleje promień zakrętu; lekkie
+wychylenie zachowuje stabilność. Przy szybkim ruchu za łodzią rozchodzi się
+ślad V, także po zakręcie. Kamera łagodnie oddala widok, a kadłub kołysze się.
 
-Publikacja jest pojedynczym `dist/index.html` z osadzonym JS i CSS.
-Nie odwołuje się do usuniętych przy aktualizacji plików o starych hashach
-i nie wymaga ładowania modułów z osobnych adresów. Cel kompilacji JS: ES2018.
-Kod produkcyjny jest uruchamiany po utworzeniu elementu aplikacji.
-Komunikat startowy, instrukcja dla wyłączonego JS i diagnostyka błędu
-zastępują pusty ekran, a przycisk ponowienia odświeża adres HTML.
+W `tests/` są regresje rozruchu, przyspieszenia, pełzania, hamowania w
+zakręcie, dryfu, masy/paliwa, trymu i zejścia z płycizny, cum, kotwicy,
+fal oraz obsługi okien myszą i dotykiem. [Opis fizyki](docs/PHYSICS.md)
+odróżnia teoretyczną strukturę modelu od naszych umownych współczynników.
 
-Przy starym ekranie z pamięci Chrome otwórz:
-`https://piothepio.github.io/BoatSimulator/?v=6.0.0`.
-Zrzut białego ekranu nie pozwolił jednoznacznie ustalić przyczyny po stronie
-konkretnej przeglądarki; poprawka usuwa zależność od osobnych zasobów
-i ujawnia ewentualny błąd uruchomienia.
+Najważniejsze moduły: `physics.js` i `hydrodynamics.js` — ruch i opory;
+`drive.js` — geometria trymu i sugestia rode; `instruments.js` — wskaźniki
+i schemat; `wake.js` — ślad V; `rigging.js` — cumy i kotwica; `marina.js`
+i `traffic.js` — Y-bomy i zacumowane jednostki; `thermal.js` — chłodzenie.
 
-Testy produkcyjne uruchamiają sam wynik publikacji pod `/BoatSimulator/`,
-z brakiem katalogu assets, profilem dotykowym Android Chrome, wyłączonym
-JS oraz celowo wywołanym błędem startu. Wdrożenie GitHub Pages wymaga
-przejścia tych testów. Test z identyfikatorem Androida nadal korzysta
-z Chromium na Linuksie — nie zastępuje sprawdzenia na fizycznym tablecie.
+Zgłoszony wcześniej biały ekran na fizycznym urządzeniu Chrome pozostaje
+oddzielnym zgłoszeniem. Testy produkcyjne sprawdzają plik pod ścieżką Pages,
+profil dotykowy z identyfikatorem Androida, brak osobnych zasobów,
+wyłączony JS i diagnostykę błędu startu. Używają Chromium na Linuksie;
+nie zastępują próby na konkretnym tablecie.

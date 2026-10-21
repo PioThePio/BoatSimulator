@@ -24,8 +24,8 @@ test('small steering at planing speed stays directional instead of spinning broa
  for(const profile of ['tender','runabout','cabin','pwc']){const b=createBoat('open',{profile,powers:[250]});b.a=0;b.vx=12;b.throttle=.6;b.steer=.035;run(b,5);assert.ok(Math.abs(b.telemetry.sway)<.25,profile);assert.ok(Math.abs(b.w)<.15,profile);assert.ok(Math.abs(b.a)<.6,profile);}
 });
 test('planing develops gradually, displacement cruiser stays displacement, overtrim ventilates and loses speed',()=>{
- const boats=[.1,.42,1].map(trim=>{const b=createBoat('open',{powers:[350]});b.a=0;b.throttle=1;b.engines[0].trim=b.engines[0].trimTarget=trim;run(b,1);assert.ok(b.planing<.1);return run(b,34);});
- const [low,normal,high]=boats;assert.ok(normal.planing>.9);assert.ok(normal.pitch>low.pitch);assert.ok(normal.vx>low.vx*1.015);assert.ok(high.engines[0].ventilation>.5);assert.ok(high.vx<normal.vx*.65);assert.ok(high.pitch>normal.pitch);
+ const boats=[0,.22,1].map(trim=>{const b=createBoat('open',{powers:[350]});b.a=0;b.throttle=1;b.engines[0].trim=b.engines[0].trimTarget=trim;run(b,1);assert.ok(b.planing<.1);return run(b,34);});
+ const [low,normal,high]=boats;assert.ok(normal.planing>.9);assert.ok(normal.pitch>low.pitch);assert.ok(normal.vx>low.vx*1.015);assert.ok(high.engines[0].ventilation>.5);assert.ok(high.vx<normal.vx*.65);assert.ok(high.engines[0].immersion<.05);assert.equal(high.engines[0].thrust,0);
  const cruiser=createBoat('open',{profile:'cruiser',powers:[350]});cruiser.a=0;cruiser.throttle=1;run(cruiser,30);assert.equal(cruiser.planing,0);
 });
 test('PWC is a single waterjet with little steering authority without thrust, unlike a skeg',()=>{

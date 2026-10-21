@@ -1,0 +1,32 @@
+import {driveGeometry} from './drive.js';
+import {point} from './rigging.js';
+import {bottomAt,clamp} from './world.js';
+const icons={rpm:'M4 17a8 8 0 1 1 16 0M12 15l5-6M8 20h8',speed:'M3 19q3-3 6 0t6 0t6 0M5 14a7 7 0 0 1 14 0M12 13l4-5',fuel:'M5 21V3h10v18M7 6h6v6H7ZM3 21h14M15 8h3l3 3v7a2 2 0 0 1-4 0v-4',trim:'M7 3h7v8H9v8h8M4 21h16M19 3v9m-3-6 3-3 3 3',volt:'M3 7h18v13H3ZM7 7V4h3v3m4 0V4h3v3M6 13h5m-2-2v4m5-2h4',temp:'M10 14V4a2 2 0 0 1 4 0v10a5 5 0 1 1-4 0M12 8v10m5-13h4m-4 4h3'};
+function arc(from,to,min,max){const angle=v=>Math.PI+clamp((v-min)/(max-min),0,1)*Math.PI;const a=angle(from),z=angle(to);return`M${60+46*Math.cos(a)} ${61+46*Math.sin(a)}A46 46 0 0 1 ${60+46*Math.cos(z)} ${61+46*Math.sin(z)}`;}
+export function gauge(id,title,min,max,unit){
+ const kind=id==='rpm2'?'rpm':id;
+ const zones=({fuel:[[0,10,'red'],[10,25,'amber'],[25,100,'green']],trim:[[0,40,'green'],[40,80,'amber'],[80,100,'red']],temp:[[20,64,'blue'],[64,95,'green'],[95,105,'amber'],[105,140,'red']],volt:[[8,11.5,'red'],[11.5,12.2,'amber'],[12.2,14.8,'green'],[14.8,16,'red']]})[kind]??[];
+ const labels=({fuel:['E','F'],trim:['DN','UP'],temp:['20','140'],volt:['8','16'],rpm:['0','6.5'],speed:['0','60']})[kind];
+ const led=['fuel','temp','volt'].includes(kind)?`<i id="${kind}-led" class="warning-led" role="img" aria-label="Brak alarmu"></i>`:'';
+ return`<div class="gauge" id="gauge-${id}" data-min="${min}" data-max="${max}"><svg class="gauge-dial" viewBox="0 0 120 83" aria-hidden="true"><path d="M14 61a46 46 0 0 1 92 0" class="gauge-arc"/>${zones.map(([from,to,color])=>`<path d="${arc(from,to,min,max)}" class="gauge-zone zone-${color}"/>`).join('')}<path d="M60 61h-39" class="needle"/><circle cx="60" cy="61" r="3"/><text x="13" y="78">${labels[0]}</text><text x="107" y="78" text-anchor="end">${labels[1]}</text>${kind==='trim'?'<text x="60" y="13" text-anchor="middle">TRIM / TILT</text>':''}</svg><span class="gauge-title"><svg class="gauge-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="${icons[kind]}"/></svg><span class="gauge-name">${title}</span>${led}</span><strong>0</strong><small>${unit}</small></div>`;
+}
+export function attitudeMarkup(){return`<div class="pitch-gauge"><span>UNIESIENIE DZIOBU / NAPĘD</span><svg class="attitude-svg" viewBox="0 0 190 122" aria-label="Położenie kadłuba, śruby, powierzchni wody i płytkiego dna"><defs><pattern id="sand-hatch" width="7" height="7" patternUnits="userSpaceOnUse"><path d="M0 7 7 0" stroke="#ab9468" stroke-width="1"/></pattern></defs><path id="attitude-bottom-fill" fill="url(#sand-hatch)"/><path id="attitude-bottom" fill="none" stroke="#b29967" stroke-width="2"/><path id="attitude-water" d="M2 45h186" stroke="#73a5a0" stroke-dasharray="4 3"/><text x="4" y="41" class="attitude-water-label">woda</text><g id="bow-attitude"><path id="attitude-hull" fill="#789787"/><path id="attitude-cabin" fill="#b6c8b2"/></g><g id="motor-attitude"><path id="drive-leg" fill="none" stroke="#3a5e53" stroke-width="5" stroke-linecap="round"/><circle id="drive-prop" r="4" fill="#c19452" stroke="#795b37" stroke-width="1"/><circle id="drive-intake" r="2" fill="#509590"/></g></svg><div class="attitude-values"><strong id="bow-pitch">0.0°</strong><small id="bow-height">+0.00 m</small><small id="flight-state">Wypornościowo</small></div><small id="prop-water-state">Śruba w wodzie</small></div><p id="fuel-status"></p>`;}
+export function updateAttitude(b,env){
+ const $=s=>document.querySelector(s),S=b.spec,geometries=b.engines.map(en=>driveGeometry(b,en,env));
+ const g=geometries.reduce((worst,q)=>q.clearance<worst.clearance?q:worst),scale=Math.min(46,40/Math.max(.8,S.freeboard)),X=x=>110+x*100/S.length,Z=z=>45-z*scale;
+ const project=(x,z)=>[X(x),Z(z+b.heave+x*Math.sin(b.pitch))];
+ const hull=[[-.5*S.length,S.freeboard*.25],[.5*S.length,S.freeboard*.38],[.42*S.length,-S.draft*.65],[-.46*S.length,-S.draft]].map(([x,z])=>project(x,z));
+ $('#attitude-hull').setAttribute('d','M'+hull.map(p=>p.join(' ')).join('L')+'Z');
+ const cabin=[[-.08*S.length,S.freeboard*.31],[-.08*S.length,S.freeboard*.78],[.15*S.length,S.freeboard*.78],[.15*S.length,S.freeboard*.31]].map(([x,z])=>project(x,z));$('#attitude-cabin').setAttribute('d','M'+cabin.map(p=>p.join(' ')).join('L')+'Z');
+ $('#drive-leg').setAttribute('d',`M${X(g.mountX)} ${Z(g.mountZ)}L${X(g.localX)} ${Z(g.propZ)}`);
+ $('#drive-prop').setAttribute('cx',X(g.localX));$('#drive-prop').setAttribute('cy',Z(g.propZ));$('#drive-prop').setAttribute('r',Math.max(3,g.verticalRadius*scale));
+ $('#attitude-water').setAttribute('d',`M2 ${Z(g.surface)}h186`);$('.attitude-water-label').setAttribute('y',Z(g.surface)-4);$('#drive-intake').setAttribute('fill',g.intake<.25?'#d98751':'#509590');
+ $('#drive-intake').setAttribute('cx',X(g.localX));$('#drive-intake').setAttribute('cy',Z(g.propZ+.15*Math.cos(g.angle)));
+ const samples=Array.from({length:15},(_,i)=>{const x=(i/14*1.8-1)*S.length,p=point(b,x,0);return[X(x),45+bottomAt(p.x,p.y).depth*scale];});
+ const shallow=samples.some(p=>p[1]<122),path='M'+samples.map(p=>p.join(' ')).join('L');
+ $('#attitude-bottom').setAttribute('d',shallow?path:'');$('#attitude-bottom-fill').setAttribute('d',shallow?path+'L190 122L0 122Z':'');
+ const contact=g.clearance<0&&g.immersed>0&&!b.enginesRaised,partial=geometries.some(q=>q.immersed<.95),dry=geometries.every(q=>q.immersed<.03);
+ const status=contact?`ŚRUBA DOTYKA DNA · ${g.floor.name}`:dry?'Śruba nad wodą':partial?'Śruba częściowo w wodzie':`Śruba w wodzie · do dna ${g.clearance.toFixed(2)} m`;
+ $('#prop-water-state').textContent=S.jet?'Wlot strugi · do dna '+g.clearance.toFixed(2)+' m':status;$('#prop-water-state').classList.toggle('danger',contact);$('#prop-water-state').classList.toggle('warning',!contact&&partial);$('#drive-prop').setAttribute('fill',contact?'#d0503c':dry?'#9da58d':'#c19452');$('#attitude-bottom').setAttribute('stroke',contact?'#d0503c':'#b29967');
+ $('#bow-pitch').textContent=(b.pitch*180/Math.PI).toFixed(1)+'°';const height=b.heave+S.length*.45*Math.sin(b.pitch);$('#bow-height').textContent=(height>=0?'+':'')+height.toFixed(2)+' m';$('#flight-state').textContent=b.planing>.65?'Ślizg':b.planing>.12?'Przejście do ślizgu':'Wypornościowo';
+}

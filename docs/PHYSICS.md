@@ -1,4 +1,4 @@
-# Model v6: podstawy, założenia i ograniczenia
+# Model v7: podstawy, założenia i ograniczenia
 
 Model ma odtwarzać **zależności fizyczne w manewrach**, ale nie jest
 zweryfikowanym cyfrowym bliźniakiem konkretnej motorówki. Nie dysponujemy
@@ -37,6 +37,10 @@ Nie traktujemy tych stron jako przeczytanych źródeł. W modelu nie ma
 parametrów rzekomo „potwierdzonych przez RYA / BoatUS”. Ograniczone siłą
 wybieranie, uciąg windy, współczynniki dna i progi szkód poniżej są
 **jawnymi założeniami**, nie wartościami gwarantowanymi przez te poradniki.
+W v7 ponownie odczytano opis parametrów i sił przy dnie w `MoorPy/Catenary.py`.
+Strona instrukcji Hondy, West Marine i podana miniatura wskaźnika trymu
+również zwróciły 403. Skala i zalecenia operacyjne poniżej są jawnym
+przybliżeniem ogólnych zasad, bez deklaracji weryfikacji instrukcji konkretnego silnika.
 
 ## Stabilność kierunkowa i bezwładność
 
@@ -83,6 +87,15 @@ blisko zera mimo ciągu naprzód. To była główna przyczyna pełzania bokiem
 i obrotu bez postępu. Mniejsze tłumienie obrotu w ruchu wypornościowym
 pozwala na ciaśniejszy zakręt przy średniej prędkości. W ślizgu opór boczny
 i tłumienie wzrastają, chroniąc przed nagłym obrotem przy lekkim sterze.
+W v7 dochodzi opór przy dużym wychyleniu napędu:
+`X_steer=-0,5*rho*L*draft*0,16*sin(delta)^2*u*abs(u)`.
+To empiryczna powierzchnia zastępcza dla oporów manewrowych, nie wzór
+na opór samego skegu ani współczynnik przeniesiony z modelu Fossena.
+Jest zawsze dyssypatywny, rośnie kwadratowo z prędkością i łagodnie
+zanika przy małym kącie. Pełny skręt z dużej prędkości powoduje wyraźne
+wyhamowanie; mniejsza prędkość i udział ślizgu zmniejszają tłumienie
+obrotu, przez co promień stopniowo maleje. Nie obniżamy prędkości
+odgórnym limitem po wciśnięciu skrętu.
 Nie ma wymuszonego promienia, obrotu wokół zadanego punktu ani natychmiastowego
 ustawiania prędkości wzdłuż osi kadłuba. Punkt obrotu wynika z sił i ruchu.
 
@@ -152,14 +165,45 @@ szerokości i kąta dennego V. Cięższy kadłub wymaga większej prędkości.
 Narastanie udziału ślizgu: 2,8 s; opadanie: 1,4 s. Profil wypornościowy
 nie przechodzi w ślizg.
 
-Trym 0–100% odpowiada umownie −4°…18° nachylenia napędu, ze zmianą do
-10 punktów procentowych/s. Wpływa na poziomą składową ciągu, powierzchnię
-zwilżoną, opór podparcia i równowagowe przegłębienie. Zbyt niski trym zwiększa
-zwilżenie; umiarkowany zmniejsza opory w ślizgu. Zbyt wysoki podnosi dziób
-i zwiększa opór, a powyżej 64% przy prędkości i gazie włącza wentylację:
-rosną obroty, maleje obciążenie i ciąg (do 84% utraty).
-Grafika pokazuje spienienie i ostrzeżenie. Jest to wentylacja, a nie szczegółowy
-model kawitacji czy ciśnień przy łopacie.
+Jedna skala rozdziela **roboczy trym 0–40%** (−4° do +12°) i **tilt
+40–100%** (+12° do +78°). Start: 10%, czyli kąt około 0°. Krok zadawania:
+5 punktów procentowych do 40%, potem 10. Ruch do 10 punktów/s w roboczym
+zakresie i 16 punktów/s w zakresie podnoszenia. Wspólny cel obu silników
+jest pokazany przy przyciskach; wskaźnik pokazuje rzeczywistą pozycję.
+
+Przy ruszaniu i wolnych manewrach niski trym utrzymuje śrubę i wlot w
+wodzie. W ślizgu umiarkowane podniesienie może zmniejszyć zwilżenie i opór;
+w przyjętym modelu korzystny punkt dla badanej konfiguracji to około 22%.
+Nie jest to optymalna wartość dla każdej prawdziwej łodzi. Zbyt wysoki kąt
+zwiększa przegłębienie, opór, odchyla ciąg od poziomu i sprzyja wentylacji.
+Sam duży kąt nie jest warunkiem, że cała śruba już wyszła z wody.
+
+**Geometria napędu:** umowny promień śruby `R=0,13+0,00013*KM m`, punkt
+mocowania `x=-0,51 L`. Kolumna ma stałą długość
+`l=(0,35*freeboard+0,12)+draft_ref+0,22-R`.
+Zmienna masa paliwa obniża/wynosi punkt mocowania względem wodnicy;
+nie wydłuża fizycznej kolumny. Punkt śruby przesuwa się do tyłu o
+`l*sin(kąt)` i w górę według `l*cos(kąt)`. Uwzględniamy heave,
+przegłębienie, przechył, lokalne dno oraz umowne wyniesienie 9 cm w pełnym
+ślizgu. Pionowy promień tarczy to `R*cos(kąt)`. Udział zanurzonej tarczy
+wynika z pola odcinka koła, z ograniczeniem 0–100%.
+
+Kontakt z dnem używa dolnej krawędzi tej samej tarczy, którą pokazuje
+schemat. Wlot chłodzenia jest 15 cm powyżej środka śruby w rzucie kolumny;
+zanurzenie wlotu steruje dostępnością wody. Częściowe wynurzenie śruby
+ogranicza ciąg, całkowite go zeruje. Duży kąt i przepływ mogą wywołać
+wentylację także przed pełnym wynurzeniem; występują wtedy wzrost obrotów,
+mniejsze obciążenie i utrata ciągu. Przy małych obrotach częściowo
+podniesiony, nadal zanurzony napęd może pomóc zejść z piasku. Nasz model
+nie wymusza braku ciągu po przekroczeniu arbitralnego procentu trymu.
+
+Schemat ma poziom wody, sylwetkę, rzeczywistą pozycję śruby, wskaźnik
+wlotu i profil dna, gdy jest płytko. Kontakt z dnem zmienia kolor śruby
+i opis. To projekcja poglądowa z różnymi skalami osi, nie plan montażowy.
+Grafika na wodzie pokazuje spienienie i ostrzeżenie. Modelujemy wentylację,
+bez szczegółowej kawitacji i ciśnień przy łopatach. Rzeczywiste silniki
+mogą ograniczać obroty/pracę w zakresie tilt; takich zależnych od producenta
+blokad elektroniki nie odwzorowujemy.
 
 Przegłębienie ma tłumioną dynamikę: fala, garb przejściowy, ślizg, trym,
 przyspieszenie i paliwo przy rufie zmieniają wysokość dziobu. Przechył
@@ -200,6 +244,17 @@ bokiem lub obracać ją, również przy zgaszonych silnikach i włączonym zapł
 Brak modelu nagrzewania i znamionowego czasu pracy tunelu.
 
 ## Cumy i kotwica
+
+Okno kotwicy jest przesuwalne. Sugestia rode to 5 razy odległość dna od
+rolki dziobowej, a przy wietrze od 7 m/s, prądzie od 0,5 m/s lub ręcznej
+fali od 0,35 m — 7 razy. Przy kotwicy na pokładzie próbkujemy dno pod
+dziobem; po zrzucie pod kotwicą. Dodajemy wysokość rolki 0,65 m i heave.
+Przycisk wpisuje sugestię do obu kontrolek; człowiek nadal decyduje, ile
+wydać. Jeśli potrzebna długość przekracza zapas, komunikat pokazuje
+pełną potrzebną długość, a przycisk ogranicza wpis do dostępnego rode.
+To jawna reguła interfejsu, **nie wynik solvera MoorPy ani gwarancja
+trzymania kotwicy**. 3:1 nie przyjmujemy jako reguły dla łańcucha z liną;
+znaczenie mają dno, wiatr, fala, kotwica i wolne miejsce na obrót łodzi.
 
 Kliknięty punkt na mapie pozwala też wybierać, luzować i odpinać cumy.
 Kliknięcie dziobu otwiera obsługę kotwicy, współdzieląc stan z dolnym panelem.
@@ -298,6 +353,11 @@ według fizycznego ruchu pionowego (do ±4%); nie zmienia to metrycznych
 wymiarów do kolizji. Paski na powierzchni zmieniają też krzywiznę i lekko
 kołyszą się. To dodatkowe wskazówki wizualne, a nie dodatkowe siły fal.
 
+Ślad V przy prędkości względem wody ponad 2 m/s powstaje z zapisanych
+pozycji rufy co 0,14 s. Brzegi rozchodzą się w bok, dryfują z prądem
+i zanikają po 6 s; po zakręcie zostają na przebytej trasie. To wizualny
+model kilwateru, nie pełna teoria fal Kelvina ani numeryczna powierzchnia wody.
+
 Echosonda: idealny pomiar dna pod rufą i historia 60 s; fish arches to
 wizualny easter egg, bez symulacji akustyki ani zachowania ryb.
 
@@ -306,9 +366,10 @@ wizualny easter egg, bez symulacji akustyki ani zachowania ryb.
 Bilans skupiony `T_dot = ciepło - chłodzenie` jest modelem szkoleniowym.
 Woda ma 18°C, początkowa temperatura silnika 18°C. Ciepło zależy od
 kwadratu obrotów i obciążenia. Chłodzenie zależy od zanurzenia napędu,
-pompy i otwarcia umownego termostatu od 64°C. Trym powyżej 64% stopniowo
-ogranicza dopływ wody, powyżej 94% praktycznie go usuwa. Podniesiony napęd
-nie jest chłodzony wodą. Mielizna zmniejsza przepływ; przy pełnym obciążeniu
+pompy i otwarcia umownego termostatu od 64°C. Dostępność chłodzenia
+wynika z zanurzenia wlotu w geometrii napędu; zależy więc także od
+przegłębienia i fali. Przy testowaniu samego silnika bez łodzi stosujemy
+uproszczoną zależność od kąta. Wynurzony wlot nie dostarcza chłodzenia wodą. Mielizna zmniejsza przepływ; przy pełnym obciążeniu
 na cumach lub gruncie dodajemy ciepło i ograniczamy efektywną wymianę wody
 (w tym umowną recyrkulację). Postój na luzie sam w sobie nie powoduje
 przegrzewania. To nie jest teza, że każdy prawdziwy silnik musi się przegrzać
@@ -325,40 +386,43 @@ konkretnego producenta.
 Ślad jest próbkowany po przebyciu 0,35 m, a nie co stały czas: drobne
 drgania pozycji na postoju nie tworzą wiązki nakładających się odcinków.
 
-## Wyniki kontrolne v6
+## Wyniki kontrolne v7
 
 Spokojna woda, bez kolizji terenowych (utrzymywanie pozycji testowej),
 krok 1/120 s. To wyniki równań symulatora, **nie dane osiągowe prawdziwej łodzi**.
 
-Motorówka domyślna, start 8 m/s, manetka 50%, po 5 s:
+Motorówka 5,5 m, trym 10%, pełny gaz: rozpędzenie przez 40 s, następnie
+pełny skręt 35° bez zmiany gazu. Promień to chwilowy `|V|/|r|`.
 
-| Silnik | Prędkość [m/s] | Obrót [rad/s] | Zniesienie boczne [m/s] |
-| --- | --- | --- | --- |
-| 0° | 6,304 | 0 | 0 |
-| 2° | 6,299 | 0,0091 | −0,020 |
-| 8,6° | 6,224 | 0,0375 | −0,084 |
-| 28,6° | 5,570 | 0,1158 | −0,266 |
+| Moc [KM] | Na wprost [m/s] | Po 3 s skrętu [m/s] | Po 10 s [m/s] | Promień po 3 s [m] | Promień po 10 s [m] |
+| --- | --- | --- | --- | --- | --- |
+| 90 | 12.00 | 6.13 | 3.84 | 39.00 | 13.78 |
+| 350 | 20.35 | 9.25 | 7.76 | 33.50 | 22.72 |
 
-Motorówka domyślna, start z postoju, pełny skręt 35°, po 25 s:
+Start z postoju, domyślne 90 KM i pełny skręt, po 25 s:
 
-| Manetka | Ruch wzdłużny [m/s] | Ruch boczny [m/s] | Obrót [rad/s] | Promień toru [m] |
+| Manetka | Ruch wzdłużny [m/s] | Ruch boczny [m/s] | Obrót [rad/s] | Promień [m] |
 | --- | --- | --- | --- | --- |
-| Pełzający 8% | 1,086 | −0,154 | 0,0552 | 19,87 |
-| 25% | 2,017 | −0,336 | 0,1301 | 15,72 |
-| 50% | 2,599 | −0,484 | 0,1938 | 13,64 |
-| 100% | 8,625 | −0,239 | 0,1316 | 65,56 |
+| 8% | 0.846 | -0.157 | 0.0578 | 14.89 |
+| 25% | 1.662 | -0.340 | 0.1359 | 12.49 |
+| 50% | 2.165 | -0.487 | 0.2023 | 10.97 |
+| 100% | 3.040 | -0.707 | 0.2999 | 10.41 |
 
-Przy średnim gazie łódź mocniej skręca i traci prędkość. Przy dużej mocy
-wchodzi w ślizg; prędkość, opór obrotu i promień rosną. Przy pełzającym
-występuje ruch naprzód zamiast wcześniejszego niemal zerowego `u`.
-Te wartości odnoszą się do określonej chwili próby, nie ustalonej średnicy
-zwrotu z prób morskich.
+350 KM na wprost, pełny gaz po 35 s:
 
-Ten sam kadłub z 350 KM, pełny gaz po 35 s: trym 10% ok. 19,91 m/s,
-trym 42% ok. 21,47 m/s, trym 100% ok. 6,21 m/s z wentylacją 96%.
-Pokazuje to zależność jakościową, nie poprawny dobór 350 KM do tego kadłuba.
-Testy sprawdzają także start/stop, brak paliwa, masę/zanurzenie zbiorników,
-tankowanie, strumieniowe, skuter, linę z luzem, lokalne pola i postój jednostek.
+| Trym | Prędkość [m/s] | Wentylacja | Zanurzenie tarczy |
+| --- | --- | --- | --- |
+| 0% | 19.40 | 0% | 100% |
+| 22% | 21.47 | 0% | 100% |
+| 70% | 5.83 | 83% | 100% |
+| 100% | 0.00 | 100% | 0% |
+
+To wyniki konkretnej próby symulatora, nie poprawny dobór 350 KM do tej
+łodzi ani pomiar ustalonej średnicy zwrotu prawdziwej jednostki. Przy
+pełnym podniesieniu od początku śruba jest poza wodą i łódź nie rusza.
+Test zejścia z piasku: start `(8;155)`, dziób na zachód, trym 70%,
+po ustaleniu podparcia gaz wstecz 60% przez 40 s: x rośnie do około
+48,5 m, łódź jest na wodzie, śruba pozostaje nieuszkodzona.
 
 ## Kolizje
 
@@ -371,3 +435,18 @@ Kolizje z Y-bomami używają odcinka o rzeczywistej szerokości,
 z ruchem punktu kontaktu, bezwładnością obrotu i reakcją na zawiasie.
 Kadłuby przybliżają podłużne kapsuły i impuls. Nie liczymy deformacji materiałów. Zniszczony
 pomost nadal jest przeszkodą.
+
+## Układ interfejsu v7
+
+Menu startowe zawiera łódź, wyposażenie, miejsce startu i pogodę. R i „Nowa
+próba” otwierają je z zachowaniem wyborów; dopiero „Rozpocznij rejs” tworzy
+nową próbę. Zamknięcie okna wraca do aktualnego rejsu. Pogoda jest także
+w przesuwalnym oknie pod ikoną na mapie. Stan jednostki jest pod mapą,
+a niżej pozostają konsola, cumy i kompaktowy panel kotwicy.
+
+Nad kołem są osobne znaczniki zadanego i rzeczywistego kąta napędu.
+Wskaźnik paliwa ma E/F i kontrolkę poniżej 10%. Temperatura: niebieski
+20–64°C, zielony 64–95°C, żółty 95–105°C, czerwony 105–140°C. Napięcie:
+czerwony poniżej 11,5 V i ponad 14,8 V, żółty 11,5–12,2 V, zielony
+12,2–14,8 V; napis rozróżnia ładowanie i spoczynek. Są to zakresy
+przyjęte do tego modelu, bez norm konkretnego wskaźnika czy alternatora.

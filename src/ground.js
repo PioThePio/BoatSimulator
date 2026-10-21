@@ -1,10 +1,10 @@
 import {bottomAt,bottomGradient,clamp} from './world.js';
+import {driveGeometry} from './drive.js';
 import {point,impulse,inverseMass} from './rigging.js';
-export function propellerPoint(b,engine){return point(b,-b.spec.length*(b.spec.jet?.28:.51),engine.y);}
-export function propellerContact(b,engine,dt,notify){
- const p=propellerPoint(b,engine),floor=bottomAt(p.x,p.y),draft=b.enginesRaised?.06:b.spec.draft+(b.spec.jet?.03:.22*(1-engine.trim*.65))-b.planing*.09;
- const clearance=floor.depth+b.heave-b.spec.length*(b.spec.jet?.28:.51)*Math.sin(b.pitch)-draft;
- engine.propClearance=clearance;
+export function propellerPoint(b,engine){const g=driveGeometry(b,engine);return{x:g.x,y:g.y};}
+export function propellerContact(b,engine,dt,notify,env={}){
+ const g=driveGeometry(b,engine,env),p=g,floor=g.floor,clearance=g.clearance;
+ engine.propClearance=clearance;engine.immersion=g.immersed;engine.intake=g.intake;engine.propDepth=g.propDepth;engine.drive=g;
  const penetration=Math.max(0,-clearance),touching=penetration>0&&!b.enginesRaised;
  const speed=Math.hypot(b.vx-b.w*(p.y-b.y),b.vy+b.w*(p.x-b.x));
  const rotating=engine.gear!==0?engine.n:0,previous=engine.propDamage;

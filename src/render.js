@@ -1,4 +1,5 @@
 import {LAKE,REEDS,FUEL_STATION,WORLD,ISLAND,DOCKS,BOLLARDS,BEACHES,islandOutline,islandRadius,shoreAt,bottomAt,environment,waveHeight,clamp} from './world.js';
+import {recordHullWake,drawHullWake} from './wake.js';
 import {mooringPoint} from './marina.js';
 import {point,cleat,cleatLocal,CLEATS} from './rigging.js';
 let terrain=null;
@@ -9,7 +10,7 @@ function terrainImage(){
  if(d<0)rgb=shore.beach?[229,211,168]:[174,197,155];else{let j=1;while(j<stops.length-1&&d>stops[j][0])j++;const [lo,low]=stops[j-1],[hi,high]=stops[j],t=clamp((d-lo)/(hi-lo),0,1);rgb=low.map((v,k)=>v+(high[k]-v)*t);}
  const i=(y*608+x)*4;for(let j=0;j<3;j++)im.data[i+j]=rgb[j];im.data[i+3]=255;}c.putImageData(im,0,0);return terrain;
 }
-let wake=[],previousBoat=null,lastWake=0;
+let hullWake=[],wake=[],previousBoat=null,lastWake=0;
 function path(ctx,points){ctx.beginPath();points.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.closePath();}
 function island(ctx,padding,color){path(ctx,islandOutline(padding));ctx.fillStyle=color;ctx.fill();}
 export function propWashCount(engine){return Math.abs(engine.thrust)>5?1+Math.floor(clamp((engine.n-.23)/.77,0,1)*5):0;}
@@ -56,8 +57,9 @@ export function renderWorld(ctx,state){
   ctx.beginPath();ctx.arc(q.x,q.y,q.kind==='buoy'?.45:isSelected?.34:.22,0,Math.PI*2);ctx.fillStyle=isSelected?'#bd7541':'#d3a34b';ctx.fill();ctx.strokeStyle='#7b6943';ctx.lineWidth=.07;ctx.stroke();if(scale>2.5||isSelected){ctx.font=`bold ${Math.max(.9,9/scale)}px system-ui`;ctx.fillStyle='#47634c';ctx.fillText(q.id,q.x+.45,q.y-.45);}
  }
  // Water displaced by bow, keel and stern retains its world position as the boat moves.
- if(previousBoat!==b){wake=[];lastWake=b.time;previousBoat=b;}
+ if(previousBoat!==b){hullWake=[];wake=[];lastWake=b.time;previousBoat=b;}
  const water=environment(b.time,env,b.x,b.y).current;
+ recordHullWake(hullWake,b,water);drawHullWake(ctx,hullWake,b.time);
  if(b.time-lastWake>.18){
   lastWake=b.time;for(const x of [-.38,0,.38])for(const y of [-.50,.50]){
    const p=point(b,b.spec.length*x,b.spec.beam*y),vx=b.vx-b.w*(p.y-b.y)-water.x,vy=b.vy+b.w*(p.x-b.x)-water.y,speed=Math.hypot(vx,vy);

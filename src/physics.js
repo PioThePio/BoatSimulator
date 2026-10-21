@@ -1,5 +1,6 @@
 // SI, x east / y south. Heading clockwise from east. Physics reference: docs/PHYSICS.md.
 import {clamp,DOCKS,SOLIDS,BOLLARDS,environment,bottomAt,waveAt,reedDensityAt} from './world.js';
+import {trimAngle} from './drive.js';
 import {createBooms,boomPoint,boomStep} from './marina.js';
 import {hullLateralForces,windForces} from './hydrodynamics.js';
 import {groundContact,propellerContact} from './ground.js';
@@ -39,26 +40,27 @@ export function step(b,e,dt){
  let X=0,Y=0,N=0;
  const force=(x,y,px=0,py=0)=>{X+=x;Y+=y;N+=px*y-py*x;};
  const fn=Math.abs(u)/Math.sqrt(9.81*S.length);
- const meanTrim=S.jet?.28:b.engines.reduce((sum,en)=>sum+en.trim,0)/b.engines.length;
- const trimAngle=(-4+22*meanTrim)*Math.PI/180;
+ const meanTrim=S.jet?.10:b.engines.reduce((sum,en)=>sum+en.trim,0)/b.engines.length;
+ const driveAngle=trimAngle(meanTrim);
  const liftRatio=.5*1000*u*u*S.length*S.beam*.23*Math.max(.025,.09-S.deadrise*.0012)/Math.max(1,S.mass*9.81);
  const targetPlaning=S.planing&&u>0?clamp((fn-.48)/.4,0,1)*clamp(liftRatio/.65,0,1):0;
  b.planing+=(targetPlaning-b.planing)*(1-Math.exp(-dt/(targetPlaning>b.planing?2.8:1.4)));
  const hump=Math.exp(-(((fn-.55)/.24)**2))*(1-.65*b.planing);
- const pitchTarget=clamp(Math.atan(wave.sx*c+wave.sy*s)+hump*.085+(b.planing*(.045+trimAngle*.42))+(b.telemetry.acceleration??0)*.014-S.cgX/S.length*.3-(b.anchor.shape?.V??0)/(S.mass*9.81)*.5,-.12,.24);
+ const pitchTarget=clamp(Math.atan(wave.sx*c+wave.sy*s)+hump*.085+(b.planing*(.045+driveAngle*.42))+(b.telemetry.acceleration??0)*.014-S.cgX/S.length*.3-(b.anchor.shape?.V??0)/(S.mass*9.81)*.5,-.12,.24);
  [b.pitch,b.pitchVelocity]=oscillator(b.pitch,b.pitchVelocity,pitchTarget,Math.sqrt(9.81/(S.length*.14)),.65,dt);
  // ITTC-inspired friction + approximate wave-making hump and planing support drag.
  const re=Math.max(1e5,Math.abs(u)*S.length/1e-6),cf=.075/(Math.log10(re)-2)**2;
- const lowTrim=S.jet?0:clamp((.42-meanTrim)/.42,0,1);
+ const lowTrim=S.jet?0:clamp((.22-meanTrim)/.22,0,1);
  const wet=S.length*(S.beam*.75+S.draft*1.7)*(1-.65*b.planing)*(1+.30*lowTrim*b.planing);
  const friction=.5*1000*wet*(cf+.0015)*u*Math.abs(u);
  const waveDrag=S.mass*9.81*(S.planing?.055:.085)*Math.exp(-(((fn-.43)/.15)**2))*(1-.8*b.planing);
- const support=S.mass*9.81*(.032+.025*lowTrim+.00022*u*u+.30*(trimAngle-.08)**2)*b.planing;
+ const support=S.mass*9.81*(.032+.025*lowTrim+.00022*u*u+.30*(driveAngle-.08)**2)*b.planing;
  const displacementLimit=S.planing?0:S.mass*9.81*.085*Math.max(0,fn-.42)**2*12;
  const transom=u<0?(.5*1000*S.beam*S.draft*.75*u*u):0;
  const turnFlow=Math.hypot(v,b.w*S.length*.4);
  const turnDrag=.5*1000*S.draft*S.length*.7*turnFlow*turnFlow*Math.abs(u)/Math.hypot(u,turnFlow,.5);
- const drag=friction+Math.sign(u)*turnDrag+Math.sign(u)*(waveDrag+support+displacementLimit+transom);
+ const steeringDrag=.5*1000*S.length*S.draft*.16*Math.sin(b.actualSteer)**2*u*Math.abs(u);
+ const drag=steeringDrag+friction+Math.sign(u)*turnDrag+Math.sign(u)*(waveDrag+support+displacementLimit+transom);
  force(-drag-S.mass*.009*u,0);
  hullLateralForces(S,u,v,b.w,b.planing,force);
  // Outboards rotate at a finite rate; linked controls copy commands, not engine states.
@@ -69,15 +71,15 @@ export function step(b,e,dt){
  b.engines.forEach((engine,i)=>{
   const x=S.engineLever,y=engine.y,delta=b.actualSteer;
   const inflow=(u-b.w*y)*Math.cos(delta)-(v+b.w*x)*Math.sin(delta);
-  propellerContact(b,engine,dt,m=>event(b,m));
-  let thrust=updateEngine(engine,i===0?b.throttle:b.throttle2,inflow,dt,b.damage,{noFuel:b.fuel.litres<=0,jet:S.jet,grounded:b.grounded,moored:b.ropes.length>0,raised:b.enginesRaised,speed:Math.hypot(ur,vr)});
+  propellerContact(b,engine,dt,m=>event(b,m),e);
+  let thrust=updateEngine(engine,i===0?b.throttle:b.throttle2,inflow,dt,b.damage,{noFuel:b.fuel.litres<=0,jet:S.jet,grounded:b.grounded,moored:b.ropes.length>0,raised:b.enginesRaised,speed:Math.hypot(ur,vr),immersion:engine.immersion,intake:engine.intake});
   if(b.enginesRaised){thrust=0;engine.thrust=0;}
-  thrust*=S.jet?1:Math.cos((-4+22*engine.trim)*Math.PI/180);
+  thrust*=S.jet?1:Math.cos(trimAngle(engine.trim));
   force(thrust*Math.cos(delta),-thrust*Math.sin(delta),x,y);totalThrust+=thrust;
   // Submerged skeg: flow creates steering even in neutral; stalls at large incidence.
   const lateral=(u-b.w*y)*Math.sin(delta)+(v+b.w*x)*Math.cos(delta);
   const axial=(u-b.w*y)*Math.cos(delta)-(v+b.w*x)*Math.sin(delta);
-  const skeg=(b.enginesRaised||S.jet?0:1)*-.5*1000*(.022+engine.hp*.00012)*1.1*Math.hypot(axial,lateral)*lateral;
+  const skeg=(b.enginesRaised||S.jet?0:engine.immersion)*-.5*1000*(.022+engine.hp*.00012)*1.1*Math.hypot(axial,lateral)*lateral;
   force(skeg*Math.sin(delta),skeg*Math.cos(delta),x,y);
  });
  systemsStep(b,dt);
