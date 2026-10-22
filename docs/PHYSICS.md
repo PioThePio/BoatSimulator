@@ -1,4 +1,6 @@
-# Model v17: podstawy, założenia i ograniczenia
+# Model v18: podstawy, założenia i ograniczenia
+
+Mapa Zegrza, skala, źródła i poprawki v18: [osobny opis](ZEGRZE.md).
 
 Model ma odtwarzać **zależności fizyczne w manewrach**, ale nie jest
 zweryfikowanym cyfrowym bliźniakiem konkretnej motorówki. Nie dysponujemy
@@ -176,10 +178,10 @@ hamowania/iBR, wyrzutu pasażera ani pełnej hydrauliki deflektora.
 
 Koło ma różny skok między oporami: otwarta 1,5 obrotu, motorówka 2,5,
 kabinowa 3, wypornościowa 3,5; skuter 0,25 obrotu, czyli 90°.
-Kąt napędu zaburtowego: domyślnie ±35°, wybór ±30/35/40/45°; to zakres
+Kąt napędu zaburtowego: od v18 domyślnie ±45°, wybór ±30/35/40/45°; to zakres
 konfiguracji modelu, bez deklaracji zgodności z instrukcją konkretnego
 silnika. Dysza skutera pozostaje ±28°, bez trymu. Prędkość fizycznego
-przestawienia: zaburtowy 0,38 rad/s, dysza skutera 1,6 rad/s.
+przestawienia: zaburtowy/Z-drive 0,80 rad/s, dysza skutera 1,6 rad/s.
 Klawiatura przestawia koło z czasem od środka do oporu odpowiednio
 1 / 1,4 / 1,7 / 1,9 / 0,45 s. Zmiana manetki po 180 ms trzymania klawisza
 ma szybkość 0,8 zakresu/s (skuter 1,2); krótkie dotknięcie zachowuje bieg
@@ -354,12 +356,14 @@ skale osi są różne. Nie jest to pełny MoorDyn ani model geotechniczny.
 
 ## Akwen, głębokość i otoczenie
 
-Akwen 600 × 400 m ma nieregularną granicę, większą wyspę (ok. 164 × 128 m),
-przesmyk szerokości ok. 13 m z łagodnymi zakrętami, plaże, cztery mielizny,
-cztery płaty szuwarów, oryginalny mały port z przedłużonym pomostem głównym,
-trzema stanowiskami prostopadłymi z bojami i sześcioma pływającymi Y-bomami
-oraz pomosty na plaży/wyspie. Dno i rysunek korzystają z tej samej funkcji odległości od brzegu.
-Głębokość płynnie rośnie od brzegu; środek przesmyku ma ok. 2 m.
+Od v18 akwen to interpretacja Zegrza w obszarze 17,07 × 13,89 km:
+ramiona rzek, zatoka Rządzy, Kanał Żerański, wyspy przy ujściu Bugu,
+plaże, mielizny i szuwary. Główny port zachowuje stanowiska z bojami
+i sześć pływających Y-bomów; dodatkowe pomosty leżą w ośmiu rejonach jeziora.
+Brzeg kontaktu jest dokładną granicą wielokąta, przyspieszaną przez BVH;
+rysunek wektorowy korzysta z tego samego obrysu. Batymetria pozostaje
+przybliżona: głębokość płynnie rośnie od brzegu, maksymalnie do 8,5 m
+w basenie i 3,2 m w rejonie Rządzy, z nałożonymi mieliznami.
 Piętnaście próbek kadłuba wyznacza podparcie, tarcie i obrót przy osiadaniu.
 Śruby są próbkowane osobno, niżej od kadłuba; trym zmniejsza ich zanurzenie.
 Piasek stopniowo ściera, kamienie powodują znacznie większe uszkodzenia.
@@ -951,7 +955,8 @@ Wydajność napływu wynika z umownego pola otworu i wysokości słupa wody,
 `Q=0,62*A*sqrt(2*g*h)`; na suchym, uniesionym kadłubie napływ ustaje.
 
 Pompa pobiera 4,5 A i usuwa nominalnie 33 l/min, zależnie od napięcia.
-Manualne ON wymusza pracę, AUTO włącza przy 20% i wyłącza przy 4%.
+Manualne ON wymusza pracę. Od v18 AUTO odczytuje faktyczne litry przed
+decyzją pływaka: start `min(15 l, 5% pojemności)`, stop `min(3 l, 1%)`.
 Działa z akumulatora także bez zapłonu; poniżej 2% ładunku przestaje działać.
 Alarm i czerwony wskaźnik zaczynają się od 50%. Naprawa konstrukcji i napędu
 usuwa przeciek, ale wodę trzeba wypompować. Ten model nie oblicza zatonięcia,

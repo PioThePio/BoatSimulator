@@ -15,9 +15,9 @@ export function serviceStatus(b){
  }
  const q=SERVICE_STATION,S=b.spec,reachX=(Math.abs(Math.cos(b.a))*S.length+Math.abs(Math.sin(b.a))*S.beam)/2,reachY=(Math.abs(Math.sin(b.a))*S.length+Math.abs(Math.cos(b.a))*S.beam)/2;
  if(b.x-reachX<q.x||b.x+reachX>q.x+q.w||b.y-reachY<q.y||b.y+reachY>q.y+q.h)return{ok:false,message:'Dopłyń do zatoczki serwisowej przy slipie, na wschód od głównego portu.'};
- if(Math.hypot(b.vx,b.vy)>.12||Math.abs(b.w)>.025)return{ok:false,message:'Zatrzymaj łódź przy slipie przed naprawą.'};
+ if(Math.hypot(b.vx,b.vy)>.30||Math.abs(b.w)>.08)return{ok:false,message:'Zatrzymaj łódź przy pomoście serwisowym obok slipu.'};
  if(b.engines.some(en=>en.key!=='off'))return{ok:false,message:'Wyłącz silniki i zapłon przed naprawą.'};
- const tied=b.ropes.some(r=>{const p=cleat(b,r.end),point=mooringPoint(b,r.bollard);return point?.kind==='bollard'&&!point.trailer&&point.x>=q.x-.1&&point.x<=q.x+q.w+.1&&point.y>=q.y-2&&point.y<=q.y+q.h+2&&Math.hypot(p.x-point.x,p.y-point.y)<=r.length+.3;});
+ const tied=b.ropes.some(r=>{const p=cleat(b,r.end),point=mooringPoint(b,r.bollard);return point?.kind==='bollard'&&!point.trailer&&point.service&&Math.hypot(p.x-point.x,p.y-point.y)<=r.length+.3;});
  if(!tied)return{ok:false,message:'Przycumuj przynajmniej jedną liną do pomostu serwisowego.'};
  return{ok:true,message:'Gotowy do naprawy przy slipie.'};
 }

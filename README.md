@@ -1,14 +1,28 @@
-# Przystań — symulator manewrów motorówką v17
+# Przystań — symulator manewrów motorówką v18
 
 Przeglądarkowy symulator z widokiem z góry, bez kont i backendu. Osiem rodzajów
 łodzi, w tym skuter, zmieniane wymiary i masa, jeden lub dwa silniki do 350 KM.
-Nieregularne jezioro 600 × 400 m, wyspa z przesmykiem, plaże, mielizny,
-szuwary, port ze stanowiskami z bojami i ruchomymi Y-bomami szerokości 25 cm.
+Mapa wzorowana na Jeziorze Zegrzyńskim: obszar 17 × 14 km, ramiona Narwi
+i Bugu, zatoki, mosty, plaże i przystanie. Port ze slipem, serwisem,
+stanowiskami z bojami i ruchomymi Y-bomami szerokości 25 cm.
 
-Uruchom: **https://piothepio.github.io/BoatSimulator/?v=17.0.0**.
+Uruchom: **https://piothepio.github.io/BoatSimulator/?v=18.0.0**.
 
 Model służy do poznawania zależności w manewrach; nie jest skalibrowany dla
 konkretnej łodzi. [Źródła, równania i ograniczenia](docs/PHYSICS.md).
+
+## Zmiany v18 — Zegrze i obsługa na telefonie
+
+- Kilometrowa skala jeziora, pomosty w ośmiu rejonach, mosty i paliwo na przeciwległym brzegu.
+- Osobny pomost naprawczy obok slipu; naprawa przy cumie i wyłączonym zapłonie.
+- Domyślny skręt 45°, szybsze dochodzenie napędu do zadanej pozycji; dysza skutera pozostaje 28°.
+- Koło, napęd i zanurzenie obok siebie również na telefonie. Minimalny nagłówek,
+  wybór stanowiska pod sterowaniem i panele przyczepy tylko w SUV-ie.
+- Odległość od brzegu i oba rodzaje prędkości u góry mapy. Kliknięcie paska: km/h ↔ kn;
+  osobne przełączanie jednostek wiatru i nurtu. Licznik łodzi pokazuje km/h.
+- Kolory knag oznaczają napięcie cum; AUTO odpompowuje już od około 15 l.
+- Kamera SUV-a pokazuje więcej za zestawem na R i przed nim na D.
+- [Źródła mapy, kontrola skali i opis testów v18](docs/ZEGRZE.md).
 
 ## Zmiany v17 — audyt fizyki
 
@@ -95,7 +109,8 @@ Na początku wybierz łódź, wyposażenie, **miejsce startu** i pogodę.
 klawisz R i przycisk „Łódź i start” otwierają ten sam formularz, zachowując
 wcześniejsze wybory. Zamknięcie okna bez rozpoczęcia nie resetuje rejsu.
 Pogodę podczas pływania zmieniaj pod ikoną **☀ na mapie**.
-Formularze łodzi i pogody są w oknach; pod konsolą pozostają cumy, kotwica i ustawienia slipowania.
+Formularze łodzi i pogody są w oknach; pod konsolą pozostają cumy i kotwica,
+a w SUV-ie także ustawienia slipowania.
 Stan kadłuba, pomostu i śrub jest w kokpicie pod schematem uniesienia dziobu.
 Obrys mapy stanu pokazuje uderzenia w burty, wnętrze trzy części dna
 (przód, środek, tył), a symbole napędów z tyłu stan każdej śruby.
@@ -122,19 +137,19 @@ Uszkodzenia są zawsze aktywne.
 | Trym | ▲/▼ wspólnie dla obu silników, 0–40% co 5 punktów, dalej co 10; przyciski pokazują cel, wskaźnik aktualną pozycję |
 | Strumieniowe | Przytrzymaj ◀/▶; Q/E dziób, Z/X rufa; wymagają wyposażenia i zapłonu |
 | Odbijacze / pauza | F / P lub przełączniki |
-| Cumy | Kliknij poler P/Y, boję B lub drzewo D, następnie knagę na rysunku; przytrzymaj − / +, aby wybierać/luzować, × odpina |
+| Cumy | Kliknij poler, boję lub drzewo, następnie knagę na rysunku; przytrzymaj − / +, aby wybierać/luzować, × odpina |
 | Kotwica | Kliknij dziób lub ⚓; zadana długość i Wydaj/Stop/Wybierz, również w dolnym panelu |
 | Okna na mapie | Przesuwanie za nagłówek myszą/dotykiem; także strzałkami po ustawieniu fokusu na nagłówku |
 | Tankowanie | Burtą przy ⛽, co najmniej jedna cuma do stanowiska, prędkość <0,15 m/s, silniki i zapłon wyłączone |
 | Dźwięk | Przełącznik i głośność w konsoli; uruchamia się po dotknięciu ekranu, wycisza na pauzie |
 | Silniki osobno | Suwak „Silniki” 0–200%, zapisany razem z głośnością ogólną; nie ścisza wody, alarmów ani kliknięć |
 | Trym — dźwięk | Pompa elektryczna jest słyszalna podczas fizycznego ruchu napędu, również na wyłączonym silniku |
-| Naprawa | Slip na wschód od portu: postój, co najmniej jedna cuma do serwisu i wyłączony zapłon; „Napraw przy slipie” |
+| Naprawa | Osobny pomost po prawej stronie slipu: postój, co najmniej jedna cuma do serwisu i wyłączony zapłon; „Napraw przy slipie” |
 | Widok | ◎ centruje łódź, minimapa przesuwa widok, „Cały akwen” pokazuje jezioro, „Ślad” przełącza linię trasy |
 
 Skok koła między oporami: otwarta 1,5 obrotu, motorówka 2,5, kabinowa 3,
 wypornościowa 3,5; skuter tylko 90°. Koło nie wraca do zera. Zaburtowy ma
-domyślnie ±35°, z wyborem ±30/35/40/45° w menu; dysza skutera ±28°.
+domyślnie ±45°, z wyborem ±30/35/40/45° w menu; dysza skutera ±28°.
 Klawiatura szybciej zmienia manetkę po przytrzymaniu: pełny zakres w około
 1,3 s, na skuterze około 0,95 s. Krótkie naciśnięcie nadal wybiera pełzający.
 Strzałki po ustawieniu fokusu na stacyjce sterują łodzią; stacyjka nie zmienia pozycji. Manetki też pozostają
@@ -145,7 +160,7 @@ bezwładnością; zanurzony zaburtowy nadal reaguje na przepływ wody.
 ## SUV i slipowanie
 
 Wybierz start **Parking · łódź na przyczepie** albo **Slip · załadunek z wody**.
-Przycisk na mapie, wybór stanowiska w konsoli lub **V** przełącza łódź/SUV.
+Wybór stanowiska pod sterowaniem lub **V** przełącza łódź/SUV.
 Koło i wskaźniki pozostają na swoich miejscach, manetki zastępują gaz,
 hamulec i **PRND**. W/↑ gaz, S/↓ hamulec nożny. **Spacja przełącza
 ręczny**, **Q/E** poprzedni/następny bieg; działają też 1/2/3/4 = P/R/N/D. Stacyjka: klik w prawo zapłon/rozruch, w lewo całkowite wyłączenie.

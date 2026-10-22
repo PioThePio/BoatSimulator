@@ -1,5 +1,5 @@
 // SI, x east / y south. Heading clockwise from east. Physics reference: docs/PHYSICS.md.
-import {clamp,DOCKS,SOLIDS,BOLLARDS,SERVICE_STATION,environment,bottomAt,waveAt,reedDensityAt} from './world.js';
+import {clamp,DOCKS,SOLIDS,BOLLARDS,SERVICE_STATION,MAP_STARTS,environment,bottomAt,waveAt,reedDensityAt} from './world.js';
 import {trimAngle} from './drive.js';
 import {recordHullWake,sampleHullWake} from './wake.js';
 import {FENDERS,recordImpact} from './impacts.js';
@@ -19,7 +19,7 @@ export const MODEL=specification();
 export function createBoat(scenario='approach',options={}){
  const spec=specification(options);
  const starts={approach:[43,37,-2.1],berth:[24.3,22,-Math.PI/2],open:[64,48,-Math.PI/2],beach:[8.2,147,Math.PI/2],island:[304,278,Math.PI],fuel:[54,20,Math.PI/2],service:[SERVICE_STATION.start.x,SERVICE_STATION.start.y,SERVICE_STATION.start.a],canal:[304,204,0],harbor:[61,40,-Math.PI/2],lake:[80,110,0]};
- const [x,y,a]=starts[scenario]||starts.approach;
+ const selected=MAP_STARTS[scenario];const [x,y,a]=selected?[selected.x,selected.y,selected.a]:starts[scenario]||starts.approach;
  return{...createSystems(spec,options.coldStart),booms:createBooms(),traffic:createTraffic(),x,y,a,vx:0,vy:0,w:0,steer:0,actualSteer:0,throttle:0,throttle2:0,linked:true,enginesRaised:false,groundLoad:0,groundMaterial:'sand',spec,
  engines:spec.powers.map((hp,i)=>engineState(hp,spec.engineCount===1?0:(i===0?-1:1)*spec.engineSpacing/2,options.coldStart)),
  fenders:true,damage:0,dockDamage:0,sectionDamage:{},bottomDamage:{},impacts:[],impactTimes:{},ropes:[],anchor:createAnchor(spec),time:0,lastImpact:null,events:[],maxTension:0,wake:[],
@@ -32,7 +32,7 @@ export function step(b,e,dt){
  b.time+=dt;const S=b.spec,c=Math.cos(b.a),s=Math.sin(b.a);
  if(b.towRig?.boatLoaded&&b.towRig.secured){
   placeTrailerBoat(b.towRig,b);
-  const rate=S.jet?1.6:.38;b.actualSteer+=clamp(b.steer-b.actualSteer,-rate*dt,rate*dt);
+  const rate=S.jet?1.6:.80;b.actualSteer+=clamp(b.steer-b.actualSteer,-rate*dt,rate*dt);
   if(b.linked)b.throttle2=b.throttle;
   if(b.engines.length===2)b.engines[1].trimTarget=b.engines[0].trimTarget;
   for(const [i,en]of b.engines.entries()){
@@ -101,7 +101,7 @@ export function step(b,e,dt){
  if(!b.bank||b.time>=(b.bankAt??0)){b.bank=bankInfluence(b);b.bankAt=b.time+.25;}
  const bankSteering=1-.06*b.bank.strength*clamp(Math.abs(u)/2,0,1);
  // Outboards rotate at a finite rate; linked controls copy commands, not engine states.
- const steeringRate=S.jet?1.6:.38;
+ const steeringRate=S.jet?1.6:.80;
  b.actualSteer+=clamp(b.steer-b.actualSteer,-steeringRate*dt,steeringRate*dt);
  if(b.linked)b.throttle2=b.throttle;
  if(b.engines.length===2)b.engines[1].trimTarget=b.engines[0].trimTarget;

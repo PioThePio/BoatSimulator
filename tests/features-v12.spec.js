@@ -31,12 +31,12 @@ test('condition diagram separates bottom, side and individual twin-drive damage'
 });
 
 test('soft beach grounding keeps full hull health and uses a warning rather than a red damage tag',async({page})=>{
- await page.goto('/');await page.locator('#start-location').selectOption('beach');await page.locator('#begin-session').click();await expect(page.locator('#condition-tag')).toHaveText('NA MIELIŹNIE');await expect(page.locator('#condition-tag')).not.toHaveClass(/danger/);await expect(page.locator('#hull-value')).toHaveText('100%');
+ await page.goto('/');await page.locator('#craft').selectOption('cruiser');await page.locator('#start-location').selectOption('beach');await page.locator('#begin-session').click();await expect(page.locator('#condition-tag')).toHaveText('NA MIELIŹNIE');await expect(page.locator('#condition-tag')).not.toHaveClass(/danger/);await expect(page.locator('#hull-value')).toHaveText('100%');
 });
 
 test('service berth is reachable from the start menu and explains mooring and repair requirements',async({page})=>{
  const errors=[];page.on('pageerror',e=>errors.push(e.message));await page.goto('/');await page.locator('#start-location').selectOption('service');await expect(page.locator('#start-description')).toContainText('slipie');await page.locator('#begin-session').click();
- await page.locator('#repair').click();await expect(page.locator('#toast')).toContainText('Przycumuj');await page.locator('#bollard-bow').selectOption({label:'R2L · Serwis · poler 2 L'});await page.locator('#ropes [data-action=attach][data-rope=bow]').click();await page.locator('#repair').click();await expect(page.locator('#toast')).toContainText('nie wymagają naprawy');
+ await page.locator('#repair').click();await expect(page.locator('#toast')).toContainText('Przycumuj');await page.locator('#bollard-bow').selectOption({label:'SER22 · Serwis przy slipie · 22'});await page.locator('#ropes [data-action=attach][data-rope=bow]').click();await page.locator('#repair').click();await expect(page.locator('#toast')).toContainText('nie wymagają naprawy');
  await page.locator('#lake').scrollIntoViewIfNeeded();await page.screenshot({path:'/tmp/boat-v12-service.png',fullPage:false});expect(errors).toEqual([]);
 });
 

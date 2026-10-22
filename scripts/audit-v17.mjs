@@ -47,7 +47,7 @@ export function auditResults(){
  const pumped=createBoat('lake',{coldStart:true});pumped.bilge.auto=false;pumped.bilge.manual=true;pumped.bilge.litres=40;systemsStep(pumped,dt);const pumpMass=pumped.spec.mass;
  for(let i=0;i<120*90;i++)systemsStep(pumped,dt);
  result.bilge.manual={removed:pumpMass-pumped.spec.mass,remaining:pumped.bilge.litres,mass:pumped.spec.mass,draft:pumped.spec.draft};
- const auto=createBoat('lake',{coldStart:true});auto.bilge.litres=auto.bilge.capacity*.21;systemsStep(auto,dt);systemsStep(auto,dt);const autoStarted=auto.bilge.running;
+ const auto=createBoat('lake',{coldStart:true});auto.bilge.litres=auto.bilge.autoOnLitres*1.2;systemsStep(auto,dt);systemsStep(auto,dt);const autoStarted=auto.bilge.running;
  for(let i=0;i<120*220;i++)systemsStep(auto,dt);
  result.bilge.auto={started:autoStarted,running:auto.bilge.running,level:auto.bilge.level};
  result.guides=[];

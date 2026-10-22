@@ -1,3 +1,4 @@
+import {sandPosition} from './shore-fixture.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createBoat,step} from '../src/physics.js';
@@ -41,10 +42,10 @@ test('ventilation below 70% immersion flares RPM, reduces thrust and clears when
 });
 
 test('neutral propeller touching sand reports contact without wear; spinning sand scuffs and rock still damages an idle drive',()=>{
- const b=createBoat('beach'),en=b.engines[0];b.a=Math.PI/2;b.vy=.4;en.trim=en.trimTarget=0;en.gear=0;en.n=0;const events=[];
+ const b=createBoat('beach'),en=b.engines[0];Object.assign(b,sandPosition(4.5));b.a=Math.PI/2;b.vy=.4;en.trim=en.trimTarget=0;en.gear=0;en.n=0;const events=[];
  for(let i=0;i<240;i++){b.time+=dt;propellerContact(b,en,dt,m=>events.push(m));}assert.equal(en.propContact,true);assert.equal(en.propDamage,0);assert.ok(events.some(m=>m.includes('piasku')));
  en.gear=1;en.n=.5;for(let i=0;i<240;i++){b.time+=dt;propellerContact(b,en,dt,()=>{});}assert.ok(en.propDamage>0&&en.propDamage<5);
- const rock=createBoat('island');rock.x=268;rock.y=153;rock.a=Math.PI/2;rock.vy=1;const r=rock.engines[0];r.trim=0;propellerContact(rock,r,dt,()=>{});
+ const rock=createBoat('island');rock.x=80;rock.y=6;rock.a=Math.PI/2;rock.vy=1;const r=rock.engines[0];r.trim=0;propellerContact(rock,r,dt,()=>{});
  // Find an actual rocky contact without substituting a test-only seabed.
  if(!r.propContact||r.drive.floor.material!=='rock'){let found=false;for(let x=225;x<380&&!found;x+=2)for(let y=120;y<285&&!found;y+=2){rock.x=x;rock.y=y;r.propContact=false;propellerContact(rock,r,dt,()=>{});if(r.propContact&&r.drive.floor.material==='rock')found=true;}assert.ok(found);}
  assert.ok(r.propDamage>5);assert.equal(r.gear,0);
@@ -91,7 +92,7 @@ test('bilge admits water only with a breach, raises stern draft/mass, and warns 
 test('manual and automatic bilge pumps draw battery, clear water with hysteresis, and stop on a flat battery',()=>{
  const b=createBoat('lake',{coldStart:true}),q=b.bilge;q.litres=q.capacity*.25;q.level=.25;const before=b.battery.soc;systemsStep(b,1);assert.equal(q.running,true);assert.ok(b.battery.soc<before);assert.ok(q.litres<q.capacity*.25);assert.ok(soundParameters(b).bilgePump>0);
  q.auto=false;q.manual=false;bilgeStep(b,1);assert.equal(q.running,false);q.manual=true;bilgeStep(b,1);assert.equal(q.running,true);b.battery.soc=0;bilgeStep(b,1);assert.equal(q.running,false);
- b.battery.soc=.8;q.litres=q.capacity*.03;q.level=.03;q.manual=false;q.auto=true;bilgeStep(b,1);assert.equal(q.autoRunning,false);assert.equal(q.running,false);
+ b.battery.soc=.8;q.litres=q.autoOffLitres*.5;q.level=q.litres/q.capacity;q.manual=false;q.auto=true;bilgeStep(b,1);assert.equal(q.autoRunning,false);assert.equal(q.running,false);
 });
 
 test('SUV begins with a small articulation and hitch reattachment captures a nearby angled coupler without kicking the trailer',()=>{

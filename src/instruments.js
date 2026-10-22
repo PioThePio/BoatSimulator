@@ -6,7 +6,7 @@ function arc(from,to,min,max){const angle=v=>Math.PI+clamp((v-min)/(max-min),0,1
 export function gauge(id,title,min,max,unit){
  const kind=id==='rpm2'?'rpm':id;
  const zones=({fuel:[[0,10,'red'],[10,25,'amber'],[25,100,'green']],trim:[[0,40,'green'],[40,80,'amber'],[80,100,'red']],temp:[[20,64,'blue'],[64,95,'green'],[95,105,'amber'],[105,140,'red']],volt:[[8,11.5,'red'],[11.5,12.2,'amber'],[12.2,14.8,'green'],[14.8,16,'red']]})[kind]??[];
- const labels=({fuel:['E','F'],trim:['DN','UP'],temp:['20','140'],volt:['8','16'],rpm:['0','6.5'],speed:['0','60']})[kind];
+ const labels=({fuel:['E','F'],trim:['DN','UP'],temp:['20','140'],volt:['8','16'],rpm:['0','6.5'],speed:['0','120']})[kind];
  const led=['fuel','temp','volt'].includes(kind)?`<i id="${kind}-led" class="warning-led" role="img" aria-label="Brak alarmu"></i>`:'';
  return`<div class="gauge" id="gauge-${id}" data-min="${min}" data-max="${max}"><svg class="gauge-dial" viewBox="0 0 120 83" aria-hidden="true"><path d="M14 61a46 46 0 0 1 92 0" class="gauge-arc"/>${zones.map(([from,to,color])=>`<path d="${arc(from,to,min,max)}" class="gauge-zone zone-${color}"/>`).join('')}<path d="M60 61h-39" class="needle"/><circle cx="60" cy="61" r="3"/><text x="13" y="78">${labels[0]}</text><text x="107" y="78" text-anchor="end">${labels[1]}</text>${kind==='trim'?'<text x="60" y="13" text-anchor="middle">TRIM / TILT</text>':''}</svg><span class="gauge-title"><svg class="gauge-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="${icons[kind]}"/></svg><span class="gauge-name">${title}</span>${led}</span><strong>0</strong><small>${unit}</small></div>`;
 }

@@ -1,3 +1,4 @@
+import {faceSand,sandNormal,sandPosition} from './shore-fixture.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createBoat,step} from '../src/physics.js';
@@ -6,9 +7,9 @@ import {propellerContact} from '../src/ground.js';
 import {anchorCommand} from '../src/rigging.js';
 import {recordHullWake,wakeEdges} from '../src/wake.js';
 const run=(b,t,env={})=>{for(let i=0;i<t*120;i++){step(b,env,1/120);b.x=64;b.y=48;}return b;};
-test('full lock sheds speed and tightens the arc while a powerful boat sustains planing',()=>{
+test('35 degree lock sheds speed and tightens the arc while a powerful boat sustains planing',()=>{
  for(const hp of [90,350]){
-  const b=createBoat('open',{powers:[hp]});b.a=0;b.throttle=1;run(b,40);const top=Math.hypot(b.vx,b.vy);assert.ok(b.planing>.8);
+  const b=createBoat('open',{powers:[hp],steeringLimit:35});b.a=0;b.throttle=1;run(b,40);const top=Math.hypot(b.vx,b.vy);assert.ok(b.planing>.8);
   b.steer=b.spec.maxSteer;run(b,1);const earlyRadius=Math.hypot(b.vx,b.vy)/b.w;run(b,9);
   const speed=Math.hypot(b.vx,b.vy),radius=speed/b.w;
   assert.ok(speed<top*.70,`${hp} HP: ${speed}/${top}`);
@@ -25,13 +26,13 @@ test('trim detents cross between fine power-trim and faster tilt steps without s
  assert.ok(trimAngle(.4)<Math.PI/10);assert.ok(trimAngle(1)>Math.PI/3);
 });
 test('tilting raises the real propeller clear of sand while retaining low-speed thrust when immersed',()=>{
- const b=createBoat('beach');b.a=Math.PI/2;const en=b.engines[0];en.gear=1;en.n=.25;
+ const b=createBoat('beach');Object.assign(b,sandPosition(5.5));b.a=Math.atan2(sandNormal.x,-sandNormal.y);const en=b.engines[0];en.gear=1;en.n=.25;
  en.trim=en.trimTarget=0;propellerContact(b,en,1/120,()=>{});const low=driveGeometry(b,en);assert.ok(en.propContact&&low.clearance<0);
  en.trim=en.trimTarget=.7;propellerContact(b,en,1/120,()=>{});const tilted=driveGeometry(b,en);assert.ok(tilted.clearance>0);assert.ok(tilted.immersed>.95);assert.equal(en.propContact,false);
- const recovery=createBoat('beach');recovery.x=8;recovery.y=155;recovery.a=Math.PI;recovery.engines[0].trim=recovery.engines[0].trimTarget=.7;
+ const recovery=faceSand(createBoat('beach'),0,4.5);const initial={x:recovery.x,y:recovery.y};recovery.engines[0].trim=recovery.engines[0].trimTarget=.7;
  for(let i=0;i<240;i++)step(recovery,{},1/120);assert.ok(recovery.grounded);recovery.throttle=-.6;
  for(let i=0;i<4800;i++)step(recovery,{},1/120);
- assert.ok(recovery.x>25);assert.equal(recovery.grounded,false);assert.equal(recovery.engines[0].propDamage,0);assert.ok(recovery.engines[0].thrust<0);
+ assert.ok((recovery.x-initial.x)*sandNormal.x+(recovery.y-initial.y)*sandNormal.y>15);assert.equal(recovery.grounded,false);assert.equal(recovery.engines[0].propDamage,0);assert.ok(recovery.engines[0].thrust<0);
 });
 test('full tilt removes water thrust and cooling; partial exposure gives proportionate immersion',()=>{
  const b=createBoat('open');b.a=0;const en=b.engines[0];en.trim=en.trimTarget=.9;const partial=driveGeometry(b,en);assert.ok(partial.immersed>0&&partial.immersed<.5);assert.equal(partial.intake,0);

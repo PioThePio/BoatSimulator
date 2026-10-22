@@ -1,3 +1,4 @@
+import {sandPosition,sandNormal} from './shore-fixture.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {auditResults,swim,tow} from '../scripts/audit-v17.mjs';
@@ -118,7 +119,7 @@ test('swamp fan/air rudders generate broad sideslip and carry world momentum aft
  const s=a.swamp;assert.ok(Math.abs(s.powered.sway)>2&&s.powered.yaw>.3);assert.ok(s.halfSecond.speed>s.powered.speed*.8);assert.ok(Math.abs(s.directionChangeHalfSecond)<.15);assert.ok(s.afterFive.speed>.5&&s.afterFive.speed<s.halfSecond.speed*.6);assert.equal(s.halfSecond.thrust,0);assert.ok(s.draft<.17);
 });
 test('swamp boat traverses water shallower than a submerged propeller and never incurs propeller-bottom damage',()=>{
- const b=createBoat('beach',{profile:'swamp'});b.x=7;b.y=145;b.a=Math.PI/2;b.throttle=1;const y=b.y;
+ const b=createBoat('beach',{profile:'swamp'});Object.assign(b,sandPosition(2.5));b.a=Math.atan2(sandNormal.x,-sandNormal.y);b.throttle=1;const initial={x:b.x,y:b.y};assert.ok(bottomAt(b.x,b.y).depth<.23);
  for(let i=0;i<1200;i++)step(b,{},dt);
- assert.ok(b.y>y+.3);assert.equal(b.engines[0].propDamage,0);assert.equal(b.engines[0].propContact,false);assert.ok(b.damage<1);
+ assert.ok((b.x-initial.x)*(-sandNormal.y)+(b.y-initial.y)*sandNormal.x>1);assert.equal(b.engines[0].propDamage,0);assert.equal(b.engines[0].propContact,false);assert.ok(b.damage<1);
 });

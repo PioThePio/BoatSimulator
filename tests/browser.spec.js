@@ -1,11 +1,11 @@
 import {test,expect} from '@playwright/test';
-async function setup(page){if(!await page.locator('#setup-dialog').isVisible())await page.locator('#setup-open').click();}
+async function setup(page){if(!await page.locator('#setup-dialog').isVisible())await page.locator('#open-settings').click();}
 async function chooseStart(page,id){await setup(page);await page.locator('#start-location').selectOption(id==='open'?'lake':id);await page.locator('#begin-session').click();}
 async function weather(page){if(!await page.locator('#environment-panel').isVisible())await page.locator('#weather-open').click();}
 
 test('keyboard, persistent steering, neutral and pause work',async({page})=>{
- const errors=[];page.on('pageerror',e=>errors.push(e.message));await page.goto('/');await page.locator('#begin-session').click();await page.locator('#ignition-0 [data-key-turn=\"1\"]').click();await page.locator('#ignition-0 [data-key-turn=\"1\"]').click();await expect(page.locator('#key-state-0')).toContainText('Pracuje');
- await expect(page.locator('.map-toolbar')).toContainText('600 × 400');await expect(page.locator('body')).not.toContainText('Spokojnie. Masz czas');
+ const errors=[];page.on('pageerror',e=>errors.push(e.message));await page.goto('/');await page.locator('#begin-session').click();await page.locator('#key-0').click();await page.locator('#key-0').click();await expect(page.locator('#key-state-0')).toContainText('Pracuje');
+ await expect(page.locator('.lake-title')).toContainText('JEZIORO ZEGRZYŃSKIE');await expect(page.locator('body')).not.toContainText('Spokojnie. Masz czas');
  await page.keyboard.down('ArrowRight');await page.waitForTimeout(450);await page.keyboard.up('ArrowRight');
  const angle=await page.locator('#wheel').getAttribute('aria-valuenow');expect(+angle).toBeGreaterThan(5);await page.waitForTimeout(250);await expect(page.locator('#wheel')).toHaveAttribute('aria-valuenow',angle);
  await page.keyboard.press('c');await expect(page.locator('#wheel')).toHaveAttribute('aria-valuenow','0');
@@ -67,12 +67,12 @@ test('full-width lake and compact helm, circular rim grab, vertical lever and cr
 });
 test('shore tree mooring, drive raising and world overview work',async({page})=>{
  const errors=[];page.on('pageerror',e=>errors.push(e.message));await page.goto('/');await page.locator('#begin-session').click();await setup(page);await page.locator('#craft').selectOption('tender');await page.locator('#begin-session').click();await expect(page.locator('.bottom-note')).toContainText('4.2 × 1.75');await chooseStart(page,'beach');for(let i=0;i<12;i++)await page.locator('[data-trim="1"]').click();await page.locator('#bollard-bow').selectOption('7');await page.locator('[data-rope="bow"][data-action="attach"]').click();await expect(page.locator('#rope-bow')).toContainText('D1');await expect(page.locator('#trim-value')).toHaveText('100%');await expect(page.locator('#raise-engines')).toHaveCount(0);await expect(page.locator('#propeller-health')).toContainText('100%');
- await setup(page);await page.locator('#craft').selectOption('cruiser');await page.locator('#begin-session').click();await expect(page.locator('#condition-tag')).toHaveText('NA MIELIŹNIE');expect(parseFloat(await page.locator('#depth').innerText())).toBeLessThan(.5);
- await page.locator('#overview').click();await expect(page.locator('#minimap')).toBeVisible();await chooseStart(page,'island');await expect(page.locator('#scene-label')).toHaveCount(0);expect(errors).toEqual([]);
+ await setup(page);await page.locator('#craft').selectOption('cruiser');await page.locator('#begin-session').click();await expect(page.locator('#condition-tag')).toHaveText('NA MIELIŹNIE');expect(parseFloat(await page.locator('#depth').innerText())).toBeLessThan(parseFloat(await page.locator('#hull-draft').textContent()));
+ await page.locator('#overview').click();await expect(page.locator('#minimap')).toBeHidden();await chooseStart(page,'island');await expect(page.locator('#scene-label')).toHaveCount(0);expect(errors).toEqual([]);
 });
 test('mobile throttle steps, ignition, trim instruments and fuel station',async({page})=>{
  await page.setViewportSize({width:390,height:844});const errors=[];page.on('pageerror',e=>errors.push(e.message));await page.goto('/');await page.locator('#begin-session').click();
- await expect(page.locator('#key-state-0')).toContainText('Wyłączony');await page.locator('#ignition-0 [data-key-turn=\"1\"]').click();await page.locator('#ignition-0 [data-key-turn=\"1\"]').click();await expect(page.locator('#key-state-0')).toContainText('Pracuje');
+ await expect(page.locator('#key-state-0')).toContainText('Wyłączony');await page.locator('#key-0').click();await page.locator('#key-0').click();await expect(page.locator('#key-state-0')).toContainText('Pracuje');
  await page.locator('[data-gas="1"]').click();await expect(page.locator('#throttle')).toHaveValue('8');await expect(page.locator('#gear')).toContainText('PEŁZAJĄCY');await page.locator('[data-gas="0"]').click();await expect(page.locator('#throttle')).toHaveValue('0');await page.locator('[data-gas="-1"]').click();await expect(page.locator('#throttle')).toHaveValue('-8');await page.locator('[data-gas="0"]').click();
  await page.locator('[data-trim="1"]').click();await expect(page.locator('#trim-value')).toHaveText('15%');await expect(page.locator('#gauge-volt strong')).not.toHaveText('0');await expect(page.locator('#bow-pitch')).toBeVisible();
  await chooseStart(page,'fuel');await page.locator('[data-action="attach"][data-rope="bow"]').click();await page.locator('#refuel').click();await expect(page.locator('#fuel-status')).toContainText('TANKOWANIE');const before=parseFloat(await page.locator('#fuel-status').innerText());await expect.poll(async()=>parseFloat(await page.locator('#fuel-status').innerText())).toBeGreaterThan(before+.2);
@@ -157,7 +157,7 @@ test('restart opens the setup menu with the selected vessel, weather and locatio
 test('weather is a map window and its settings persist after closing and reopening',async({page})=>{
  await page.goto('/');await page.locator('#begin-session').click();await page.locator('#weather-open').click();await expect(page.locator('#weather-picker')).toBeVisible();await expect(page.locator('#weather-content #environment-panel')).toBeVisible();
  await page.locator('#wind').fill('7');await expect(page.locator('#wind-value')).toHaveText('0.0–7.0 m/s');await page.locator('#close-weather').click();await expect(page.locator('#environment-panel')).not.toBeVisible();await page.locator('#weather-open').click();await expect(page.locator('#wind')).toHaveValue('7');
- await page.locator('#close-weather').click();await page.locator('#setup-open').click();await expect(page.locator('#setup-weather #environment-panel')).toBeVisible();await expect(page.locator('#wind')).toHaveValue('7');
+ await page.locator('#close-weather').click();await page.locator('#open-settings').click();await expect(page.locator('#setup-weather #environment-panel')).toBeVisible();await expect(page.locator('#wind')).toHaveValue('7');
 });
 test('anchor window drags and applies a condition-dependent scope suggestion to both controls',async({page})=>{
  await page.goto('/');await page.locator('#begin-session').click();await page.locator('#show-anchor').click();await expect(page.locator('#map-anchor-advice')).toContainText('5:1');
@@ -166,11 +166,14 @@ test('anchor window drags and applies a condition-dependent scope suggestion to 
  await page.locator('#close-anchor').click();await weather(page);await page.locator('#wind').fill('9');await page.locator('[data-steady=wind]').click();await page.locator('#close-weather').click();await page.locator('#show-anchor').click();await expect(page.locator('#map-anchor-advice')).toContainText('7:1');await page.locator('#map-anchor-suggest').click();const stronger=+(await page.locator('#map-anchor-target').inputValue());expect(stronger).toBeGreaterThan(suggested);
 });
 test('trim detents, propeller-ground diagram and actual steering position are visible',async({page})=>{
- await page.goto('/');await page.locator('#start-location').selectOption('beach');await page.locator('#begin-session').click();await expect(page.locator('#prop-water-state')).toContainText('ŚRUBA DOTYKA DNA');await expect(page.locator('#attitude-bottom')).not.toHaveAttribute('d','');
+ await page.goto('/');await page.locator('#craft').selectOption('cruiser');await page.locator('#start-location').selectOption('beach');await page.locator('#begin-session').click();await expect(page.locator('#prop-water-state')).toContainText('Śruba w wodzie');await expect(page.locator('#attitude-bottom')).not.toHaveAttribute('d','');
  for(let i=0;i<6;i++)await page.locator('[data-trim="1"]').click();await expect(page.locator('#trim-value')).toHaveText('40%');await page.locator('[data-trim="1"]').click();await expect(page.locator('#trim-value')).toHaveText('50%');for(let i=0;i<3;i++)await page.locator('[data-trim="1"]').click();await expect(page.locator('#trim-value')).toHaveText('80%');
  await expect(page.locator('#prop-water-state')).not.toContainText('ŚRUBA DOTYKA DNA',{timeout:9000});
  await page.locator('.wheel-section h2').click();await page.keyboard.down('ArrowRight');await page.waitForTimeout(450);await page.keyboard.up('ArrowRight');await expect(page.locator('#rudder-angle')).toContainText('P');
  const commanded=await page.locator('#rudder-command').getAttribute('style'),actual=await page.locator('#rudder-actual').getAttribute('style');expect(parseFloat(commanded.match(/left: ([\d.]+)/)[1])).toBeGreaterThan(50);expect(parseFloat(actual.match(/left: ([\d.]+)/)[1])).toBeGreaterThan(50);
+ // A bow-first beach landing can leave the stern afloat. Check the contact
+ // renderer separately with a real, parallel-to-shore propeller contact.
+ await page.locator('#pause').click();const contact=await page.evaluate(async()=>{const{createBoat}=await import('/src/physics.js'),{BEACHES,shoreAt}=await import('/src/world.js'),{driveGeometry}=await import('/src/drive.js'),{updateAttitude}=await import('/src/instruments.js');const q=BEACHES[0],n=shoreAt(q.x+1,q.y-6),b=createBoat('beach');b.x=q.x+n.nx*5.5;b.y=q.y+n.ny*5.5;b.a=Math.atan2(n.nx,-n.ny);b.engines[0].trim=0;const low=driveGeometry(b,b.engines[0]);updateAttitude(b,{});const text=document.querySelector('#prop-water-state').textContent;b.engines[0].trim=.8;const raised=driveGeometry(b,b.engines[0]);updateAttitude(b,{});return{low:low.clearance,raised:raised.clearance,text};});expect(contact.low).toBeLessThan(0);expect(contact.raised).toBeGreaterThan(0);expect(contact.text).toContain('ŚRUBA DOTYKA DNA');await expect(page.locator('#prop-water-state')).not.toContainText('ŚRUBA DOTYKA DNA');
 });
 test('contact diagram shows the real fender and damaged bow, then fades while keeping hull damage',async({page})=>{
  await page.goto('/');await page.locator('#begin-session').click();await page.locator('#pause').click();

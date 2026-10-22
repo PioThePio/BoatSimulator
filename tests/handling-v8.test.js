@@ -6,7 +6,7 @@ import {recordHullWake,sampleHullWake,wakeEdges} from '../src/wake.js';
 import {contactZone,recordImpact,impactPaint} from '../src/impacts.js';
 const speed=b=>Math.hypot(b.vx,b.vy);
 const run=(b,t,free=true)=>{for(let i=0;i<t*120;i++){step(b,{},1/120);if(free){b.x=64;b.y=48;}}return b;};
-function entry(options={}){const b=createBoat('open',options);b.a=0;b.vx=9;b.planing=.9;b.throttle=1;b.engines[0].n=.95;b.engines[0].gear=1;b.steer=b.spec.maxSteer;return b;}
+function entry(options={}){const b=createBoat('open',{steeringLimit:35,...options});b.a=0;b.vx=9;b.planing=.9;b.throttle=1;b.engines[0].n=.95;b.engines[0].gear=1;b.steer=b.spec.maxSteer;return b;}
 test('at the same entry speed weak power falls off plane, strong power maintains a tighter powered turn',()=>{
  const weak=run(entry({powers:[45]}),12),strong=run(entry({powers:[350]}),12);
  assert.ok(speed(weak)<7&&weak.planing<.25);assert.ok(speed(strong)>9&&strong.planing>.75);

@@ -80,7 +80,7 @@ test('moored traffic has driven heave, heel and yaw within its rope constraints,
 });
 
 test('rope-load indication measures tension independently of whether a knaga is attached to the selected poler',()=>{
- const S=createBoat('lake').spec,r={tension:0};assert.equal(ropeLoadState(r,S).tone,'slack');r.tension=S.lineBreak*.25;assert.equal(ropeLoadState(r,S).tone,'loaded');assert.equal(ropeLoadState(r,S).percent,25);r.tension=S.lineBreak*.6;r.blocked=true;assert.equal(ropeLoadState(r,S).tone,'danger');assert.match(ropeLoadState(r,S).title,/za ciężko/);
+ const S=createBoat('lake').spec,r={tension:0};assert.equal(ropeLoadState(r,S).tone,'slack');r.tension=S.lineBreak*.25;assert.equal(ropeLoadState(r,S).tone,'loaded');assert.equal(ropeLoadState(r,S).percent,25);r.tension=S.lineBreak*.85;r.blocked=true;assert.equal(ropeLoadState(r,S).tone,'danger');assert.match(ropeLoadState(r,S).title,/za ciężko/);
 });
 
 test('airboat on locked supports steers its rudders and transmits the air thrust and moment to the rig',()=>{

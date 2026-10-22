@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {createBoat,step,attachRope,cleat,BOLLARDS} from '../src/physics.js';
 import {engineKey,CRAFTS,specification,updateMass} from '../src/craft.js';
 import {requestRefuel,systemsStep} from '../src/systems.js';
-import {environment,bottomAt,canalAt,reedDensityAt,YBOOMS,FUEL_STATION} from '../src/world.js';
+import {environment,bottomAt,canalAt,reedDensityAt,YBOOMS,FUEL_STATION,ISLAND,MAP_STARTS,REEDS} from '../src/world.js';
 function run(b,t,env={},recenter=true){for(let i=0;i<t*120;i++){step(b,env,1/120);if(recenter){b.x=64;b.y=48;}}return b;}
 test('cold engine needs ignition and neutral; starter takes time; off removes propulsion',()=>{
  const b=createBoat('open',{coldStart:true});b.throttle=1;run(b,3);assert.equal(b.engines[0].thrust,0);assert.equal(engineKey(b,0,'start').ok,false);
@@ -38,9 +38,9 @@ test('newly thrown rope has slack and no impulse at any of five cleats',()=>{
 });
 test('local flow changes behind island, accelerates along channel and reeds are traversable drag',()=>{
  const e={spatialEffects:true,windSpeed:8,windDirection:90,currentSpeed:.5,currentDirection:90,waveHeight:.3};
- const lee=environment(0,e,402,204),exposed=environment(0,e,180,204),canal=environment(0,e,304,204);assert.ok(lee.wind.x<exposed.wind.x*.8);assert.ok(lee.waveScale<exposed.waveScale);assert.ok(canal.current.x>.5);
- for(const x of [240,270,304,335,365])assert.ok(bottomAt(x,canalAt(x).y).depth>1.8);
- assert.ok(reedDensityAt(25,245)>.9);assert.ok(bottomAt(25,245).depth>0);assert.equal(reedDensityAt(64,48),0);
+ const lee=environment(0,e,ISLAND.x+ISLAND.rx+100,ISLAND.y),exposed=environment(0,e,ISLAND.x-ISLAND.rx-100,ISLAND.y),canal=environment(0,e,MAP_STARTS.canal.x,MAP_STARTS.canal.y);assert.ok(lee.wind.x<exposed.wind.x*.8);assert.ok(lee.waveScale<exposed.waveScale);assert.ok(canal.current.x>.5);
+ for(const x of [-50,-20,0,20,50].map(dx=>MAP_STARTS.canal.x+dx))assert.ok(bottomAt(x,canalAt(x).y).depth>1.8);
+ assert.ok(reedDensityAt(REEDS[0].x,REEDS[0].y)>.9);assert.ok(bottomAt(REEDS[0].x,REEDS[0].y).depth>0);assert.equal(reedDensityAt(64,48),0);
  assert.ok(BOLLARDS.filter(q=>q.kind==='buoy').length>=4);assert.ok(BOLLARDS.filter(q=>q.kind==='bollard').length>30);assert.ok(YBOOMS.length>=4);assert.ok(YBOOMS.every(q=>q.width>=.2&&q.width<=.3));
 });
 test('moored traffic responds to environment and contact, toggle removes collisions',()=>{
