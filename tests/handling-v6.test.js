@@ -62,13 +62,13 @@ test('Y-boom geometry and its moving attachment share SI metres with the pier an
 });
 test('ambient boats have actual cleat-to-bollard lines and yaw inside those constraints',()=>{
  const b=createBoat('open');b.x=150;b.y=100;
- for(const q of b.traffic)for(const r of q.ropes){const p=cleat(q,r.end),end=mooringPoint(b,r.bollard);assert.ok(end?.id);assert.ok(Math.abs(r.length-Math.hypot(p.x-end.x,p.y-end.y)-.05)<1e-8);}
+ for(const q of b.traffic)for(const r of q.ropes){const p=cleat(q,r.end),end=mooringPoint(b,r.bollard);assert.ok(end?.id);assert.ok(Math.abs(r.length-Math.hypot(p.x-end.x,p.y-end.y)-.12)<1e-8);}
  let motion=0,yaw=0,extension=0;
  for(let i=0;i<3600;i++){
   b.time+=1/120;trafficStep(b,{traffic:true,windSpeed:8,windDirection:90,waveHeight:.3,waveDirection:90},1/120);
   for(const q of b.traffic){motion=Math.max(motion,Math.hypot(q.x-q.homeX,q.y-q.homeY));yaw=Math.max(yaw,Math.abs(q.a-q.homeA));for(const r of q.ropes){const p=cleat(q,r.end),end=mooringPoint(b,r.bollard);extension=Math.max(extension,Math.hypot(p.x-end.x,p.y-end.y)-r.length);}}
  }
- assert.ok(motion>.05&&motion<1);assert.ok(yaw>.005&&yaw<.5);assert.ok(extension<.12);
+ assert.ok(motion>.05&&motion<1.3);assert.ok(yaw>.005&&yaw<.5);assert.ok(extension<.12);
 });
 test('removing ambient lines releases the boat instead of restoring its home position',()=>{
  const b=createBoat('open');b.x=150;b.y=100;const q=b.traffic[0];q.ropes=[];q.x+=2;

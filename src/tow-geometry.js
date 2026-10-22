@@ -9,6 +9,6 @@ export function updateTowGeometry(r){
  const c=r.car,t=r.trailer,S=SUV_GEOMETRY,front=bodyPoint(c,S.wb/2),rear=bodyPoint(c,-S.wb/2);
  const zf=-bottomAt(front.x,front.y).depth-(r.frontSink??0),zr=-bottomAt(rear.x,rear.y).depth-(r.rearSink??0);
  c.pitch=Math.atan2(zf-zr,S.wb);c.z=(zf+zr)/2+.45;
- const axle=-bottomAt(t.x,t.y).depth+.4,h=bodyPoint(t,t.hitch),hitchZ=r.attached?frameZ(c,-S.hitch)+.10:-bottomAt(h.x,h.y).depth+.55;
- t.z=axle;t.pitch=clamp(Math.atan2(hitchZ-axle,t.hitch),-.38,.38);r.grade=t.pitch;
+ const ax=t.axleX??0,axlePoint=bodyPoint(t,ax),axle=-bottomAt(axlePoint.x,axlePoint.y).depth+.4,h=bodyPoint(t,t.hitch),hitchZ=r.attached?frameZ(c,-S.hitch)+.10:-bottomAt(h.x,h.y).depth+.55;
+ t.pitch=clamp(Math.atan2(hitchZ-axle,t.hitch-ax),-.38,.38);t.z=axle-ax*Math.sin(t.pitch);r.grade=t.pitch;
 }

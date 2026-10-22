@@ -67,11 +67,19 @@ export function trailerBoatContact(r,b,dt){
    // A normal to the inclined bunk carries weight and lets an unsecured hull
    // slide down the rollers. Both friction directions act through real arms.
    const slope=-q.load*Math.sin(t.pitch)*dt;impulse(b,{x:c,y:s},slope,arm);kick(t,-c*slope,-s*slope,q.world.x-t.x,q.world.y-t.y);
-   for(const [nx,ny,mu]of [[c,s,.035],[-s,c,.30]]){
+   const forward=(q.world.vx-receiver.vx)*c+(q.world.vy-receiver.vy)*s;
+   for(const [nx,ny,mu]of [[c,s,.24],[-s,c,Math.abs(forward)>.025?.16:.55]]){
     const n={x:nx,y:ny},v=(b.vx-b.w*arm.y-receiver.vx)*nx+(b.vy+b.w*arm.x-receiver.vy)*ny,lever=(q.world.x-t.x)*ny-(q.world.y-t.y)*nx;
     const inv=inverseMass(b,n,arm)+1/t.mass+lever*lever/t.iz,j=clamp(-v/inv,-mu*q.load*dt,mu*q.load*dt);
     impulse(b,n,j,arm);kick(t,-nx*j,-ny*j,q.world.x-t.x,q.world.y-t.y);
    }
+  }
+  // Sloping carpeted bunks form a shallow V cradle. Gravity centres only a
+  // supported hull; a trailer that is too deep cannot magnetically catch it.
+  for(const q of support.samples){if(q.load<=0||!q.inside)continue;
+   const offset=q.p.y,arm={x:q.world.x-b.x,y:q.world.y-b.y},n={x:-Math.sin(t.a),y:Math.cos(t.a)};
+   const force=-q.load*.48*Math.tanh(offset/(S.beam*.12)),j=force*dt;
+   impulse(b,n,j,arm);kick(t,-n.x*j,-n.y*j,q.world.x-t.x,q.world.y-t.y);
   }
  }
  if(!r.secured&&near){
@@ -85,10 +93,12 @@ export function trailerBoatContact(r,b,dt){
    }
   }
   if(!r.postBroken){
-   const tip=bodyPoint(b,S.length*.47),p=bodyLocal(t,tip),postX=t.offset+S.length*.46+.2,dx=p.x-postX,dy=p.y,dist=Math.hypot(dx,dy),pen=.18+S.beam*.10-dist;
-   if(pen>0&&b.heave+S.length*.47*Math.sin(b.pitch)-S.draft<bunkZ(t,postX)+1.0){const co=Math.cos(t.a),si=Math.sin(t.a),n={x:(dx*co-dy*si)/Math.max(.001,dist),y:(dx*si+dy*co)/Math.max(.001,dist)},vel=bodyPoint(t,postX);
-    const speed=contactImpulse(r,b,{body:t,world:tip,vx:vel.vx,vy:vel.vy},n,pen,dt,{target:'trailer-post',damage:Math.max(0,Math.hypot(b.vx-t.vx,b.vy-t.vy)-.2)**2*7});
-    if(speed>1.8){r.postBroken=true;r.trailerDamage=clamp(r.trailerDamage+35,0,100);b.ropes=b.ropes.filter(line=>!BOLLARDS[line.bollard]?.trailer);r.status='Wyłamany wspornik dziobowy · ryzyko uderzenia w SUV-a';}
+   const tip=bodyPoint(b,S.length*.47),p=bodyLocal(t,tip),postX=t.offset+S.length*.50+.08,pen=p.x-(postX-.08-S.beam*.06);
+   // A wide padded bow roller is a stop across the cradle, not a tiny bollard
+   // that the bow can slide around. The winch post stands farther forward.
+   if(pen>0&&pen<.65&&Math.abs(p.y)<S.beam*.45&&b.heave+S.length*.47*Math.sin(b.pitch)-S.draft<bunkZ(t,postX)+1.0){const co=Math.cos(t.a),si=Math.sin(t.a),n={x:-co,y:-si},vel=bodyPoint(t,postX),closing=Math.max(0,(tip.vx-vel.vx)*co+(tip.vy-vel.vy)*si);
+    const speed=contactImpulse(r,b,{body:t,world:tip,vx:vel.vx,vy:vel.vy},n,pen,dt,{target:'trailer-post',protectedContact:true,damage:Math.max(0,closing-.55)**2*7});
+    if(speed>2.2){r.postBroken=true;r.winch.attached=false;r.trailerDamage=clamp(r.trailerDamage+35,0,100);b.ropes=b.ropes.filter(line=>!BOLLARDS[line.bollard]?.trailer);r.status='Wyłamany wspornik dziobowy · ryzyko uderzenia w SUV-a';}
    }
   }
  }

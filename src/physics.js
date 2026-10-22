@@ -32,11 +32,16 @@ export function step(b,e,dt){
  b.time+=dt;const S=b.spec,c=Math.cos(b.a),s=Math.sin(b.a);
  if(b.towRig?.boatLoaded&&b.towRig.secured){
   placeTrailerBoat(b.towRig,b);
+  const rate=S.jet?1.6:.38;b.actualSteer+=clamp(b.steer-b.actualSteer,-rate*dt,rate*dt);
+  if(b.linked)b.throttle2=b.throttle;
+  if(b.engines.length===2)b.engines[1].trimTarget=b.engines[0].trimTarget;
   for(const [i,en]of b.engines.entries()){
    propellerContact(b,en,dt,m=>event(b,m),e);
-   updateEngine(en,i?b.throttle2:b.throttle,0,dt,b.damage,{noFuel:b.fuel.litres<=0,jet:S.jet,fixedDrive:S.propulsion==='inboard',moored:true,onTrailer:true,speed:0,immersion:en.immersion,intake:en.intake});
-   const angle=b.a-b.actualSteer,fx=Math.cos(angle)*en.thrust,fy=Math.sin(angle)*en.thrust;
+   updateEngine(en,i?b.throttle2:b.throttle,0,dt,b.damage,{noFuel:b.fuel.litres<=0,jet:S.jet,air:S.air,fixedDrive:S.propulsion==='inboard',moored:true,onTrailer:true,speed:0,immersion:en.immersion,intake:en.intake});
+   const delta=S.air||S.propulsion==='inboard'?0:b.actualSteer,T=en.thrust*(S.jet||S.air||S.propulsion==='inboard'?1:Math.cos(trimAngle(en.trim)));
+   const X=T*Math.cos(delta)*(S.air?1-.25*Math.sin(b.actualSteer)**2:1),Y=S.air?-T*.7*Math.sin(b.actualSteer):-T*Math.sin(delta),fx=c*X-s*Y,fy=s*X+c*Y;
    b.towRig.ropeForce.x+=fx;b.towRig.ropeForce.y+=fy;
+   const arm=point(b,S.engineLever,en.y);b.towRig.ropeForce.torque+=(arm.x-b.towRig.trailer.x)*fy-(arm.y-b.towRig.trailer.y)*fx;
   }
   systemsStep(b,dt);trafficStep(b,e,dt);boomStep(b,e,dt);return;
  }
@@ -65,7 +70,7 @@ export function step(b,e,dt){
  let X=0,Y=0,N=0;
  const force=(x,y,px=0,py=0)=>{X+=x;Y+=y;N+=px*y-py*x;};
  const fn=Math.abs(u)/Math.sqrt(9.81*S.length);
- const meanTrim=S.jet||S.propulsion==='inboard'?.10:b.engines.reduce((sum,en)=>sum+en.trim,0)/b.engines.length;
+ const meanTrim=S.jet||S.air||S.propulsion==='inboard'?.10:b.engines.reduce((sum,en)=>sum+en.trim,0)/b.engines.length;
  const driveAngle=trimAngle(meanTrim);
  const turnLoad=Math.hypot(1,u*b.w/9.81);
  const liftRatio=.5*1000*u*u*S.length*S.beam*.23*Math.max(.025,.09-S.deadrise*.0012)/Math.max(1,S.mass*9.81*turnLoad);
@@ -102,7 +107,7 @@ export function step(b,e,dt){
  if(b.engines.length===2)b.engines[1].trimTarget=b.engines[0].trimTarget;
  let totalThrust=0;
  b.engines.forEach((engine,i)=>{
-  const x=S.engineLever,y=engine.y,delta=b.actualSteer*bankSteering,driveDelta=S.propulsion==='inboard'?0:delta;
+  const x=S.engineLever,y=engine.y,delta=b.actualSteer*bankSteering,driveDelta=S.propulsion==='inboard'||S.air?0:delta;
   const inflow=(u-b.w*y)*Math.cos(driveDelta)-(v+b.w*x)*Math.sin(driveDelta);
   const lateral=(u-b.w*y)*Math.sin(delta)+(v+b.w*x)*Math.cos(delta);
   propellerContact(b,engine,dt,m=>event(b,m),e);
@@ -112,12 +117,12 @@ export function step(b,e,dt){
   engine.lastSurface=g.surface;
   const vertical=b.heaveVelocity+g.mountX*Math.cos(b.pitch)*b.pitchVelocity+engine.y*Math.cos(b.roll)*b.rollVelocity;
   const waveLoad=clamp(2.5*Math.abs(u)*Math.max(0,surfaceRate-vertical)/(9.81*S.length),0,.25);
-  let thrust=updateEngine(engine,i===0?b.throttle:b.throttle2,inflow,dt,b.damage,{noFuel:b.fuel.litres<=0,jet:S.jet,fixedDrive:S.propulsion==='inboard',onTrailer:onSupports,grounded:b.grounded,moored:b.ropes.length>0,raised:b.enginesRaised,speed:Math.hypot(ur,vr),immersion:engine.immersion,intake:engine.intake,crossflow:lateral,waveLoad});
+  let thrust=updateEngine(engine,i===0?b.throttle:b.throttle2,inflow,dt,b.damage,{noFuel:b.fuel.litres<=0,jet:S.jet,air:S.air,fixedDrive:S.propulsion==='inboard',onTrailer:onSupports,grounded:b.grounded,moored:b.ropes.length>0,raised:b.enginesRaised,speed:Math.hypot(ur,vr),immersion:engine.immersion,intake:engine.intake,crossflow:lateral,waveLoad});
   if(b.enginesRaised){thrust=0;engine.thrust=0;}
-  thrust*=S.jet||S.propulsion==='inboard'?1:Math.cos(trimAngle(engine.trim));
+  thrust*=S.jet||S.air||S.propulsion==='inboard'?1:Math.cos(trimAngle(engine.trim));
   // Vectored thrust is the outboard's prop wash: it works before the hull moves.
   // An inboard keeps axial thrust and feeds a separate, stalling rudder.
-  force(thrust*Math.cos(driveDelta),-thrust*Math.sin(driveDelta),x,y);totalThrust+=thrust;
+  force(thrust*Math.cos(driveDelta)*(S.air?1-.25*Math.sin(delta)**2:1),S.air?-thrust*.7*Math.sin(delta):-thrust*Math.sin(driveDelta),x,y);totalThrust+=thrust;
   if(S.propulsion==='inboard'){
    const wash=thrust>0?Math.sqrt(thrust/(.5*1000*.18))*.55:0;
    const flow=u+wash,side=(flow-b.w*y)*Math.sin(delta)+(v+b.w*x)*Math.cos(delta);
@@ -127,7 +132,7 @@ export function step(b,e,dt){
   const walk=propWalkForce(S,engine,Math.hypot(u,v),b.planing);force(0,walk,x,y);engine.propWalk=walk;
   // Submerged skeg: flow creates steering even in neutral; stalls at large incidence.
   const axial=(u-b.w*y)*Math.cos(delta)-(v+b.w*x)*Math.sin(delta);
-  const skeg=(b.enginesRaised||S.jet||S.propulsion==='inboard'?0:engine.immersion)*-.5*1000*(.022+engine.hp*.00012)*1.1*Math.hypot(axial,lateral)*lateral;
+  const skeg=(b.enginesRaised||S.jet||S.air||S.propulsion==='inboard'?0:engine.immersion)*-.5*1000*(.022+engine.hp*.00012)*1.1*Math.hypot(axial,lateral)*lateral;
   force(skeg*Math.sin(delta),skeg*Math.cos(delta),x,y);
  });
  systemsStep(b,dt);
@@ -144,7 +149,7 @@ export function step(b,e,dt){
  const vdot=(Y-S.mass*ur*b.w)/(S.mass+(S.my-S.mass)*wetFraction);
  // Empirical hull stability cancels the bare potential-flow Munk moment.
  // Leaving it uncalibrated amplifies sideslip into a spin at planing speed.
- const rotationalDrag=.5*1000*S.beam*S.length**4*(.004+.003*b.planing)*b.w*Math.abs(b.w);
+ const rotationalDrag=(S.air?.55:1)*.5*1000*S.beam*S.length**4*(.004+.003*b.planing)*b.w*Math.abs(b.w);
  const rdot=(N-rotationalDrag)/S.iz-(.10+.04*Math.abs(u)/S.length)*b.w;
  // Convert body acceleration to world acceleration without double-counting frame rotation.
  const du=udot-b.w*vr,dv=vdot+b.w*ur;
@@ -152,7 +157,7 @@ export function step(b,e,dt){
  solveRopes(b,dt,m=>event(b,m));updateAnchor(b,e,dt,m=>event(b,m));
  groundContact(b,wave,dt,m=>event(b,m));
  b.x+=b.vx*dt;b.y+=b.vy*dt;b.a+=b.w*dt;
- recordHullWake(b.wake,b,env.current);
+ if(wetFraction>.1&&bottomAt(b.x,b.y).depth>0)recordHullWake(b.wake,b,env.current);else b.wake=[];
  contacts(b,dt);boomContacts(b,dt);trafficStep(b,e,dt);if(e.traffic)for(const q of b.traffic)boomContacts(q,dt,b);boomStep(b,e,dt);
  if(b.damage>=100){b.throttle=0;b.throttle2=0;}
  b.telemetry={surge:ur,sway:vr,thrust:totalThrust,drag:Math.abs(drag),acceleration:udot,shaftPower:b.engines.reduce((sum,en)=>sum+en.hp*735.5*en.n**3,0)};

@@ -57,7 +57,8 @@ export function solveRopes(b,dt,notify){
   const closing=separation-r.rate;
   const inv=inverseMass(b,n,arm)+boomInverse(b,r.bollard,n);
   // Backward-Euler Kelvin-Voigt tension, stable even for short stiff lines.
-  r.tension=extension>0?Math.max(0,(k*extension+(damping+k*dt)*closing)/(1+(damping*dt+k*dt*dt)*inv)):0;
+  const crossing=closing>0?clamp((extension+closing*dt)/(closing*dt),0,1):0;
+  r.tension=extension>0||crossing>0?Math.max(0,(k*extension+(damping+k*dt)*closing)/(1+(damping*dt+k*dt*dt)*inv))*(extension>0?1:crossing):0;
   if(r.tension>b.spec.lineBreak){notify(`Cuma pękła: przekroczono ${(b.spec.lineBreak/1000).toFixed(0)} kN.`);return false;}
   impulse(b,n,r.tension*dt,arm);boomLoad(b,r.bollard,-n.x*r.tension,-n.y*r.tension);b.maxTension=Math.max(b.maxTension,r.tension);return true;
  });

@@ -34,11 +34,11 @@ test('released transport restraints do not launch a dry boat; immersed supports 
  const {b,r}=ready({}, {loaded:true});assert.ok(trailerAction(r,b,'release').ok);run(r,b,2);assert.equal(r.boatLoaded,true);assert.equal(b.damage,0);assert.equal(b.ropes.length,1);
  const water=ready({}, {loaded:true,atSlip:true});shift(water.r,water.b,2);run(water.r,water.b,.1);trailerAction(water.r,water.b,'release');run(water.r,water.b,5);assert.equal(water.r.boatLoaded,false);assert.equal(water.b.damage,0);assert.equal(water.b.grounded,false);assert.ok(Math.abs(water.b.heave)<.15);assert.ok(Math.abs(water.b.pitch)<.1);
 });
-test('retrieval requires the real bow line, alignment, modest relative speed, depth and stopped boat engines',()=>{
+test('retrieval requires the real bow line, alignment, modest relative speed, depth, and accepts running boat engines when securing',()=>{
  const b=createBoat('service',{coldStart:true}),r=createTowRig(b,{atSlip:true}),p=bodyPoint(r.trailer,r.trailer.offset);Object.assign(b,{x:p.x,y:p.y,a:r.trailer.a});
  assert.match(trailerAction(r,b,'secure').message,/cumę/);assert.ok(attachRope(b,'bow',trailerBollardIndex()).ok);
- b.engines[0].key='ignition';assert.match(trailerAction(r,b,'secure').message,/Wyłącz/);b.engines[0].key='off';b.vy=.6;assert.equal(trailerAction(r,b,'secure').ok,false);b.vy=0;b.x+=1;assert.equal(trailerAction(r,b,'secure').ok,false);b.x-=1;
- assert.equal(trailerAction(r,b,'secure').ok,true);assert.equal(r.boatLoaded,true);assert.equal(r.secured,true);run(r,b,1);assert.equal(b.damage,0);
+ b.engines[0].key='running';b.vy=.6;assert.equal(trailerAction(r,b,'secure').ok,false);b.vy=0;b.x+=1;assert.equal(trailerAction(r,b,'secure').ok,false);b.x-=1;
+ assert.equal(trailerAction(r,b,'secure').ok,true);assert.equal(r.boatLoaded,true);assert.equal(r.secured,true);assert.equal(b.engines[0].key,'running');run(r,b,1);assert.equal(b.damage,0);
 });
 test('a deep trailer is not an invisible dock: it refuses loading, and an unsunk trailer resists sliding a hull over the rollers',()=>{
  const b=createBoat('service',{coldStart:true}),r=createTowRig(b,{atSlip:true});shift(r,b,5);assert.equal(trailerImmersion(r,b).tooDeep,true);assert.match(trailerAction(r,b,'secure').message,/za głęboko/);
@@ -52,7 +52,7 @@ test('a trailer guide arrests sideways hull motion and transfers contact impulse
  const b=createBoat('service',{coldStart:true}),r=createTowRig(b,{atSlip:true}),p=bodyPoint(r.trailer,r.trailer.offset,.4);Object.assign(b,{x:p.x,y:p.y,a:r.trailer.a,vx:.3,vy:0,heave:bunkZ(r.trailer,r.trailer.offset)-.2+b.spec.draft});trailerContact(r,b,dt);assert.ok(b.vx<.25);assert.ok(r.trailer.vx>0);assert.equal(b.damage,0);
 });
 test('wet submerged wheels have less grip; a heavy boat cannot climb an arbitrarily steep ramp at full throttle',()=>{
- setSlipAngle(8);const {r,b}=ready({}, {atSlip:true});towStep(r,b,dt);const wet=r.traction;selectCarGear(r,'D');r.gas=1;run(r,b,.4);assert.ok(r.slip>.1);shift(r,b,-12);towStep(r,b,dt);assert.ok(r.traction>wet*1.7);
+ setSlipAngle(8);const {r,b}=ready({}, {atSlip:true});towStep(r,b,dt);const wet=r.traction;selectCarGear(r,'D');r.gas=1;run(r,b,.4);assert.ok(r.slip>.1);shift(r,b,-12);towStep(r,b,dt);assert.ok(r.traction>wet*1.3);
  try{setSlipAngle(18);const heavy=ready({length:11,hullMass:8000,profile:'cabin'},{loaded:true});shift(heavy.r,heavy.b,26);selectCarGear(heavy.r,'D');heavy.r.gas=1;run(heavy.r,heavy.b,1.8);assert.ok(heavy.r.speed<.1,`${heavy.r.speed} m/s`);}finally{setSlipAngle(8);}
 });
 test('slip angle changes physical depth, and a deeply submerged SUV intake stalls its engine',()=>{

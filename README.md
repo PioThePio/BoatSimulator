@@ -1,14 +1,41 @@
-# Przystań — symulator manewrów motorówką v15
+# Przystań — symulator manewrów motorówką v16
 
-Przeglądarkowy symulator z widokiem z góry, bez kont i backendu. Siedem rodzajów
+Przeglądarkowy symulator z widokiem z góry, bez kont i backendu. Osiem rodzajów
 łodzi, w tym skuter, zmieniane wymiary i masa, jeden lub dwa silniki do 350 KM.
 Nieregularne jezioro 600 × 400 m, wyspa z przesmykiem, plaże, mielizny,
 szuwary, port ze stanowiskami z bojami i ruchomymi Y-bomami szerokości 25 cm.
 
-Uruchom: **https://piothepio.github.io/BoatSimulator/?v=15.0.0**.
+Uruchom: **https://piothepio.github.io/BoatSimulator/?v=16.0.0**.
 
 Model służy do poznawania zależności w manewrach; nie jest skalibrowany dla
 konkretnej łodzi. [Źródła, równania i ograniczenia](docs/PHYSICS.md).
+
+## Zmiany v16
+
+- Podpory przyczepy mają tarcie, kolebkę V i fizyczne prowadzenie opartego
+  kadłuba. Parking jest poziomy. Pasy można zwolnić przed zjazdem do wody;
+  łódź pozostaje stabilna przy spokojnej jeździe i hamowaniu.
+- Osobna wciągarka dziobowa z ograniczonym uciągiem, mocą, liną i hamulcem.
+  Wciąga także na suchych podporach. Oddzielny, miękki odbojnik dziobowy;
+  wspornik z polerem i wciągarką stoi dalej z przodu.
+- Załadunek oceniany za osiowość, tor i zatrzymanie, z potrąceniem za szkody.
+  Zapinanie pasów działa także przy pracującym silniku łodzi.
+- SUV wyciąga pustą przyczepę dwuosiową z domyślnego mokrego slipu.
+  Poślizg nadal zależy od ciężaru, głębokości, rampy i 4×4; ma osobny dźwięk.
+  Rzeczywiste osie przyczepy przesunięto do tyłu, wraz z geometrią i oponami.
+- Dwa stanowiska serwisu od strony parkingu, piasek poza placem,
+  uporządkowane miejsca postojowe i wolny dojazd do slipu.
+- Menu szybkości kierownicy, osobno dla SUV-a i łodzi: działa na żywo
+  i zapisuje ustawienia. Pod kierownicą SUV-a widoczne pochylenie zestawu.
+- Osobne strzałki wiatru i prądu. Woda nie oddziałuje ani nie animuje się
+  na suchym lądzie; strzałki przy kadłubie pokazują dryf względem brzegu.
+- Kolor knagi nadal oznacza punkt połączenia. Osobny wskaźnik pokazuje
+  napięcie cumy; model łagodniej przechodzi przez moment wybierania luzu.
+- Swamp boat: płaski kadłub, śmigło powietrzne, stery w strumieniu powietrza,
+  wyraźny poślizg boczny, brak trymu, podwodnej śruby i wstecznego biegu.
+  Na piasku uwzględniono łagodniejszy kontakt kadłubów płaskiego i RIB;
+  kontakt z kamieniami nadal jest groźny. Silniejsze kołysanie zacumowanych łodzi
+  wynika z dynamiki fal i cum, bez losowego obracania modeli.
 
 ## Zmiany v15
 

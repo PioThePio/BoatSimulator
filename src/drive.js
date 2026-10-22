@@ -5,7 +5,8 @@ export const TRIM_STOPS=[0,.05,.10,.15,.20,.25,.30,.35,.40,.50,.60,.70,.80,.90,1
 export function trimStep(value,direction){return direction>0?(TRIM_STOPS.find(v=>v>value+.00001)??1):([...TRIM_STOPS].reverse().find(v=>v<value-.00001)??0);}
 export function trimAngle(value){const t=clamp(value,0,1);return(t<=.4?-4+t*40:12+(t-.4)*110)*Math.PI/180;}
 export function driveGeometry(b,en,env={}){
- const S=b.spec,t=b.enginesRaised?1:en.trim,angle=S.jet||S.propulsion==='inboard'?0:trimAngle(t);
+ const S=b.spec;if(S.air){const localX=-S.length*.38,localY=0,c=Math.cos(b.a),s=Math.sin(b.a),x=b.x+c*localX,y=b.y+s*localX,floor=bottomAt(x,y),mountZ=b.heave+S.freeboard*.5+localX*Math.sin(b.pitch),radius=S.beam*.38,propZ=mountZ+radius;return{x,y,localX,localY,mountX:localX,mountZ,shaft:radius,radius,verticalRadius:radius,angle:0,surface:0,floor,propZ,propDepth:-propZ,immersed:0,intake:1,clearance:floor.depth+mountZ};}
+ const t=b.enginesRaised?1:en.trim,angle=S.jet||S.propulsion==='inboard'?0:trimAngle(t);
  const radius=S.jet?.08:.13+.00013*en.hp,mountX=-S.length*(S.jet?.28:.51),baseMount=S.freeboard*.35+.12;
  const mountHeight=S.jet?0:baseMount-(S.draft-S.referenceDraft);
  const shaft=S.jet?S.draft+.03-radius:baseMount+S.referenceDraft+.22-radius;

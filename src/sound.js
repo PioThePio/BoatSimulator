@@ -10,7 +10,7 @@ export function soundParameters(b,e={}){
    const braking=working&&wet>0?Math.abs(en.thrust)*Math.max(0,-en.gear*en.inflow):0;
    const bubbles=working?en.n**2*vent*clamp(wet/.25,0,1):0;
    const raising=working?en.n*4*wet*(1-wet)*clamp(en.trimRate/.1,0,1):0;
-   const churn=running?clamp(.10*Math.sqrt(braking/30000)+.075*bubbles+.045*raising,0,.15):0;
+   const churn=running&&!b.spec.air?clamp(.10*Math.sqrt(braking/30000)+.075*bubbles+.045*raising,0,.15):0;
    return{timbre:b.spec.jet?'jet':v8?'v8':'light',carStarter:car&&starting,starterFrequency:155+35*clamp((en.startTime??0)/.25,0,1),frequency:Math.max(12,en.rpm/60*(b.spec.jet?2.5:v8?1:b.spec.profile==='cruiser'?3:2)),
     harmonicRatio:v8?4:2.015,harmonicMix:v8?.065+.095*load:.10+.08*load,bass:v8?.22:0,mechanicalMix:v8?.025:.035,
     level:running?(.013+.020*en.n)*(1+.15*load):starting&&!car?.038:0,
@@ -23,9 +23,9 @@ export function soundParameters(b,e={}){
   wash:clamp(speed/22,0,1)*(.012+.07*b.planing)+clamp(Math.abs(b.telemetry.thrust??0)/7000,0,1)*.018,
   waterCutoff:500+clamp(speed/8,0,1)*650,
   skimming,spray:skimming*clamp(speed/16,0,1)*.14,sprayCutoff:1400+clamp(speed/22,0,1)*1300,
-  commandClick:!car,bilgePump:!car&&b.bilge?.running?.035:0,bilgeSlosh:!car?clamp(b.bilge?.level??0,0,1)*clamp(Math.abs(b.rollVelocity)+Math.abs(b.pitchVelocity)+speed*.02,0,.8)*.08:0,bilgeAlarm:!car&&!!b.bilge?.alarm,
+  tyres:car?clamp(b.tyreSlip??0,0,1)*.10:0,fan:b.spec.air&&b.engines[0].key==='running'?.015+.075*b.engines[0].n:0,winch:Math.abs(b.towRig?.winch?.rate??0)>.001?.028:0,commandClick:!car,bilgePump:!car&&b.bilge?.running?.035:0,bilgeSlosh:!car?clamp(b.bilge?.level??0,0,1)*clamp(Math.abs(b.rollVelocity)+Math.abs(b.pitchVelocity)+speed*.02,0,.8)*.08:0,bilgeAlarm:!car&&!!b.bilge?.alarm,
   ignitionAlarm:!b.suppressIgnitionAlarm&&b.engines.some(en=>en.key==='ignition'),
-  trimPump:b.spec.jet?0:clamp(Math.max(...b.engines.map(en=>Math.abs(en.trimRate??0)))/.1,0,1),
+  trimPump:b.spec.jet||b.spec.air||b.spec.propulsion==='inboard'?0:clamp(Math.max(...b.engines.map(en=>Math.abs(en.trimRate??0)))/.1,0,1),
   thrusters:['bow','stern'].map(end=>Math.abs(b.thrusters[end+'Actual']??0)*.085),pump:b.fuel.refueling?.025:0};
 }
 // Procedural Web Audio: no downloads, copyrighted recordings or dependency on a
@@ -66,8 +66,9 @@ export function createSoundscape({context=null}={}){
   const trim={source:oscillator('triangle',185),gain:ctx.createGain(),noise:noiseVoice(720)};trim.gain.gain.value=0;trim.source.connect(trim.gain);trim.gain.connect(master);
   const starter={source:oscillator('sawtooth',180),gain:ctx.createGain(),filter:ctx.createBiquadFilter(),noise:noiseVoice(1500,0,true,engineMaster)};
   starter.filter.type='lowpass';starter.filter.frequency.value=850;starter.gain.gain.value=0;starter.source.connect(starter.filter);starter.filter.connect(starter.gain);starter.gain.connect(engineMaster);
+  const tyres=noiseVoice(550,0,true),fan=noiseVoice(900,0,true),winch=noiseVoice(190);
   const bilge={pump:noiseVoice(180,0,true),slosh:noiseVoice(400,0,true),alarm:oscillator('sine',760),gain:ctx.createGain()};bilge.gain.gain.value=0;bilge.alarm.connect(bilge.gain);bilge.gain.connect(master);
-  graph={master,engineMaster,buffer,engines,thrusters,pump,trim,alarm,starter,bilge,v8Wave,waves:noiseVoice(240),wash:noiseVoice(1100),spray:noiseVoice(1900,-.35),sprayRight:noiseVoice(2300,.35)};
+  graph={master,engineMaster,buffer,engines,thrusters,pump,trim,alarm,starter,bilge,tyres,fan,winch,v8Wave,waves:noiseVoice(240),wash:noiseVoice(1100),spray:noiseVoice(1900,-.35),sprayRight:noiseVoice(2300,.35)};
  }
  function pulse(frequency,level,duration=.12,noisy=false){
   if(!graph||!enabled||!active)return;
@@ -96,7 +97,7 @@ export function createSoundscape({context=null}={}){
    active=!!isActive;
    if(!graph)return;
    target(graph.master.gain,enabled&&active?volume*.8:0);
-   const values=soundParameters(b,e);
+   const values=soundParameters(b,e);target(graph.tyres.gain.gain,values.tyres);target(graph.tyres.flutter.frequency,9+Math.abs(b.engines[0].rpm/800));target(graph.fan.gain.gain,values.fan);target(graph.fan.filter.frequency,600+1200*b.engines[0].n);target(graph.winch.gain.gain,values.winch);
    const starter=values.engines.find(en=>en.carStarter),compression=.55+.45*Math.sin(b.time*2*Math.PI*13)**2;
    target(graph.starter.gain.gain,starter?.024*compression:0,.012);target(graph.starter.source.frequency,(starter?.starterFrequency??180)*(1+.035*Math.sin(b.time*2*Math.PI*13)),.012);target(graph.starter.noise.gain.gain,starter?.065:0,.015);target(graph.starter.noise.flutter.frequency,13);
    target(graph.bilge.pump.gain.gain,values.bilgePump);target(graph.bilge.slosh.gain.gain,values.bilgeSlosh);target(graph.bilge.gain.gain,values.bilgeAlarm?.035*(Math.sin(b.time*8)>0?1:.25):0);

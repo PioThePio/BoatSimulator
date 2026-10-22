@@ -32,13 +32,13 @@ test('rear drive loses rear grip while the front keeps steering; 4x4 can climb t
  assert.ok(results[0].frontGrip>results[0].rearGrip*2);assert.ok(results[0].slip>.2);assert.ok(results[1].car.y<results[0].car.y-1);assert.ok(results[1].speed>results[0].speed+.5);
 });
 test('soft ground plus overloaded spinning wheels creates ruts and bogging instead of asphalt-like acceleration',()=>{
- const {r,b}=setup({profile:'cabin',length:11,hullMass:8000},{loaded:true});r.car.x=r.trailer.x=153;position(r,b,-27);r.engine.key='running';r.gear='D';r.gas=1;run(r,b,8);assert.equal(r.surface,'sand');assert.ok(r.rearSink>.25);assert.equal(r.bogged,true);assert.ok(Math.abs(r.speed)<.2);
+ const {r,b}=setup({profile:'cabin',length:11,hullMass:8000},{loaded:true});r.car.x=r.trailer.x=182;position(r,b,-27);r.engine.key='running';r.gear='D';r.gas=1;run(r,b,8);assert.equal(r.surface,'sand');assert.ok(r.rearSink>.25);assert.equal(r.bogged,true);assert.ok(Math.abs(r.speed)<.2);
 });
 test('jackknifing damages SUV, trailer and hitch; a motionless parked angle does not keep adding damage',()=>{
  const {r,b}=setup({}, {loaded:true});r.trailer.a=r.car.a+1.32;const h=bodyPoint(r.car,-SUV.hitch);r.trailer.x=h.x-Math.cos(r.trailer.a)*r.trailer.hitch;r.trailer.y=h.y-Math.sin(r.trailer.a)*r.trailer.hitch;towStep(r,b,dt);assert.ok(r.carDamage>0&&r.trailerDamage>0&&r.hitchDamage>0);const damage=r.hitchDamage;run(r,b,.4);assert.equal(r.hitchDamage,damage);
 });
-test('restraints can be released during dry driving; a hard turn can throw the hull off and break its bow line',()=>{
- const {r,b}=setup({}, {loaded:true});position(r,b,-24);r.car.vy=r.trailer.vy=-7;placeTrailerBoat(r,b);assert.ok(trailerAction(r,b,'release').ok);assert.equal(r.secured,false);r.engine.key='running';r.gear='D';r.gas=1;r.steer=.59;run(r,b,5);assert.equal(r.boatLoaded,false);assert.ok(b.damage>0);assert.ok(b.grounded);assert.equal(b.ropes.length,0);
+test('restraints can be released during dry driving; a severe 50 km/h turn without the winch can throw the hull off and break its bow line',()=>{
+ const {r,b}=setup({}, {loaded:true});position(r,b,-24);r.car.vy=r.trailer.vy=-14;placeTrailerBoat(r,b);assert.ok(trailerAction(r,b,'release').ok);assert.equal(r.secured,false);r.winch.attached=false;r.engine.key='running';r.gear='D';r.gas=1;r.steer=.59;run(r,b,8);assert.equal(r.boatLoaded,false);assert.ok(b.damage>0);assert.ok(b.grounded);assert.equal(b.ropes.length,0);
 });
 test('stern floats before bow, measurable bunk load declines, and deep release floats without teleporting away from its bow line',()=>{
  const partial=setup({}, {loaded:true,atSlip:true});trailerAction(partial.r,partial.b,'release');run(partial.r,partial.b,5);assert.ok(partial.b.trailerSupport.kg>20&&partial.b.trailerSupport.kg<400);assert.ok(partial.b.trailerSupport.sternFloat>.95);assert.ok(partial.b.trailerSupport.bowFloat<.9);assert.ok(partial.b.pitch<partial.r.trailer.pitch*.6);

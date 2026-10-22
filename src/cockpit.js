@@ -28,12 +28,12 @@ export function installCockpit(api){
  $('#sonar-toggle').onchange=e=>$('.sonar').hidden=!e.target.checked;
  return function update(){
   const b=api.boat(),S=b.spec,en=b.engines,avg=k=>en.reduce((sum,e)=>sum+e[k],0)/en.length;
-  const noTrim=S.jet||S.propulsion==='inboard',trim=b.enginesRaised?1:avg('trim'),temperature=Math.max(...en.map(e=>e.temperature));
+  const noTrim=S.air||S.jet||S.propulsion==='inboard',trim=b.enginesRaised?1:avg('trim'),temperature=Math.max(...en.map(e=>e.temperature));
   $('#gauge-rpm2').hidden=en.length!==2;$('#instruments').classList.toggle('twins',en.length===2);$('#gauge-rpm .gauge-name').textContent=en.length===2?'OBROTY · LEWY':'OBROTOMIERZ';
   const values={rpm:en[0].rpm,rpm2:en[1]?.rpm??0,speed:Math.hypot(b.vx,b.vy)*1.94384,fuel:100*b.fuel.litres/b.fuel.capacity,trim:100*trim,volt:b.battery.voltage,temp:temperature};
   for(const [id,value]of Object.entries(values)){const el=$('#gauge-'+id),fraction=Math.max(0,Math.min(1,(value-+el.dataset.min)/(+el.dataset.max-+el.dataset.min)));el.querySelector('.needle').style.transform=`rotate(${fraction*180}deg)`;el.querySelector('strong').textContent=value.toFixed(['rpm','rpm2','fuel','trim','temp'].includes(id)?0:1);}
   $('#gauge-fuel strong').textContent=b.fuel.litres.toFixed(1)+' l';$('#gauge-fuel small').textContent=b.fuel.flow.toFixed(1)+' L/h';
-  $('#gauge-temp').classList.toggle('danger',temperature>=105);$('#gauge-trim').classList.toggle('disabled',!!noTrim);$('#trim-value').textContent=Math.round((b.enginesRaised?1:en[0].trimTarget)*100)+'%';$('#trim-value').title=(en[0].trimTarget<=.4?'Roboczy trym':'Podnoszenie napędu')+' · pozycja zadana';$('#gauge-trim small').textContent=S.propulsion==='inboard'?'STAŁY WAŁ':S.jet?'NAPĘD STRUGOWY':'% · '+(trim<=.4?'TRIM':'TILT');
+  $('#gauge-temp').classList.toggle('danger',temperature>=105);$('#gauge-trim').classList.toggle('disabled',!!noTrim);$('#trim-value').textContent=Math.round((b.enginesRaised?1:en[0].trimTarget)*100)+'%';$('#trim-value').title=(en[0].trimTarget<=.4?'Roboczy trym':'Podnoszenie napędu')+' · pozycja zadana';$('#gauge-trim small').textContent=S.air?'ŚMIGŁO POWIETRZNE':S.propulsion==='inboard'?'STAŁY WAŁ':S.jet?'NAPĘD STRUGOWY':'% · '+(trim<=.4?'TRIM':'TILT');
   updateAttitude(b,api.env);
   updateContactInstrument(b);
   const reserve=b.fuel.litres<b.fuel.capacity*.1,hot=temperature>=105,lowVolt=b.battery.voltage<11.5,highVolt=b.battery.voltage>14.8;
@@ -41,7 +41,7 @@ export function installCockpit(api){
   $('#gauge-volt').classList.toggle('danger',lowVolt||highVolt);$('#gauge-volt small').textContent='V · '+(lowVolt?'NISKIE':highVolt?'WYSOKIE':b.battery.current<0?'ŁADOWANIE':'SPOCZYNEK');
   $('#fuel-status').textContent=`${b.fuel.litres.toFixed(1)} / ${b.fuel.capacity} l · ${b.fuel.flow.toFixed(1)} L/h${b.fuel.refueling?' · TANKOWANIE':b.fuel.status?' · '+b.fuel.status:''}`;
   $('#refuel').textContent=b.fuel.refueling?'■ Stop tankowania':'⛽ Tankuj';
-  $('#repair').textContent=b.service.active?'■ Przerwij naprawę':'🔧 Napraw przy slipie';$('#repair-status').textContent=b.service.status+(b.service.active?' · '+Math.round(b.service.progress*100)+'%':'');
+  $('#repair').textContent=b.service.active?'■ Przerwij naprawę':b.towRig?.boatLoaded?'🔧 Napraw na stanowisku':'🔧 Napraw przy slipie';$('#repair-status').textContent=b.service.status+(b.service.active?' · '+Math.round(b.service.progress*100)+'%':'');
   const q=b.bilge;$('#bilge-level').textContent=Math.round(q.level*100)+'%';$('#bilge-meter').value=q.level*100;$('#bilge-state').textContent=`${q.litres.toFixed(1)} l · ${q.running?'pompuje':q.inflow>.001?'przeciek':'bez napływu'}${q.inflow>.001?' · '+(q.inflow*60).toFixed(1)+' l/min':''}`;$('#bilge-pump').textContent=q.manual?'POMPA ON':'POMPA OFF';$('#bilge-pump').setAttribute('aria-pressed',String(q.manual));$('#bilge-auto').checked=q.auto;$('.bilge-panel').classList.toggle('danger',q.alarm);const warnings=[];if(q.alarm)warnings.push('UWAGA — WODA W ZĘZIE');
   if(en.some(e=>e.overheated||e.thermalTrip))warnings.push('PRZEGRZANIE · zmniejsz gaz i opuść napęd'+(en.some(e=>e.thermalTrip)?' · silnik zatrzymany':''));
   else if(en.some(e=>e.key==='running'&&e.cooling<.25))warnings.push('Brak chłodzenia — opuść napęd');

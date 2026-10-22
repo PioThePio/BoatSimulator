@@ -14,6 +14,9 @@ export const DOCKS=[{x:6,y:10,w:23,h:2.8},{x:17,y:12.8,w:2.8,h:17},{x:29,y:10,w:
  {x:110,y:10,w:9.5,h:2.8,service:true},{x:118,y:12.8,w:1.5,h:18.2,service:true},{x:130.5,y:7,w:1.5,h:24,service:true}];
 export const SERVICE_STATION={x:119.5,y:16,w:11,h:15,slip:{x:121,y:-8,w:7,h:44,waterY:7.5,angle:8},start:{x:125,y:24,a:-Math.PI/2}};
 export const PARKING={x:101,y:-48,w:64,h:40};
+export const SERVICE_BAYS=[{id:1,x:141,y:-44,w:8,h:30},{id:2,x:152,y:-44,w:8,h:30}];
+export const PARKING_SPACES=[104,110,116,131,136].map(x=>({x,y:-45,w:4.7,h:15}));
+export const SAND_PRACTICE={x:174,y:-43,w:16,h:29};
 export function setSlipAngle(value){SERVICE_STATION.slip.angle=clamp(Number(value)||8,4,18);}
 export function slipDepth(x,y){const r=SERVICE_STATION.slip;return(y-r.waterY)*Math.tan(r.angle*Math.PI/180);}
 export const BUILDINGS=[{x:12,y:-5,w:8,h:6,roof:'#b28365'},{x:35,y:-4,w:7,h:6,roof:'#a18c72'},{x:53,y:-5,w:8,h:7,roof:'#b38c6c'},{x:76,y:-5,w:9,h:6,roof:'#8e9d8a'},{x:142,y:-3,w:13,h:7,roof:'#839a92',service:true}];
@@ -64,6 +67,9 @@ export function bottomAt(x,y){
  let depth=dist>=0?basin*(1-Math.exp(-dist*slope/basin)):dist*(shore.beach?.07:.32);
  if(dist>=0){for(const s of SHOALS)depth-=s.drop*Math.exp(-((x-s.x)**2/s.rx**2+(y-s.y)**2/s.ry**2));depth=Math.max(.015,depth+.10*Math.sin(x*.13)*Math.sin(y*.16)*clamp(dist/12,0,1));}
  const ramp=SERVICE_STATION.slip;
+ // A level yard and its approach meet the dry end of the slip. Shore-distance
+ // elevation used to put the parked trailer on an unintended slope.
+ if(y<ramp.y&&x>=96&&x<=194&&y>=-54)depth=(ramp.y-ramp.waterY)*Math.tan(ramp.angle*Math.PI/180);
  if(x>ramp.x&&x<ramp.x+ramp.w&&y>=ramp.y&&y<ramp.y+ramp.h){const blend=clamp(Math.min(x-ramp.x,ramp.x+ramp.w-x),0,1)*clamp((ramp.y+ramp.h-y)/5,0,1);depth+=(slipDepth(x,y)-depth)*blend;}
  const material=x>ramp.x&&x<ramp.x+ramp.w&&y>=ramp.y&&y<ramp.y+ramp.h?'rock':shore.beach?'sand':(shore.edge==='island'&&shore.along<0)||x>73&&y<40?'rock':x>113?'mud':'sand';
  return{depth,material,name:{sand:'piasek',mud:'muł',rock:'kamienie'}[material],holding:{sand:28,mud:12,rock:3}[material],shoreDistance:dist,land:shore.land,beach:shore.beach};
@@ -88,10 +94,13 @@ export function environment(t,e={},x=null,y=null){
    for(const d of DOCKS){const px=clamp(x,d.x,d.x+d.w),py=clamp(y,d.y,d.y+d.h),rx=x-px,ry=y-py,dist=Math.hypot(rx,ry);if(dist>0&&dist<7){const q=.17*V*(1-dist/7)*Math.sin(t*.2+d.x);current.x+=-ry/dist*q;current.y+=rx/dist*q;}}
   }
  }
- return{wind,current,shelter,waveScale:.4+.6*shelter};
+ const dry=x!==null&&bottomAt(x,y).depth<=0;
+ if(dry)current={x:0,y:0};
+ return{wind,current,shelter,waveScale:dry?0:.4+.6*shelter};
 }
 export function waveHeight(e,t=0){return e.autoWaves?Math.min(.55,.004*weatherAt(t,e).windSpeed**2):(e.waveHeight??0);}
 export function waveAt(x,y,t,e){
+ if(bottomAt(x,y).depth<=0)return{eta:0,sx:0,sy:0,vx:0,vy:0,ax:0,ay:0,direction:{x:0,y:0}};
  const H=waveHeight(e,t)*(e.spatialEffects?environment(t,e,x,y).waveScale:1),a=(e.waveDirection??e.windDirection??90)*Math.PI/180,n={x:Math.sin(a),y:-Math.cos(a)};let eta=0,sx=0,sy=0,vx=0,vy=0,ax=0,ay=0;
  const h=Math.max(.4,bottomAt(x,y).depth);
  for(const [weight,period,phase,offset]of [[.65,2.8,0,0],[.25,1.9,1.7,.32],[.1,3.9,3.2,-.4]]){

@@ -10,7 +10,8 @@ export const CRAFTS={
 };
 CRAFTS.flat={...CRAFTS.tender,name:'Płaskodenna 4,6 m',length:4.6,beam:1.9,hullMass:440,draft:.23,hp:50,deadrise:3,color:'#e2dab7'};
 CRAFTS.rib={...CRAFTS.runabout,name:'RIB 5,2 m',length:5.2,beam:2.25,hullMass:470,draft:.30,hp:100,deadrise:18,color:'#b4bdbc'};
-const hulls={tender:['v',.2,.55,1,1],runabout:['v',.2,.6,1,1],cabin:['cabin',.4,1,1.1,.85],cruiser:['displacement',.6,1,.0,.65],pwc:['jet',0,.3,.75,.9],flat:['flat',.2,.55,.7,1.65],rib:['rib',.25,.9,.78,1.1]};
+CRAFTS.swamp={...CRAFTS.flat,name:'Swamp boat · śmigło powietrzne 5,3 m',length:5.3,beam:2.35,hullMass:650,draft:.16,hp:180,freeboard:.42,fuel:90,air:true,color:'#bec39a'};
+const hulls={tender:['v',.2,.55,1,1],runabout:['v',.2,.6,1,1],cabin:['cabin',.4,1,1.1,.85],cruiser:['displacement',.6,1,.0,.65],pwc:['jet',0,.3,.75,.9],flat:['flat',.2,.55,.7,1.65],rib:['rib',.25,.9,.78,1.1],swamp:['flat',0,.85,.65,1.5]};
 for(const [id,p]of Object.entries(CRAFTS)){
  const [hullType,propWalkStrength,windageFactor,planingThreshold,waveResponse]=hulls[id];
  Object.assign(p,{maxHp:350,hullType,propWalkStrength,windageFactor,planingThreshold,waveResponse});
@@ -18,18 +19,18 @@ for(const [id,p]of Object.entries(CRAFTS)){
 export function specification(options={}){
  const profile=options.profile in CRAFTS?options.profile:'runabout',p=CRAFTS[profile];
  const length=clamp(Number(options.length)||p.length,2.8,11),beam=clamp(Number(options.beam)||p.beam,1.1,3.8),hullMass=clamp(Number(options.hullMass)||p.hullMass,200,8000);
- const engineCount=p.jet?1:options.engineCount===2?2:1;
+ const engineCount=p.jet||p.air?1:options.engineCount===2?2:1;
  const powers=Array.from({length:engineCount},(_,i)=>clamp(Number(options.powers?.[i])||p.hp,10,350));
  const fuelCapacity=clamp(Number(options.fuelCapacity)||p.fuel,10,800),tankCount=options.tankCount===2?2:1;
  const crewCount=clamp(Math.round(Number(options.crewCount??(p.jet?1:2))),0,12),crewMass=crewCount*75,equipmentMass=clamp(Number(options.equipmentMass??(p.jet?5:25)),0,1500);
- const propulsion=p.jet?'jet':options.propulsion==='inboard'?'inboard':'outboard';
+ const propulsion=p.air?'air':p.jet?'jet':options.propulsion==='inboard'?'inboard':'outboard';
  const structureMass=hullMass+powers.reduce((sum,hp)=>sum+(p.jet?0:28+hp*.62),0)+fuelCapacity*.08+2*tankCount+(p.jet?0:22*(Number(!!options.bowThruster)+Number(!!options.sternThruster)));
  const dryMass=structureMass+crewMass+equipmentMass;
  const mass=dryMass+fuelCapacity*.75*.745;
  const base={...p,profile,length,beam,hullMass,engineCount,powers,fuelCapacity,tankCount,dryMass,mass,structureMass,crewCount,crewMass,equipmentMass,propulsion,
   propWalkStrength:clamp(Number(options.propWalkStrength??p.propWalkStrength),0,1),windageFactor:clamp(Number(options.windageFactor??p.windageFactor),0,2),
   referenceMass:structureMass+(p.jet?75:150)+(p.jet?5:25)+fuelCapacity*.75*.745,referenceDraft:p.draft*(hullMass/p.hullMass)**.32,draft:p.draft*(hullMass/p.hullMass)**.32,engineSpacing:engineCount===2?beam*.46:0,maxSteer:(p.jet?28:clamp(Number(options.steeringLimit)||35,30,45))*Math.PI/180,
-  wheelTurns:({tender:1.5,runabout:2.5,cabin:3,cruiser:3.5,pwc:.25,flat:1.5,rib:2})[profile],steeringLockTime:({tender:1,runabout:1.4,cabin:1.7,cruiser:1.9,pwc:.45,flat:1,rib:1.1})[profile],thrusterRating:clamp(length*beam*45,220,1550),
+  wheelTurns:({tender:1.5,runabout:2.5,cabin:3,cruiser:3.5,pwc:.25,flat:1.5,rib:2,swamp:.75})[profile],steeringLockTime:({tender:1,runabout:1.4,cabin:1.7,cruiser:1.9,pwc:.45,flat:1,rib:1.1,swamp:.65})[profile],thrusterRating:clamp(length*beam*45,220,1550),
   engineLever:p.jet?-.40*length:-.44*length,bowThruster:!p.jet&&!!options.bowThruster,sternThruster:!p.jet&&!!options.sternThruster};
  return updateMass(base,fuelCapacity*.75);
 }
@@ -62,7 +63,7 @@ export function updateEngine(en,command,inflow,dt,damage=0,context={}){
  en.clock+=dt;
  const trimStep=clamp(en.trimTarget-en.trim,-(en.trim>.4?.16:.10)*dt,(en.trim>.4?.16:.10)*dt);
  en.trim+=trimStep;en.trimRate=dt>0?trimStep/dt:0;en.inflow=inflow;
- const cmd=clamp(command,-1,1);en.command=cmd;
+ const cmd=clamp(command,context.air?0:-1,1);en.command=cmd;
  thermalStep(en,dt,context);
  if(en.key==='starting'){
   en.startTime+=dt;en.rpm=260;en.thrust=0;en.gear=0;
@@ -70,9 +71,9 @@ export function updateEngine(en,command,inflow,dt,damage=0,context={}){
  }
  if(en.key!=='running'||context.noFuel){en.n*=Math.exp(-dt/.35);en.rpm=0;en.thrust=0;en.gear=0;en.load=0;en.governorLoad=0;en.opposingFlow=0;en.waveLoad=0;en.ventilation=0;if(context.noFuel)en.key='ignition';return 0;}
  const desired=Math.abs(cmd)<.035?0:Math.sign(cmd);
- const airExposure=clamp((.70-(context.immersion??1))/.70,0,1);
- const highAngle=context.fixedDrive?0:clamp((trimAngle(en.trim)*180/Math.PI-10)/38,0,1);
- const trimVent=context.jet?0:Math.max(airExposure,highAngle*(.15+.85*clamp((Math.abs(inflow)-.5)/6,0,1)))*clamp(en.n/.5,0,1)*(.2+.8*Math.abs(cmd));
+ const airExposure=context.air?0:clamp((.70-(context.immersion??1))/.70,0,1);
+ const highAngle=context.fixedDrive||context.air?0:clamp((trimAngle(en.trim)*180/Math.PI-10)/38,0,1);
+ const trimVent=context.jet||context.air?0:Math.max(airExposure,highAngle*(.15+.85*clamp((Math.abs(inflow)-.5)/6,0,1)))*clamp(en.n/.5,0,1)*(.2+.8*Math.abs(cmd));
  en.ventilation+=(trimVent-en.ventilation)*(1-Math.exp(-dt/.35));
  // Signed advance matters: backing against forward motion loads the propeller
  // more than running with the same inflow. Steering alone cannot create load.
@@ -96,11 +97,11 @@ export function updateEngine(en,command,inflow,dt,damage=0,context={}){
   en.n+=(target-en.n)*(1-Math.exp(-dt/tau));
  }
  const n=en.n,gear=en.gear;
- const staticThrust=(context.jet?62:85)*en.hp**.8,advance=gear*inflow;
- const advanceFactor=clamp(1-.22*advance/(2+11*n),.12,1.35);
+ const staticThrust=(context.air?25:context.jet?62:85)*en.hp**.8,advance=gear*inflow;
+ const advanceFactor=context.air?clamp(1-.16*advance/(8+30*n),.3,1.1):clamp(1-.22*advance/(2+11*n),.12,1.35);
  const reverse=context.jet?.34:.58;
  const bollard=staticThrust*n*n*(gear<0?reverse:1)*advanceFactor;
- const powerLimit=(context.jet?.63:.55)*en.hp*735.5*n**3/Math.max(1,Math.abs(inflow));
+ const powerLimit=(context.jet?.63:.55)*en.hp*735.5*n**3/Math.max(context.air?5:1,Math.abs(inflow));
  en.thrust=desired===gear?gear*Math.min(bollard,powerLimit)*(1-damage/100)*(1-en.propDamage/100)**1.5*(1-.90*en.ventilation)*(context.immersion??1)*en.thermalLimit:0;
  // Idle governor responds to clutch load; small combustion/governor ripple, independent per engine.
  const idle=750+(gear!==0?65*clamp(n/.22,0,1):0),shaft=4750*clamp((n-.23)/.77,0,1);

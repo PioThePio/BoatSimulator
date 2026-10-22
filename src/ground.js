@@ -6,6 +6,7 @@ export function propellerPoint(b,engine){const g=driveGeometry(b,engine);return{
 export function propellerContact(b,engine,dt,notify,env={}){
  const g=driveGeometry(b,engine,env),p=g,floor=g.floor,clearance=g.clearance;
  engine.propClearance=clearance;engine.immersion=g.immersed;engine.intake=g.intake;engine.propDepth=g.propDepth;engine.drive=g;
+ if(b.spec.air){engine.propContact=false;engine.immersion=engine.intake=1;return;}
  const penetration=Math.max(0,-clearance),touching=penetration>0&&!b.enginesRaised;
  const speed=Math.hypot(b.vx-b.w*(p.y-b.y),b.vy+b.w*(p.x-b.x));
  const rotating=engine.gear!==0?engine.n:0,previous=engine.propDamage;
@@ -69,8 +70,9 @@ export function groundContact(b,wave,dt,notify){
   for(const q of samples){const zone=bottomZone(b,q.arm),group=groups.get(zone)??{sample:q,weight:0,closing:0};group.weight+=q.penetration/total;group.closing=Math.max(group.closing,q.closing);if(q.penetration>group.sample.penetration)group.sample=q;groups.set(zone,group);}
   for(const group of groups.values()){
    const q=group.sample,rock=q.floor.material==='rock',sand=q.floor.material==='sand';
-   const horizontal=Math.max(0,speed-(rock?.18:sand?1.25:1.6)),normal=Math.max(0,group.closing-(rock?.08:.5));
-   const loss=((rock?8:sand?.15:.06)*horizontal**2+(rock?12:2)*normal**2)*clamp(q.penetration/.15,0,2)*group.weight;
+   const broad=S.hullType==='flat'||S.air,softFactor=sand?(broad?.55:S.hullType==='rib'?.75:1):1;
+   const horizontal=Math.max(0,speed-(rock?.18:sand?(broad?1.55:1.25):1.6)),normal=Math.max(0,group.closing-(rock?.08:broad?.65:.5));
+   const loss=softFactor*((rock?8:sand?.15:.06)*horizontal**2+(rock?12:2)*normal**2)*clamp(q.penetration/.15,0,2)*group.weight;
    recordImpact(b,{arm:q.arm,speed:Math.max(speed,group.closing),effective:S.mass*group.weight,target:'bottom',dock:false,damage:loss});damage+=loss;
   }
   b.groundEvent=b.time;

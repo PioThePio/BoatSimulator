@@ -1,4 +1,4 @@
-# Model v15: podstawy, założenia i ograniczenia
+# Model v16: podstawy, założenia i ograniczenia
 
 Model ma odtwarzać **zależności fizyczne w manewrach**, ale nie jest
 zweryfikowanym cyfrowym bliźniakiem konkretnej motorówki. Nie dysponujemy
@@ -974,3 +974,71 @@ a odczepiona przyczepa pozostaje w swoim miejscu. Przy przesiadaniu skala
 świata jest wspólna, z kompensacją automatycznego oddalenia kamery łodzi.
 Rozrusznik samochodu ma oddzielny mechaniczny szum i modulację kompresji;
 wciskanie pedału nie odtwarza już dźwięku manetki łodzi.
+
+## v16: poprawki przyczepy i portu
+
+Parking wcześniej dziedziczył wysokość z odległości od brzegu. Nawet na
+postoju przyczepa była pochylona, a współczynnik oporu rolek 0,035 pozwalał
+łodzi zjeżdżać. Plac jest teraz poziomy i łączy się z suchym końcem slipu.
+Sześć podpór ma tarcie wzdłużne 0,24, boczne do 0,55, niższe podczas
+przesuwania po prowadnicach. Kolebka daje ograniczoną siłę centrującą tylko
+przy dodatnim nacisku kadłuba na podpory. Częściowo wyparta rufa może nadal
+pływać. Zbyt głęboka przyczepa nie przyciąga pływającego kadłuba do osi.
+
+Wciągarka jest oddzielna od ręcznych cum: uciąg `clamp(0.65*m*g,5000,40000) N`,
+moc `800+80*L W`, maks. zwijanie 0,16 m/s i wydawanie 0,3 m/s. Długość liny
+zmienia się tylko podczas trzymania. Prędkość maleje przy obciążeniu,
+hamulec utrzymuje linę, przeciążenie ponad 1,8 uciągu zrywa linę. Reakcja
+trafia do przyczepy; nie jest to kinematyczne przesuwanie kadłuba. Rzut cumą
+nadal zostawia luz, a wybieranie ręką pozostaje ograniczone do 450 N / 65 W.
+Przejście cumy z luzu do naprężenia uwzględnia chwilę kontaktu wewnątrz kroku.
+
+Wspornik jest przy `offset+0,59*L+0,35 m`, a szeroki odbojnik przy
+`offset+0,50*L+0,08 m`. Powolny kontakt z odbojnikiem nie uszkadza dziobu;
+za szybki może wyłamać wspornik i dopuścić uderzenie w SUV-a. Linia wciągarki
+i podparcie są uproszczonym modelem; nie obliczamy odkształceń ramy,
+krzywizny rzeczywistego kadłuba ani pełnej przestrzennej geometrii liny.
+
+Ocena podejścia waży osiowość i odchylenie boczne przebytą drogą, żeby
+stanie w miejscu nie poprawiało średniej. Składniki: 35% oś, 35% tor,
+30% pozycja i prędkość zatrzymania. Każdy punkt szkody kadłuba odejmuje
+2 punkty wyniku. Zapis następuje przed dopasowaniem pozycji przy zapinaniu
+pasów. Nie jest to ocena zdolności żeglarza, lecz informacja do ćwiczeń.
+
+Trakcja mokrego betonowego slipu wynosi teraz 0,60–0,42 zależnie od zanurzenia,
+a suchego 0,80. Poprzednio mokra tylna oś nie zapewniała nawet siły potrzebnej
+na wyciągnięcie pustej przyczepy przy domyślnym nachyleniu 8°. Nadal obowiązują
+ograniczenia tarcia, odciążenie zanurzonego samochodu, opory ciężkiego ładunku,
+napęd tylnej osi / 4×4 i grzęźnięcie na piasku. W przyczepach wieloosiowych
+środek osi jest cofnięty o 0,12 długości łodzi: zmienia miejsce działania opon,
+wysokość ramy i obciążenie haka, a nie tylko grafikę. Test obejmuje wyjazd
+pustej przyczepy dwuosiowej w 2WD i pozostawia regresję ciężkiego zestawu
+na stromym slipie. Dźwięk buksowania zależy od rzeczywistego poślizgu i gazu.
+
+Dwa stanowiska lądowego serwisu wymagają ustawienia łodzi i podłączonego
+SUV-a wewnątrz obrysu, postoju w P lub na ręcznym, zapiętych pasów i
+wyłączonych silników łodzi oraz zapłonu. Nie wymagają cumy do pomostu.
+Zapinanie samych pasów nie wymaga wyłączenia silnika. Naprawa z wody
+zachowuje poprzednie zasady.
+
+Na piasku model przyznaje mniejsze szkody przy rozłożonym kontakcie płaskiego
+dna (mnożnik 0,55 i wyższy próg powolnego osiadania) oraz RIB (0,75).
+RIB ma też mniejsze zanurzenie i masę niż kabinówka. To umowne współczynniki
+szkoleniowe, nie ogólna deklaracja większej wytrzymałości każdego RIB-a:
+wytrzymałość rzeczywistego dna zależy także od materiału, konstrukcji i stanu.
+Mnożniki nie obniżają szkód od kamieni. Uszkodzenia śruby pozostają osobne.
+
+Swamp boat ma kadłub płaski 5,3 × 2,35 m, zanurzenie 0,16 m i śmigło
+powietrzne. Ciąg bazowy jest niższy niż wodnej śruby tej samej mocy,
+`25*hp^0,8`, i nadal ograniczony mocą wału. Sterowanie powstaje na rufowych
+sterach w strumieniu śmigła; śmigło ma stałą oś. Opór poprzeczny i nośność
+boczna są mniejsze, więc rufa wyraźnie ślizga się. Nie ma prop walk,
+wentylacji wodnej, trymu, chłodzenia wodą ani biegu wstecznego. Jest to
+wariant z prostym stałym śmigłem, bez odwracania jego skoku.
+
+Woda na suchym lądzie ma zerowy prąd i wymuszenie falowe. Widoczne ślady
+wymagają kontaktu kadłuba z wodą. Strzałki przy dziobie, środku i rufie używają
+rzeczywistej prędkości tych punktów względem lądu; osobne drobne zmarszczki
+odpowiadają przepływowi względem wody. Zacumowany ruch portowy ma dynamiczne
+oscylatory heave/roll/pitch i rozłożone wymuszenie momentu falowego, nadal
+ograniczony fizycznymi linami do swoich punktów cumowania.

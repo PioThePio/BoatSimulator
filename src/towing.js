@@ -4,6 +4,7 @@ import {vehicleSurface} from './vehicle-terrain.js';
 import {lockedSupport,trailerBoatContact} from './trailer-support.js';
 import {attachRope} from './rigging.js';
 import {recordImpact} from './impacts.js';
+import {createWinch,connectWinch,winchStep,loadingScoreStep} from './trailer-winch.js';
 export {bodyPoint,bodyLocal};
 export const SUV=SUV_GEOMETRY;
 const G=9.81,wrap=a=>Math.atan2(Math.sin(a),Math.cos(a));
@@ -15,15 +16,17 @@ export function createTowRig(b,{loaded=false,atSlip=false,misalignment=(loaded&&
  const trailerAngle=a+misalignment;
  const t=body(hp.x-Math.cos(trailerAngle)*hitch,hp.y-Math.sin(trailerAngle)*hitch,trailerAngle,mass,mass*(S.length*S.length+S.beam*S.beam)/12);
  Object.assign(t,{emptyMass:mass,hitch,offset,length:S.length+2.15,beam:Math.max(1.65,S.beam+.35),axles:mass+S.mass>4500?3:mass+S.mass>1800?2:1,braked:mass+S.mass>750,bunkHeight:.6+S.draft*.15});
+ t.axleX=-S.length*(t.axles>1?.12:.06);
  const r={car,trailer:t,boatLength:S.length,boatLoaded:loaded,secured:loaded,attached:true,trailerPark:false,handbrake:false,awd:false,frontSink:0,rearSink:0,carDamage:0,trailerDamage:0,hitchDamage:0,postBroken:false,lastJackknife:-10,
   gear:'P',steer:0,actualSteer:0,gas:0,brake:0,pedal:0,brakePedal:0,speed:0,time:0,slip:0,traction:1,grade:0,drawbarForce:0,contacts:0,ropeForce:{x:0,y:0,torque:0},status:loaded?'Łódź zabezpieczona · cuma dziobowa PRZ':'Pusta przyczepa na parkingu',
   engine:{key:'off',rpm:0,n:0,load:0,hp:SUV.hp,gear:0,temperature:18,startTime:0,immersion:0,ventilation:0,thrust:0,inflow:0,opposingFlow:0,trim:0,trimRate:0},fuel:{litres:65,capacity:75,flow:0}};
+ r.winch=createWinch(S);r.loadingScore={active:false,best:0,quality:0,samples:0,angleSum:0,offsetSum:0};
  b.towRig=r;updateTowGeometry(r);updateTrailerMass(r,b);
- if(loaded){b.throttle=b.throttle2=0;for(const en of b.engines){en.key='off';en.rpm=en.n=en.gear=en.thrust=0;if(!S.jet&&S.propulsion!=='inboard')en.trim=en.trimTarget=1;}placeTrailerBoat(r,b);attachRope(b,'bow',trailerBollardIndex());}
+ if(loaded){b.throttle=b.throttle2=0;for(const en of b.engines){en.key='off';en.rpm=en.n=en.gear=en.thrust=0;if(!S.jet&&!S.air&&S.propulsion!=='inboard')en.trim=en.trimTarget=1;}placeTrailerBoat(r,b);attachRope(b,'bow',trailerBollardIndex());connectWinch(r,b);}
  return r;
 }
 function updateTrailerMass(r,b){const t=r.trailer;t.mass=t.emptyMass+(r.secured&&r.boatLoaded?b.spec.mass:0);t.iz=t.mass*(b.spec.length**2+t.beam**2)/12;}
-export function trailerPost(r){return bodyPoint(r.trailer,r.trailer.offset+r.boatLength*.46+.2);}
+export function trailerPost(r){return bodyPoint(r.trailer,r.trailer.offset+r.boatLength*.59+.35);}
 export function trailerTarget(r){return bodyPoint(r.trailer,r.trailer.offset);}
 function carDepths(r){const rear=bodyPoint(r.car,-SUV.wb/2),front=bodyPoint(r.car,SUV.wb/2);return{rearDepth:Math.max(0,bottomAt(rear.x,rear.y).depth),frontDepth:Math.max(0,bottomAt(front.x,front.y).depth)};}
 export function trailerImmersion(r,b){
@@ -73,7 +76,9 @@ export function resetTowVehicle(r,b){
   const t=r.trailer;t.a=c.a+.065;const p=bodyPoint(c,-SUV.hitch);t.x=p.x-Math.cos(t.a)*t.hitch;t.y=p.y-Math.sin(t.a)*t.hitch;t.vx=t.vy=t.w=0;
   r.trailerDamage=0;r.postBroken=false;r.ropeForce={x:0,y:0,torque:0};
   if(!carry){b.ropes=b.ropes.filter(line=>line.bollard!==trailerBollardIndex());r.boatLoaded=r.secured=false;}
+  r.winch.attached=false;r.winch.control=0;r.winch.broken=false;
   updateTrailerMass(r,b);updateTowGeometry(r);if(carry)placeTrailerBoat(r,b);
+  if(carry)connectWinch(r,b);
  }
  updateTowGeometry(r);r.status='SUV ustawiony na parkingu · P i ręczny · stan łodzi zachowany';
  return{ok:true,message:r.status};
@@ -91,10 +96,9 @@ export function trailerAction(r,b,action){
  if(!r.boatLoaded&&d.tooShallow)return{ok:false,message:'Przyczepa za płytko · zanurz podpory, cofając SUV-em.'};
  if(Math.abs(p.y)>b.spec.beam*.2+.1||Math.abs(p.x-r.trailer.offset)>.70||Math.abs(wrap(b.a-r.trailer.a))>.20)return{ok:false,message:'Wprowadź łódź prosto między prowadnice, dziobem do polera PRZ.'};
  if(Math.hypot(b.vx-v.vx,b.vy-v.vy)>.3||Math.hypot(r.car.vx,r.car.vy)>.15)return{ok:false,message:'Zatrzymaj samochód i łódź przed zabezpieczeniem.'};
- if(b.engines.some(en=>en.key!=='off'))return{ok:false,message:'Wyłącz silniki łodzi przed zabezpieczeniem na przyczepie.'};
- if(!b.ropes.some(q=>q.end==='bow'&&q.bollard===trailerBollardIndex()))return{ok:false,message:'Załóż cumę dziobową na poler PRZ na przodzie przyczepy.'};
+ if(!r.winch.attached&&!b.ropes.some(q=>q.end==='bow'&&q.bollard===trailerBollardIndex()))return{ok:false,message:'Podepnij wciągarkę lub cumę dziobową do przyczepy.'};
  if(b.ropes.some(q=>q.bollard!==trailerBollardIndex())||b.anchor.mode!=='stowed')return{ok:false,message:'Odepnij cumy od brzegu i wybierz kotwicę przed załadunkiem.'};
- r.boatLoaded=r.secured=true;b.launchMotion=false;updateTrailerMass(r,b);placeTrailerBoat(r,b);r.status='Łódź zabezpieczona na przyczepie';return{ok:true,message:r.status};
+ loadingScoreStep(r,b,0);if(r.loadingScore.active){r.loadingScore.active=false;r.loadingScore.complete=true;}r.boatLoaded=r.secured=true;b.launchMotion=false;updateTrailerMass(r,b);placeTrailerBoat(r,b);r.status='Łódź zabezpieczona na przyczepie';return{ok:true,message:r.status};
 }
 function rampGrade(p){const q=SERVICE_STATION.slip;return p.x>q.x&&p.x<q.x+q.w&&p.y>q.y&&p.y<q.y+q.h?q.angle*Math.PI/180:0;}
 function tyre(q,x,angle,normal,mu,stiffness,dt){
@@ -110,7 +114,7 @@ function hitch(r,dt){
 function roadContact(q,length,beam,r,dt){
  const obstacles=[...BUILDINGS,...DOCKS];
  // The training area is bounded on land; the ramp and water remain accessible.
- const minX=PARKING.x-7,maxX=PARKING.x+PARKING.w+7,minY=PARKING.y-6;
+ const minX=PARKING.x-7,maxX=194,minY=PARKING.y-6;
  for(const x of [-length*.38,0,length*.38]){const p=bodyPoint(q,x),radius=beam*.48;
   let corrections=[];
   if(p.x<minX+radius)corrections.push({nx:1,ny:0,d:minX+radius-p.x});if(p.x>maxX-radius)corrections.push({nx:-1,ny:0,d:p.x-maxX+radius});if(p.y<minY+radius)corrections.push({nx:0,ny:1,d:minY+radius-p.y});
@@ -128,8 +132,9 @@ export function towStep(r,b,dt){
  r.actualSteer+=clamp(r.steer-r.actualSteer,-1.05*dt,1.05*dt);
  r.pedal+=clamp(clamp(r.gas,0,1)-r.pedal,-5*dt,1.5*dt);r.brakePedal+=clamp(clamp(r.brake,0,1)-r.brakePedal,-6*dt,2.2*dt);
  const speed=c.vx*Math.cos(c.a)+c.vy*Math.sin(c.a),direction=r.gear==='D'?1:r.gear==='R'?-1:0,running=en.key==='running';r.speed=speed;
- const front=bodyPoint(c,SUV.wb/2),rear=bodyPoint(c,-SUV.wb/2),sf=vehicleSurface(front.x,front.y),sr=vehicleSurface(rear.x,rear.y),st=vehicleSurface(t.x,t.y);
- const supported=t.emptyMass+(b.trailerSupport?.near?b.trailerSupport.kg:0),tongue=r.attached?(t.emptyMass*.07+(b.trailerSupport?.near?b.trailerSupport.kg:0)*t.offset/t.hitch)*G:0;
+ const front=bodyPoint(c,SUV.wb/2),rear=bodyPoint(c,-SUV.wb/2),axle=bodyPoint(t,t.axleX),sf=vehicleSurface(front.x,front.y),sr=vehicleSurface(rear.x,rear.y),st=vehicleSurface(axle.x,axle.y);
+ const supportKg=b.trailerSupport?.near?b.trailerSupport.kg:0;
+ const supported=t.emptyMass+supportKg,tongue=r.attached?(t.emptyMass*(-t.axleX)/(t.hitch-t.axleX)+supportKg*(t.offset-t.axleX)/(t.hitch-t.axleX))*G:0;
  const baseNormal=SUV.mass*G*clamp(1-Math.max(0,d.frontDepth+d.rearDepth-.65)*.4,.2,1)*Math.cos(grade),transfer=baseNormal*Math.sin(c.pitch)*.22;
  const nf=Math.max(baseNormal*.20,baseNormal*.48-tongue*.4-transfer),nr=Math.max(baseNormal*.20,baseNormal*.52+tongue*1.4+transfer),tn=Math.max(0,supported*G-(r.attached?tongue:0))*Math.cos(trailerGrade);
  const nominalAxle=SUV.mass*G*.5,frontSoil=sf.soft?1+.45*Math.max(0,nf/nominalAxle-1):1,rearSoil=sr.soft?1+.45*Math.max(0,nr/nominalAxle-1):1;
@@ -156,7 +161,7 @@ export function towStep(r,b,dt){
  kick(t,-Math.sign(ts)*drag*Math.cos(t.a)*dt,-Math.sign(ts)*drag*Math.sin(t.a)*dt);
  const frontGrip=Math.sqrt(Math.max(.04,1-(ff/Math.max(1,frontLimit))**2)),rearGrip=Math.sqrt(Math.max(.025,1-(rf/Math.max(1,rearLimit))**2))*(r.handbrake?.18:1);
  r.frontGrip=frontGrip;r.rearGrip=rearGrip;
- tyre(c,SUV.wb/2,c.a+r.actualSteer,nf,muf*frontGrip,20000,dt);tyre(c,-SUV.wb/2,c.a,nr,mur*rearGrip,21000,dt);tyre(t,0,t.a,tn,st.mu,22000,dt);
+ tyre(c,SUV.wb/2,c.a+r.actualSteer,nf,muf*frontGrip,20000,dt);tyre(c,-SUV.wb/2,c.a,nr,mur*rearGrip,21000,dt);tyre(t,t.axleX,t.a,tn,st.mu,22000,dt);
  if(r.trailerPark){t.vx*=Math.exp(-dt*9);t.vy*=Math.exp(-dt*9);t.w*=Math.exp(-dt*9);}
  kick(t,r.ropeForce.x*dt,r.ropeForce.y*dt);t.w+=r.ropeForce.torque/t.iz*dt;r.ropeForce={x:0,y:0,torque:0};
  let drawbar=0;if(r.attached)for(let i=0;i<8;i++)drawbar+=hitch(r,dt);r.drawbarForce=drawbar;
@@ -180,7 +185,8 @@ export function towStep(r,b,dt){
  const rpmTarget=en.key==='starting'?220:running?780+r.pedal*(['P','N'].includes(r.gear)?3600:1600)+Math.abs(speed)*95+en.load*900+r.slip*1200:0;
  en.rpm+=(rpmTarget-en.rpm)*(1-Math.exp(-dt/(running?.28:.12)));if(en.rpm<1)en.rpm=0;en.n=clamp(en.rpm/6000,0,1);en.temperature+=((running?87:18)-en.temperature)*dt/(running?100:450);
  r.fuel.flow=running?1.2+Math.abs(drive*speed)/735.5*.24+r.pedal*3:0;r.fuel.litres=Math.max(0,r.fuel.litres-r.fuel.flow/3600*dt);
+ r.tyreSlip=r.slip*r.pedal*clamp(Math.max(d.frontDepth,d.rearDepth)/.08,0,1);
  updateTowGeometry(r);if(r.boatLoaded&&r.secured)placeTrailerBoat(r,b);
 }
-export function trailerContact(r,b,dt){trailerBoatContact(r,b,dt);}
-export function towAudioBoat(r,b){r.audioBoat??={};return Object.assign(r.audioBoat,{...b,suppressIgnitionAlarm:true,spec:{...b.spec,profile:'suv',jet:false},time:r.time,engines:[r.engine],throttle:r.pedal,throttle2:0,planing:0,telemetry:{surge:0,sway:0,thrust:0},thrusters:{},fuel:{refueling:false}});}
+export function trailerContact(r,b,dt){winchStep(r,b,dt);trailerBoatContact(r,b,dt);loadingScoreStep(r,b,dt);}
+export function towAudioBoat(r,b){r.audioBoat??={};return Object.assign(r.audioBoat,{...b,tyreSlip:r.tyreSlip??0,suppressIgnitionAlarm:true,spec:{...b.spec,profile:'suv',jet:false},time:r.time,engines:[r.engine],throttle:r.pedal,throttle2:0,planing:0,telemetry:{surge:0,sway:0,thrust:0},thrusters:{},fuel:{refueling:false}});}

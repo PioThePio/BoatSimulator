@@ -2,7 +2,7 @@ import {DOCKS,bottomAt,clamp} from './world.js';
 // Right-handed propeller: the stern walks to port in reverse. Twin installations
 // are assumed counter-rotating, so this small transverse component cancels.
 export function propWalkForce(S,en,speed,planing){
- if(S.engineCount!==1||S.jet||en.key!=='running'||en.gear>=0)return 0;
+ if(S.engineCount!==1||S.jet||S.air||en.key!=='running'||en.gear>=0)return 0;
  const fade=clamp(1-Math.abs(speed)/2.2,0,1)**2*(1-planing);
  if(fade===0||S.propWalkStrength===0)return 0;
  return -Math.abs(en.thrust)*S.propWalkStrength*(S.propulsion==='inboard'?.45:.30)*fade;
