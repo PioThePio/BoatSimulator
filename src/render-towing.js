@@ -1,5 +1,5 @@
 import {PARKING,SERVICE_STATION,bottomAt,clamp} from './world.js';
-import {SUV,bodyPoint,trailerPost} from './towing.js';
+import {SUV,bodyPoint,trailerPost,hitchStatus} from './towing.js';
 import {SAND_PRACTICE} from './vehicle-terrain.js';
 export function drawParking(c){
  const p=PARKING;c.fillStyle='#a6b1a0';c.fillRect(p.x,p.y,p.w,p.h);c.strokeStyle='#879b87';c.lineWidth=.18;c.strokeRect(p.x,p.y,p.w,p.h);
@@ -30,4 +30,5 @@ export function drawTowRig(c,r,b){
  if(r.gear==='R'){c.fillStyle='#f3f3df';c.fillRect(-2.43,-.40,.12,.18);c.fillRect(-2.43,.22,.12,.18);}
  for(const [x,slip,sink]of [[1.45,r.frontSlip,r.frontSink],[-1.45,r.rearSlip,r.rearSink]]){if(sink>.02){c.strokeStyle='#a68d63';c.lineWidth=.18;for(const side of [-1,1]){c.beginPath();c.moveTo(x-.7,side*1.02);c.lineTo(x+.4,side*1.02);c.stroke();}}if(slip>.05){c.strokeStyle=r.surface==='sand'?'#c0a879':'#c8c7a5';c.lineWidth=.13;for(let i=0;i<5;i++){const a=(r.time*5+i*.19)%1;c.beginPath();c.arc(x-a*.8,(i%2?1:-1)*1.12,.08+a*.15,0,Math.PI*2);c.stroke();}}}
  c.restore();c.fillStyle='#d3a34b';c.strokeStyle='#7b6943';c.lineWidth=.07;c.beginPath();c.arc(p.x,p.y,.23,0,Math.PI*2);c.fill();c.stroke();
+ if(!r.attached){const h=hitchStatus(r);c.strokeStyle=h.ready?'#6ba65b':'#c68648';c.lineWidth=.1;c.setLineDash([.25,.2]);c.beginPath();c.moveTo(h.p.x,h.p.y);c.lineTo(h.q.x,h.q.y);c.stroke();c.setLineDash([]);for(const q of [h.p,h.q]){c.beginPath();c.arc(q.x,q.y,.32,0,Math.PI*2);c.stroke();}}
 }

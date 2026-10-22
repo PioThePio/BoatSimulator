@@ -1,4 +1,4 @@
-# Model v14: podstawy, założenia i ograniczenia
+# Model v15: podstawy, założenia i ograniczenia
 
 Model ma odtwarzać **zależności fizyczne w manewrach**, ale nie jest
 zweryfikowanym cyfrowym bliźniakiem konkretnej motorówki. Nie dysponujemy
@@ -877,3 +877,100 @@ kolizje dziobu/SUV-a, ramę poniżej belek, odpinanie i ponowne przyczepianie,
 koło tarcia osi, pomoc 4×4, zakopanie w piachu, szkody przegubu, stopniowe
 pedały i poprawne obroty całych sylwetek. Model nie obejmuje pełnej dynamiki
 zawieszenia, deformacji opon, rozkładu ciśnienia gleby ani sprężystości ramy.
+
+## v15: manewry, obciążenie i zęza
+
+### Śruba, pęd boczny i kadłuby
+
+`propWalkStrength` (0–1) wynosi domyślnie: otwarta / motorówka / płaskodenna
+0,2; RIB 0,25; kabinowa 0,4; wypornościowa 0,6; skuter 0. Przyjęto śrubę
+prawoskrętną: na wstecznym siła poprzeczna przy rufie jest skierowana na
+lewą burtę. Wynosi `-|T| * strength * c * fade`, gdzie `c=0,30` dla
+zaburtówki, `0,45` dla wału, a `fade=max(0,1-|Vw|/2,2)^2*(1-planing)`.
+Dla bliźniaczych napędów przyjęto śruby przeciwbieżne: brak tego dodatku.
+To parametr manewrowy, nie pomiar konkretnej przekładni czy śruby.
+
+Prop wash zaburtówki jest już obecny w wektorze ciągu na rzeczywistym
+ramieniu rufowym. Nie dodajemy drugi raz sztucznego momentu „skrętu w miejscu”.
+Opcja stacjonarna utrzymuje ciąg osiowy i ma osobny ster z dopływem od śruby,
+stall i słabszym sterowaniem na wstecznym. Nie symuluje saildrive ani Z-drive.
+Roboczy trym jest dla niej zablokowany, wał nie unosi się na przyczepie.
+
+Opór każdej sekcji kadłuba nadal przeciwdziała jej prędkości `v+r*x`.
+Zmniejszono zbyt silny liniowy opór poprzeczny przy wolnym ruchu i tłumienie
+obrotu. Przy mocnym ciągu i dużym skręcie strumień osłabia chwyt rufowych
+sekcji (do 38%, zanik do 5 m/s), bez dodawania energii do pasywnego kadłuba.
+Przy 150 KM po pół sekundy od neutralu test zachowuje ponad 75% ruchu
+bocznego i ponad 50% prędkości obrotowej z wolnego zakrętu.
+
+Płaskodenny ma deadrise 3°, zanurzenie referencyjne 0,23 m i łatwiejszy próg
+ślizgu. RIB ma lekki kadłub, próg 0,78 względem motorówki i większą ekspozycję
+na wiatr. V i kabinówka wymagają większego stosunku siły nośnej do ciężaru;
+kabinówka ma też większą masę i bezwładność. Wypornościowa nigdy nie włącza
+ślizgu i ma narastający opór falowy. Reakcja na fale zależy od kadłuba;
+płaskodenny silniej kołysze się i podskakuje w ślizgu. Nie jest to pełna
+symulacja uderzeń dna o wodę.
+
+Wentylacja wynika z położenia napędu, prędkości i rzeczywistego zanurzenia
+śruby. Poniżej 70% powierzchni zanurzonej narasta składnik zasysania powietrza;
+pozostaje też składnik nadmiernego kąta trymu. Spada obciążenie i ciąg,
+wzrastają obroty oraz ton silnika. Zanurzenie jest dodatkowym ograniczeniem
+ciągu, a całkowicie sucha śruba nie napędza łodzi. Zgaszenie silnika zeruje
+wentylację; rysowanie piany wymaga pracującej, obracającej się śruby.
+Piasek ściera wyłącznie pracującą śrubę, lecz kamień może uszkodzić także
+nieobracającą się stopę. Kontakt i ostrzeżenie pozostają niezależne od zużycia.
+
+### Masa, wiatr i brzeg
+
+Masa jest liczona ze struktury, silników, zbiorników, wyposażenia, osób
+(75 kg/osobę), paliwa (0,745 kg/l) i wody w zęzie (1 kg/l).
+Domyślna załoga to 2 osoby, dla skutera 1; wyposażenie 25 kg / skuter 5 kg.
+Referencyjne zanurzenie odnosi się do tych standardowych ładunków i 75%
+paliwa. Dodatkowy ładunek zwiększa zanurzenie o `Δm/(1000*L*B*0,7)`;
+przeliczane są masa dodana i bezwładność. Woda w zęzie ma środek masy
+przesunięty 0,3 długości do rufy: rufa siedzi niżej. Masa już wcześniej
+wpływała na przyspieszenie i stosunek nośności do ciężaru podczas ślizgu.
+
+`windageFactor`: skuter 0,3; otwarta i płaskodenna 0,55; motorówka 0,6;
+RIB 0,9; kabinowa i wypornościowa 1,0. Mnoży boczną ekspozycję względem
+motorówki (0,6), oprócz geometrycznej powierzchni i rozłożonego momentu wiatru.
+
+W odległości do dwóch długości kadłuba od pomostu lub lądu model dodaje
+słabą siłę do brzegu (maks. około 1% ciężaru przy 3 m/s), na rufowym ramieniu,
+oraz do 6% osłabienia skuteczności sterowania. Siła zanika z odległością
+i kwadratem prędkości względem wody; stojąca łódź nie otrzymuje losowych
+impulsów. To umowny efekt manewrowy, bez CFD ani modelu przepływu pod pomostem.
+
+### Przeciek i pompa
+
+Zęza mieści `max(100,55*L*B)` litrów (uproszczona przestrzeń zalewana).
+Przeciek zależy od uszkodzenia konstrukcji powyżej 18%, uszkodzenia dna
+powyżej 8% oraz ewentualnego uszkodzenia uszczelnienia napędu przy mocnym
+uderzeniu o kamienie. Otarcie samej łopatki nie tworzy fikcyjnej dziury.
+Wydajność napływu wynika z umownego pola otworu i wysokości słupa wody,
+`Q=0,62*A*sqrt(2*g*h)`; na suchym, uniesionym kadłubie napływ ustaje.
+
+Pompa pobiera 4,5 A i usuwa nominalnie 33 l/min, zależnie od napięcia.
+Manualne ON wymusza pracę, AUTO włącza przy 20% i wyłącza przy 4%.
+Działa z akumulatora także bez zapłonu; poniżej 2% ładunku przestaje działać.
+Alarm i czerwony wskaźnik zaczynają się od 50%. Naprawa konstrukcji i napędu
+usuwa przeciek, ale wodę trzeba wypompować. Ten model nie oblicza zatonięcia,
+zalewania przez nadburcie ani utraty stateczności przez swobodną powierzchnię.
+
+### Cumy i transport
+
+Limit prędkości wybierania wzrósł z 0,18 do 0,28 m/s; moc jednej osoby
+pozostaje 65 W, siła narasta od 120 do 450 N. Tłumienie sprężystej cumy
+zmniejszono z 0,65 do 0,38 tłumienia krytycznego. W teście szarpnięcia
+0,5 m/s wydłużenie jest mniejsze niż 1,5%, występuje małe odbicie, a energia
+kinetyczna nie przekracza początkowej.
+
+Zestaw na parkingu zaczyna ze złożeniem około 3,7°. Podpięcie wymaga
+postoju (do 0,2 m/s), odległości haka do 80 cm i kąta do 34°; w tym zakresie
+przechwycenie przesuwa SUV-a do nieruchomego zaczepu, usuwając błąd więzu
+przed pierwszym krokiem solvera. Poza zasięgiem nic nie jest teleportowane.
+Reset SUV-a zachowuje rejs i stan łodzi; zabezpieczona łódź wraca z zestawem,
+a odczepiona przyczepa pozostaje w swoim miejscu. Przy przesiadaniu skala
+świata jest wspólna, z kompensacją automatycznego oddalenia kamery łodzi.
+Rozrusznik samochodu ma oddzielny mechaniczny szum i modulację kompresji;
+wciskanie pedału nie odtwarza już dźwięku manetki łodzi.

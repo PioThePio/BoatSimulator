@@ -30,6 +30,7 @@ export function serviceStep(b,dt){
  if(remaining<1e-8){
   b.damage=0;b.sectionDamage={};b.bottomDamage={};b.impacts=[];b.impactTimes={};b.lastImpact=null;
   for(const en of b.engines){en.propDamage=0;en.thermalTrip=false;}
+  if(b.bilge)b.bilge.driveLeak=0;
   service.active=false;service.progress=1;service.status='Naprawa zakończona · kadłub i napęd sprawne';
  }
 }

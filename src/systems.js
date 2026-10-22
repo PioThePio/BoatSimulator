@@ -3,7 +3,8 @@ import {updateMass} from './craft.js';
 import {cleat} from './rigging.js';
 import {mooringPoint} from './marina.js';
 import {serviceStep} from './service.js';
-export function createSystems(spec,cold=false){return{
+import {createBilge,bilgeStep} from './bilge.js';
+export function createSystems(spec,cold=false){return{bilge:createBilge(spec),
  fuel:{capacity:spec.fuelCapacity,litres:spec.fuelCapacity*.75,flow:0,refueling:false,status:'',tanks:Array.from({length:spec.tankCount},(_,i)=>({capacity:spec.fuelCapacity/spec.tankCount,litres:spec.fuelCapacity*.75/spec.tankCount,x:-.16*spec.length,y:spec.tankCount===1?0:(i===0?-1:1)*spec.beam*.22}))},
  service:{active:false,progress:0,initial:0,status:''},battery:{capacity:spec.jet?35:80+80*(Number(spec.bowThruster)+Number(spec.sternThruster)),soc:.85,voltage:12.65,current:0},thrusters:{bow:0,stern:0,bowActual:0,sternActual:0,bowForce:0,sternForce:0},coldStart:cold};}
 export function fuelBerthStatus(b){
@@ -34,9 +35,9 @@ export function systemsStep(b,dt){
   else{fuel.refueling=false;fuel.status='Tankowanie przerwane';}
  }
  for(const tank of fuel.tanks)tank.litres=fuel.litres*tank.capacity/fuel.capacity;
- updateMass(b.spec,fuel.litres);
+ bilgeStep(b,dt);updateMass(b.spec,fuel.litres,b.bilge.litres);
  const ignition=b.engines.some(e=>e.key!=='off');
- let draw=ignition?1.2:0;
+ let draw=(ignition?1.2:0)+(b.bilge.running?4.5:0);
  for(const en of b.engines){if(en.key==='starting')draw+=110;if(en.key==='running')draw-=12+22*en.n;}
  const forceScale=b.spec.thrusterRating,speed=Math.abs(b.telemetry.surge);
  const availability=ignition&&battery.soc>.04&&battery.voltage>10.2?1:0;

@@ -12,6 +12,7 @@ import {createTraffic,trafficStep} from './traffic.js';
 import {specification,engineState,updateEngine} from './craft.js';
 import {placeTrailerBoat} from './towing.js';
 import {launchVerticalStep} from './trailer-support.js';
+import {propWalkForce,bankInfluence} from './maneuvering.js';
 import {point,cleat,attachRope,solveRopes,createAnchor,updateAnchor,inverseMass,impulse} from './rigging.js';
 export {clamp,DOCKS,SOLIDS,BOLLARDS,environment,bottomAt,waveAt,point,cleat,attachRope};
 export const MODEL=specification();
@@ -33,7 +34,7 @@ export function step(b,e,dt){
   placeTrailerBoat(b.towRig,b);
   for(const [i,en]of b.engines.entries()){
    propellerContact(b,en,dt,m=>event(b,m),e);
-   updateEngine(en,i?b.throttle2:b.throttle,0,dt,b.damage,{noFuel:b.fuel.litres<=0,jet:S.jet,moored:true,onTrailer:true,speed:0,immersion:en.immersion,intake:en.intake});
+   updateEngine(en,i?b.throttle2:b.throttle,0,dt,b.damage,{noFuel:b.fuel.litres<=0,jet:S.jet,fixedDrive:S.propulsion==='inboard',moored:true,onTrailer:true,speed:0,immersion:en.immersion,intake:en.intake});
    const angle=b.a-b.actualSteer,fx=Math.cos(angle)*en.thrust,fy=Math.sin(angle)*en.thrust;
    b.towRig.ropeForce.x+=fx;b.towRig.ropeForce.y+=fy;
   }
@@ -52,9 +53,9 @@ export function step(b,e,dt){
  // Oscillatory orbital flow at draft, with independent restoring heave/roll/pitch.
  const water={x:env.current.x+wave.vx*.65,y:env.current.y+wave.vy*.65};
  const onSupports=b.towRig?launchVerticalStep(b.towRig,b,e,dt):false,wetFraction=onSupports?(b.wetFraction??1):1;
- if(!onSupports)[b.heave,b.heaveVelocity]=oscillator(b.heave,b.heaveVelocity,wave.eta-(b.anchor.shape?.V??0)/(1000*9.81*S.length*S.beam*.65),4.2+3*b.planing,.65,dt);
+ if(!onSupports)[b.heave,b.heaveVelocity]=oscillator(b.heave,b.heaveVelocity,wave.eta*(1+(S.waveResponse-1)*b.planing)-(b.anchor.shape?.V??0)/(1000*9.81*S.length*S.beam*.65),4.2+3*b.planing,.65,dt);
  const windSide=-env.wind.x*s+env.wind.y*c;
- const rollTarget=clamp(Math.atan(-wave.sx*s+wave.sy*c)+windSide*Math.abs(windSide)*S.freeboard/(S.mass*.9)-b.planing*Math.atan((b.telemetry.surge??0)*b.w/9.81)*.6,-.3,.3);
+ const rollTarget=clamp(Math.atan(-wave.sx*s+wave.sy*c)*S.waveResponse+windSide*Math.abs(windSide)*S.freeboard/(S.mass*.9)-b.planing*Math.atan((b.telemetry.surge??0)*b.w/9.81)*.6,-.3,.3);
  if(!onSupports)[b.roll,b.rollVelocity]=oscillator(b.roll,b.rollVelocity,rollTarget,Math.sqrt(9.81/(S.beam*.32)),.28,dt);
  const ur=(b.vx-env.current.x)*c+(b.vy-env.current.y)*s;
  const vr=-(b.vx-env.current.x)*s+(b.vy-env.current.y)*c;
@@ -64,14 +65,15 @@ export function step(b,e,dt){
  let X=0,Y=0,N=0;
  const force=(x,y,px=0,py=0)=>{X+=x;Y+=y;N+=px*y-py*x;};
  const fn=Math.abs(u)/Math.sqrt(9.81*S.length);
- const meanTrim=S.jet?.10:b.engines.reduce((sum,en)=>sum+en.trim,0)/b.engines.length;
+ const meanTrim=S.jet||S.propulsion==='inboard'?.10:b.engines.reduce((sum,en)=>sum+en.trim,0)/b.engines.length;
  const driveAngle=trimAngle(meanTrim);
  const turnLoad=Math.hypot(1,u*b.w/9.81);
  const liftRatio=.5*1000*u*u*S.length*S.beam*.23*Math.max(.025,.09-S.deadrise*.0012)/Math.max(1,S.mass*9.81*turnLoad);
- const targetPlaning=S.planing&&u>0?wetFraction*clamp((fn-.48)/.4,0,1)*clamp((liftRatio-(S.jet?.12:.22))/(S.jet?.40:.43),0,1):0;
+ const threshold=S.planingThreshold??1;
+ const targetPlaning=S.planing&&u>0?wetFraction*clamp((fn-.48*threshold)/(.4*threshold),0,1)*clamp((liftRatio-(S.jet?.12:.22)*threshold)/(S.jet?.40:.43),0,1):0;
  b.planing+=(targetPlaning-b.planing)*(1-Math.exp(-dt/(targetPlaning>b.planing?2.8:1.4)));
  const hump=Math.exp(-(((fn-.55)/.24)**2))*(1-.65*b.planing);
- const pitchTarget=clamp(Math.atan(wave.sx*c+wave.sy*s)+hump*.085+(b.planing*(.045+driveAngle*.42))+(b.telemetry.acceleration??0)*.014-S.cgX/S.length*.3-(b.anchor.shape?.V??0)/(S.mass*9.81)*.5,-.12,.24);
+ const pitchTarget=clamp(Math.atan(wave.sx*c+wave.sy*s)*S.waveResponse+hump*.085+(b.planing*(.045+driveAngle*.42))+(b.telemetry.acceleration??0)*.014-S.cgX/S.length*.3-(b.anchor.shape?.V??0)/(S.mass*9.81)*.5,-.12,.24);
  if(!onSupports)[b.pitch,b.pitchVelocity]=oscillator(b.pitch,b.pitchVelocity,pitchTarget,Math.sqrt(9.81/(S.length*.14)),.65,dt);
  // ITTC-inspired friction + approximate wave-making hump and planing support drag.
  const re=Math.max(1e5,Math.abs(u)*S.length/1e-6),cf=.075/(Math.log10(re)-2)**2;
@@ -89,7 +91,10 @@ export function step(b,e,dt){
  const induced=S.mass*9.81*.10*(turnLoad*turnLoad-1)*b.planing;
  const drag=friction+Math.sign(u)*(turnDrag+induced+waveDrag+support+displacementLimit+transom);
  force((-drag-S.mass*.009*u)*wetFraction,0);
- hullLateralForces(S,u,v,b.w,b.planing,(x,y,px,py)=>force(x*wetFraction,y*wetFraction,px,py));
+ const poweredTurn=clamp(Math.abs(b.actualSteer)/S.maxSteer,0,1)*clamp(b.engines.reduce((sum,en)=>sum+Math.abs(en.thrust),0)/(S.mass*2),0,1)*clamp(1-Math.abs(u)/5,0,1);
+ hullLateralForces(S,u,v,b.w,b.planing,(x,y,px,py)=>force(x*wetFraction,y*wetFraction,px,py),poweredTurn);
+ if(!b.bank||b.time>=(b.bankAt??0)){b.bank=bankInfluence(b);b.bankAt=b.time+.25;}
+ const bankSteering=1-.06*b.bank.strength*clamp(Math.abs(u)/2,0,1);
  // Outboards rotate at a finite rate; linked controls copy commands, not engine states.
  const steeringRate=S.jet?1.6:.38;
  b.actualSteer+=clamp(b.steer-b.actualSteer,-steeringRate*dt,steeringRate*dt);
@@ -97,8 +102,8 @@ export function step(b,e,dt){
  if(b.engines.length===2)b.engines[1].trimTarget=b.engines[0].trimTarget;
  let totalThrust=0;
  b.engines.forEach((engine,i)=>{
-  const x=S.engineLever,y=engine.y,delta=b.actualSteer;
-  const inflow=(u-b.w*y)*Math.cos(delta)-(v+b.w*x)*Math.sin(delta);
+  const x=S.engineLever,y=engine.y,delta=b.actualSteer*bankSteering,driveDelta=S.propulsion==='inboard'?0:delta;
+  const inflow=(u-b.w*y)*Math.cos(driveDelta)-(v+b.w*x)*Math.sin(driveDelta);
   const lateral=(u-b.w*y)*Math.sin(delta)+(v+b.w*x)*Math.cos(delta);
   propellerContact(b,engine,dt,m=>event(b,m),e);
   // Encounter rate includes moving into a wave, not just its time oscillation.
@@ -107,13 +112,22 @@ export function step(b,e,dt){
   engine.lastSurface=g.surface;
   const vertical=b.heaveVelocity+g.mountX*Math.cos(b.pitch)*b.pitchVelocity+engine.y*Math.cos(b.roll)*b.rollVelocity;
   const waveLoad=clamp(2.5*Math.abs(u)*Math.max(0,surfaceRate-vertical)/(9.81*S.length),0,.25);
-  let thrust=updateEngine(engine,i===0?b.throttle:b.throttle2,inflow,dt,b.damage,{noFuel:b.fuel.litres<=0,jet:S.jet,onTrailer:onSupports,grounded:b.grounded,moored:b.ropes.length>0,raised:b.enginesRaised,speed:Math.hypot(ur,vr),immersion:engine.immersion,intake:engine.intake,crossflow:lateral,waveLoad});
+  let thrust=updateEngine(engine,i===0?b.throttle:b.throttle2,inflow,dt,b.damage,{noFuel:b.fuel.litres<=0,jet:S.jet,fixedDrive:S.propulsion==='inboard',onTrailer:onSupports,grounded:b.grounded,moored:b.ropes.length>0,raised:b.enginesRaised,speed:Math.hypot(ur,vr),immersion:engine.immersion,intake:engine.intake,crossflow:lateral,waveLoad});
   if(b.enginesRaised){thrust=0;engine.thrust=0;}
-  thrust*=S.jet?1:Math.cos(trimAngle(engine.trim));
-  force(thrust*Math.cos(delta),-thrust*Math.sin(delta),x,y);totalThrust+=thrust;
+  thrust*=S.jet||S.propulsion==='inboard'?1:Math.cos(trimAngle(engine.trim));
+  // Vectored thrust is the outboard's prop wash: it works before the hull moves.
+  // An inboard keeps axial thrust and feeds a separate, stalling rudder.
+  force(thrust*Math.cos(driveDelta),-thrust*Math.sin(driveDelta),x,y);totalThrust+=thrust;
+  if(S.propulsion==='inboard'){
+   const wash=thrust>0?Math.sqrt(thrust/(.5*1000*.18))*.55:0;
+   const flow=u+wash,side=(flow-b.w*y)*Math.sin(delta)+(v+b.w*x)*Math.cos(delta);
+   const rudder=-.5*1000*.16*Math.hypot(flow,side)*side/(1+Math.abs(side)/Math.max(.5,Math.abs(flow)));
+   force(rudder*Math.sin(delta),rudder*Math.cos(delta),x,y);
+  }
+  const walk=propWalkForce(S,engine,Math.hypot(u,v),b.planing);force(0,walk,x,y);engine.propWalk=walk;
   // Submerged skeg: flow creates steering even in neutral; stalls at large incidence.
   const axial=(u-b.w*y)*Math.cos(delta)-(v+b.w*x)*Math.sin(delta);
-  const skeg=(b.enginesRaised||S.jet?0:engine.immersion)*-.5*1000*(.022+engine.hp*.00012)*1.1*Math.hypot(axial,lateral)*lateral;
+  const skeg=(b.enginesRaised||S.jet||S.propulsion==='inboard'?0:engine.immersion)*-.5*1000*(.022+engine.hp*.00012)*1.1*Math.hypot(axial,lateral)*lateral;
   force(skeg*Math.sin(delta),skeg*Math.cos(delta),x,y);
  });
  systemsStep(b,dt);
@@ -122,6 +136,8 @@ export function step(b,e,dt){
  force(-S.mass*.35*reeds*u*Math.abs(u),-S.mass*.6*reeds*v*Math.abs(v));
  const ax=env.wind.x-b.vx,ay=env.wind.y-b.vy,au=ax*c+ay*s,av=-ax*s+ay*c;
  windForces(S,au,av,b.w,force);
+ const bank=b.bank,suction=S.mass*.012*bank.strength*Math.min(9,u*u)*wetFraction;
+ force(suction*(bank.nx*c+bank.ny*s),suction*(-bank.nx*s+bank.ny*c),-.18*S.length,0);
  force(S.mass*.12*(wave.ax*c+wave.ay*s),S.mass*.25*(-wave.ax*s+wave.ay*c));
  // Body-axis added-mass model with an empirical correction of the yaw moment.
  const udot=(X+S.mass*vr*b.w)/(S.mass+(S.mx-S.mass)*wetFraction);
@@ -129,7 +145,7 @@ export function step(b,e,dt){
  // Empirical hull stability cancels the bare potential-flow Munk moment.
  // Leaving it uncalibrated amplifies sideslip into a spin at planing speed.
  const rotationalDrag=.5*1000*S.beam*S.length**4*(.004+.003*b.planing)*b.w*Math.abs(b.w);
- const rdot=(N-rotationalDrag)/S.iz-(.16+.04*Math.abs(u)/S.length)*b.w;
+ const rdot=(N-rotationalDrag)/S.iz-(.10+.04*Math.abs(u)/S.length)*b.w;
  // Convert body acceleration to world acceleration without double-counting frame rotation.
  const du=udot-b.w*vr,dv=vdot+b.w*ur;
  b.vx+=(c*du-s*dv)*dt;b.vy+=(s*du+c*dv)*dt;b.w+=rdot*dt;

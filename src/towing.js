@@ -9,16 +9,17 @@ export const SUV=SUV_GEOMETRY;
 const G=9.81,wrap=a=>Math.atan2(Math.sin(a),Math.cos(a));
 export const trailerBollardIndex=()=>BOLLARDS.findIndex(p=>p.trailer);
 function body(x,y,a,mass,iz){return{x,y,a,mass,iz,vx:0,vy:0,w:0,z:0,pitch:0};}
-export function createTowRig(b,{loaded=false,atSlip=false}={}){
+export function createTowRig(b,{loaded=false,atSlip=false,misalignment=(loaded&&!atSlip ? .065 : 0)}={}){
  const S=b.spec,mass=220+S.length*65+Math.max(0,S.mass-1200)*.055,offset=.14*S.length,hitch=offset+.5*S.length+1.45,a=-Math.PI/2;
  const car=body(124.5,atSlip?9:-32,a,SUV.mass,SUV.iz),hp=bodyPoint(car,-SUV.hitch);
- const t=body(hp.x-Math.cos(a)*hitch,hp.y-Math.sin(a)*hitch,a,mass,mass*(S.length*S.length+S.beam*S.beam)/12);
+ const trailerAngle=a+misalignment;
+ const t=body(hp.x-Math.cos(trailerAngle)*hitch,hp.y-Math.sin(trailerAngle)*hitch,trailerAngle,mass,mass*(S.length*S.length+S.beam*S.beam)/12);
  Object.assign(t,{emptyMass:mass,hitch,offset,length:S.length+2.15,beam:Math.max(1.65,S.beam+.35),axles:mass+S.mass>4500?3:mass+S.mass>1800?2:1,braked:mass+S.mass>750,bunkHeight:.6+S.draft*.15});
  const r={car,trailer:t,boatLength:S.length,boatLoaded:loaded,secured:loaded,attached:true,trailerPark:false,handbrake:false,awd:false,frontSink:0,rearSink:0,carDamage:0,trailerDamage:0,hitchDamage:0,postBroken:false,lastJackknife:-10,
   gear:'P',steer:0,actualSteer:0,gas:0,brake:0,pedal:0,brakePedal:0,speed:0,time:0,slip:0,traction:1,grade:0,drawbarForce:0,contacts:0,ropeForce:{x:0,y:0,torque:0},status:loaded?'Łódź zabezpieczona · cuma dziobowa PRZ':'Pusta przyczepa na parkingu',
   engine:{key:'off',rpm:0,n:0,load:0,hp:SUV.hp,gear:0,temperature:18,startTime:0,immersion:0,ventilation:0,thrust:0,inflow:0,opposingFlow:0,trim:0,trimRate:0},fuel:{litres:65,capacity:75,flow:0}};
  b.towRig=r;updateTowGeometry(r);updateTrailerMass(r,b);
- if(loaded){b.throttle=b.throttle2=0;for(const en of b.engines){en.key='off';en.rpm=en.n=en.gear=en.thrust=0;if(!S.jet)en.trim=en.trimTarget=1;}placeTrailerBoat(r,b);attachRope(b,'bow',trailerBollardIndex());}
+ if(loaded){b.throttle=b.throttle2=0;for(const en of b.engines){en.key='off';en.rpm=en.n=en.gear=en.thrust=0;if(!S.jet&&S.propulsion!=='inboard')en.trim=en.trimTarget=1;}placeTrailerBoat(r,b);attachRope(b,'bow',trailerBollardIndex());}
  return r;
 }
 function updateTrailerMass(r,b){const t=r.trailer;t.mass=t.emptyMass+(r.secured&&r.boatLoaded?b.spec.mass:0);t.iz=t.mass*(b.spec.length**2+t.beam**2)/12;}
@@ -46,13 +47,36 @@ export function selectCarGear(r,gear){
 }
 export function stepCarGear(r,direction){const order=['P','R','N','D'];return selectCarGear(r,order[clamp(order.indexOf(r.gear)+direction,0,3)]);}
 export function toggleHandbrake(r){r.handbrake=!r.handbrake;return{ok:true,message:'Hamulec ręczny '+(r.handbrake?'zaciągnięty':'zwolniony')};}
+export function hitchStatus(r){
+ const p=bodyPoint(r.car,-SUV.hitch),q=bodyPoint(r.trailer,r.trailer.hitch),distance=Math.hypot(p.x-q.x,p.y-q.y),angle=Math.abs(wrap(r.car.a-r.trailer.a));
+ const stopped=Math.max(Math.hypot(r.car.vx,r.car.vy),Math.hypot(r.trailer.vx,r.trailer.vy))<.20;
+ return{p,q,distance,angle,ready:stopped&&distance<=.8&&angle<=.60&&r.hitchDamage<100};
+}
 export function hitchAction(r){
- if(Math.max(Math.hypot(r.car.vx,r.car.vy),Math.hypot(r.trailer.vx,r.trailer.vy))>.12)return{ok:false,message:'Zatrzymaj samochód i przyczepę.'};
+ if(Math.max(Math.hypot(r.car.vx,r.car.vy),Math.hypot(r.trailer.vx,r.trailer.vy))>.20)return{ok:false,message:'Zatrzymaj samochód i przyczepę.'};
  if(r.attached){const t=r.trailer,p=bodyPoint(t,t.offset-r.boatLength*.4);if(Math.max(bottomAt(t.x,t.y).depth,bottomAt(p.x,p.y).depth)>.02)return{ok:false,message:'Odczep przyczepę na lądzie.'};r.attached=false;r.trailerPark=true;updateTowGeometry(r);r.status='Przyczepa odczepiona · hamulec postojowy i podpora';return{ok:true,message:r.status};}
- const p=bodyPoint(r.car,-SUV.hitch),q=bodyPoint(r.trailer,r.trailer.hitch);
- if(Math.hypot(p.x-q.x,p.y-q.y)>.55||Math.abs(wrap(r.car.a-r.trailer.a))>.5)return{ok:false,message:'Podjedź hakiem do zaczepu przyczepy (do 55 cm), prawie prosto.'};
- if(r.hitchDamage>=100)return{ok:false,message:'Zaczep zniszczony · rozpocznij nową próbę.'};
- r.attached=true;r.trailerPark=false;r.status='Przyczepa przyczepiona';return{ok:true,message:r.status};
+ const {p,q,distance,angle}=hitchStatus(r);
+ if(distance>.8||angle>.60)return{ok:false,message:`Hak → zaczep: ${distance.toFixed(2)} m · kąt ${Math.round(angle*180/Math.PI)}°. Podjedź na 80 cm i ustaw kąt poniżej 34°.`};
+ if(r.hitchDamage>=100)return{ok:false,message:'Zaczep zniszczony · użyj resetu SUV-a na parkingu.'};
+ // Capture only the nearby coupler, keeping the parked trailer and boat fixed.
+ // Removing the joint error before solving avoids a violent first-step impulse.
+ r.car.x+=q.x-p.x;r.car.y+=q.y-p.y;
+ for(const body of [r.car,r.trailer])body.vx=body.vy=body.w=0;
+ r.attached=true;r.trailerPark=false;updateTowGeometry(r);r.status='Przyczepa przyczepiona';return{ok:true,message:r.status};
+}
+export function resetTowVehicle(r,b){
+ const carry=r.attached&&r.boatLoaded&&r.secured;
+ const c=r.car;c.x=r.attached?124.5:137;c.y=-32;c.a=-Math.PI/2;c.vx=c.vy=c.w=0;
+ r.gear='P';r.handbrake=true;r.steer=r.actualSteer=r.gas=r.brake=r.pedal=r.brakePedal=0;
+ r.frontSink=r.rearSink=r.slip=r.carDamage=r.hitchDamage=0;r.engine.key='off';r.engine.rpm=r.engine.n=r.engine.thrust=r.engine.load=r.engine.startTime=0;r.speed=r.drawbarForce=0;
+ if(r.attached){
+  const t=r.trailer;t.a=c.a+.065;const p=bodyPoint(c,-SUV.hitch);t.x=p.x-Math.cos(t.a)*t.hitch;t.y=p.y-Math.sin(t.a)*t.hitch;t.vx=t.vy=t.w=0;
+  r.trailerDamage=0;r.postBroken=false;r.ropeForce={x:0,y:0,torque:0};
+  if(!carry){b.ropes=b.ropes.filter(line=>line.bollard!==trailerBollardIndex());r.boatLoaded=r.secured=false;}
+  updateTrailerMass(r,b);updateTowGeometry(r);if(carry)placeTrailerBoat(r,b);
+ }
+ updateTowGeometry(r);r.status='SUV ustawiony na parkingu · P i ręczny · stan łodzi zachowany';
+ return{ok:true,message:r.status};
 }
 export function placeTrailerBoat(r,b){
  updateTowGeometry(r);const t=r.trailer,p=trailerTarget(r);b.x=p.x;b.y=p.y;b.a=t.a;b.vx=p.vx;b.vy=p.vy;b.w=t.w;b.pitch=t.pitch;b.roll=0;

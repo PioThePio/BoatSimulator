@@ -1,7 +1,7 @@
 import {clamp,waveHeight,weatherAt} from './world.js';
 export function soundParameters(b,e={}){
  const speed=Math.hypot(b.telemetry.surge??0,b.telemetry.sway??0),weather=weatherAt(b.time,e);
- const plane=clamp((b.planing-.2)/.6,0,1),skimming=plane*plane*(3-2*plane);
+ const plane=clamp((b.planing-.2)/.6,0,1),skimming=plane*plane*(3-2*plane),car=b.spec.profile==='suv';
  return{engines:b.engines.map(en=>{
    const running=en.key==='running',starting=en.key==='starting',v8=!b.spec.jet&&en.hp>=150;
    const load=running?clamp(en.load,0,1):0,working=running&&en.gear!==0;
@@ -11,9 +11,9 @@ export function soundParameters(b,e={}){
    const bubbles=working?en.n**2*vent*clamp(wet/.25,0,1):0;
    const raising=working?en.n*4*wet*(1-wet)*clamp(en.trimRate/.1,0,1):0;
    const churn=running?clamp(.10*Math.sqrt(braking/30000)+.075*bubbles+.045*raising,0,.15):0;
-   return{timbre:b.spec.jet?'jet':v8?'v8':'light',frequency:Math.max(12,en.rpm/60*(b.spec.jet?2.5:v8?1:b.spec.profile==='cruiser'?3:2)),
+   return{timbre:b.spec.jet?'jet':v8?'v8':'light',carStarter:car&&starting,starterFrequency:155+35*clamp((en.startTime??0)/.25,0,1),frequency:Math.max(12,en.rpm/60*(b.spec.jet?2.5:v8?1:b.spec.profile==='cruiser'?3:2)),
     harmonicRatio:v8?4:2.015,harmonicMix:v8?.065+.095*load:.10+.08*load,bass:v8?.22:0,mechanicalMix:v8?.025:.035,
-    level:running?(.013+.020*en.n)*(1+.15*load):starting?.038:0,
+    level:running?(.013+.020*en.n)*(1+.15*load):starting&&!car?.038:0,
     cutoff:starting?750:v8?220+en.rpm*.11+load*180:260+en.rpm*(b.spec.jet?.28:.23)+load*220,
     exhaust:running?(v8?.025:.008)+(v8?.070:.030)*en.n*(.2+.8*load):0,exhaustCutoff:130+en.n*(v8?270:500)+load*140,
     churn,churnCutoff:350+vent*500+clamp(braking/30000,0,1)*300,bubbleRate:4+en.n*7+Math.min(3,en.opposingFlow*.3),
@@ -23,6 +23,7 @@ export function soundParameters(b,e={}){
   wash:clamp(speed/22,0,1)*(.012+.07*b.planing)+clamp(Math.abs(b.telemetry.thrust??0)/7000,0,1)*.018,
   waterCutoff:500+clamp(speed/8,0,1)*650,
   skimming,spray:skimming*clamp(speed/16,0,1)*.14,sprayCutoff:1400+clamp(speed/22,0,1)*1300,
+  commandClick:!car,bilgePump:!car&&b.bilge?.running?.035:0,bilgeSlosh:!car?clamp(b.bilge?.level??0,0,1)*clamp(Math.abs(b.rollVelocity)+Math.abs(b.pitchVelocity)+speed*.02,0,.8)*.08:0,bilgeAlarm:!car&&!!b.bilge?.alarm,
   ignitionAlarm:!b.suppressIgnitionAlarm&&b.engines.some(en=>en.key==='ignition'),
   trimPump:b.spec.jet?0:clamp(Math.max(...b.engines.map(en=>Math.abs(en.trimRate??0)))/.1,0,1),
   thrusters:['bow','stern'].map(end=>Math.abs(b.thrusters[end+'Actual']??0)*.085),pump:b.fuel.refueling?.025:0};
@@ -63,7 +64,10 @@ export function createSoundscape({context=null}={}){
   alarm.source.connect(alarm.gain);alarm.gain.connect(master);
   const pump={source:oscillator('sine',95),gain:ctx.createGain()};pump.gain.gain.value=0;pump.source.connect(pump.gain);pump.gain.connect(master);
   const trim={source:oscillator('triangle',185),gain:ctx.createGain(),noise:noiseVoice(720)};trim.gain.gain.value=0;trim.source.connect(trim.gain);trim.gain.connect(master);
-  graph={master,engineMaster,buffer,engines,thrusters,pump,trim,alarm,v8Wave,waves:noiseVoice(240),wash:noiseVoice(1100),spray:noiseVoice(1900,-.35),sprayRight:noiseVoice(2300,.35)};
+  const starter={source:oscillator('sawtooth',180),gain:ctx.createGain(),filter:ctx.createBiquadFilter(),noise:noiseVoice(1500,0,true,engineMaster)};
+  starter.filter.type='lowpass';starter.filter.frequency.value=850;starter.gain.gain.value=0;starter.source.connect(starter.filter);starter.filter.connect(starter.gain);starter.gain.connect(engineMaster);
+  const bilge={pump:noiseVoice(180,0,true),slosh:noiseVoice(400,0,true),alarm:oscillator('sine',760),gain:ctx.createGain()};bilge.gain.gain.value=0;bilge.alarm.connect(bilge.gain);bilge.gain.connect(master);
+  graph={master,engineMaster,buffer,engines,thrusters,pump,trim,alarm,starter,bilge,v8Wave,waves:noiseVoice(240),wash:noiseVoice(1100),spray:noiseVoice(1900,-.35),sprayRight:noiseVoice(2300,.35)};
  }
  function pulse(frequency,level,duration=.12,noisy=false){
   if(!graph||!enabled||!active)return;
@@ -93,6 +97,9 @@ export function createSoundscape({context=null}={}){
    if(!graph)return;
    target(graph.master.gain,enabled&&active?volume*.8:0);
    const values=soundParameters(b,e);
+   const starter=values.engines.find(en=>en.carStarter),compression=.55+.45*Math.sin(b.time*2*Math.PI*13)**2;
+   target(graph.starter.gain.gain,starter?.024*compression:0,.012);target(graph.starter.source.frequency,(starter?.starterFrequency??180)*(1+.035*Math.sin(b.time*2*Math.PI*13)),.012);target(graph.starter.noise.gain.gain,starter?.065:0,.015);target(graph.starter.noise.flutter.frequency,13);
+   target(graph.bilge.pump.gain.gain,values.bilgePump);target(graph.bilge.slosh.gain.gain,values.bilgeSlosh);target(graph.bilge.gain.gain,values.bilgeAlarm?.035*(Math.sin(b.time*8)>0?1:.25):0);
    values.engines.forEach((en,i)=>{
     const v=graph.engines[i];
     if(v.timbre!==en.timbre){if(en.timbre==='v8')v.source.setPeriodicWave(graph.v8Wave);else v.source.type='triangle';v.timbre=en.timbre;}
@@ -108,7 +115,7 @@ export function createSoundscape({context=null}={}){
    target(graph.trim.gain.gain,values.trimPump*.022);target(graph.trim.noise.gain.gain,values.trimPump*.055);target(graph.trim.source.frequency,175+values.trimPump*28);
    if(boatRef!==b){boatRef=b;previous=null;}
    if(previous&&active){
-    b.engines.forEach((en,i)=>{const old=previous.engines[i];if(!old)return;const command=i?b.throttle2:b.throttle;if(Math.sign(command)!==old.command)pulse(900,.085,.055);if(en.key!==old.key)pulse(650,.09,.065);if(en.gear!==old.gear){pulse(en.gear?650:850,.22,.10,true);pulse(en.gear?155:210,.09,.08);}});
+    b.engines.forEach((en,i)=>{const old=previous.engines[i];if(!old)return;const command=i?b.throttle2:b.throttle;if(values.commandClick&&Math.sign(command)!==old.command)pulse(900,.085,.055);if(en.key!==old.key)pulse(650,.09,.065);if(en.gear!==old.gear){pulse(en.gear?650:850,.22,.10,true);pulse(en.gear?155:210,.09,.08);}});
     if(b.lastImpact&&b.lastImpact!==previous.impact){const q=b.lastImpact,level=clamp(.12+Math.sqrt(q.energy)*.003,.12,.30);pulse(q.protectedContact?145:105,level,q.protectedContact?.17:.24);pulse(q.protectedContact?600:1400,level*(q.protectedContact?.5:1),q.protectedContact?.10:.20,true);}
     if(b.events[0]!==previous.event&&/pękła|zerw|Zerw/.test(b.events[0]?.message??''))pulse(1900,.22,.12,true);
    }

@@ -1,14 +1,37 @@
-# Przystań — symulator manewrów motorówką v14
+# Przystań — symulator manewrów motorówką v15
 
-Przeglądarkowy symulator z widokiem z góry, bez kont i backendu. Pięć rodzajów
+Przeglądarkowy symulator z widokiem z góry, bez kont i backendu. Siedem rodzajów
 łodzi, w tym skuter, zmieniane wymiary i masa, jeden lub dwa silniki do 350 KM.
 Nieregularne jezioro 600 × 400 m, wyspa z przesmykiem, plaże, mielizny,
 szuwary, port ze stanowiskami z bojami i ruchomymi Y-bomami szerokości 25 cm.
 
-Uruchom: **https://piothepio.github.io/BoatSimulator/?v=14.0.0**.
+Uruchom: **https://piothepio.github.io/BoatSimulator/?v=15.0.0**.
 
 Model służy do poznawania zależności w manewrach; nie jest skalibrowany dla
 konkretnej łodzi. [Źródła, równania i ograniczenia](docs/PHYSICS.md).
+
+## Zmiany v15
+
+- Podpinanie przyczepy po podjechaniu hakiem: odległość i kąt w konsoli,
+  znaczniki na mapie, przechwycenie w zasięgu 80 cm / 34°. Reset SUV-a
+  przenosi go na parking bez zerowania rejsu, paliwa ani uszkodzeń łodzi.
+  Zapięty, zabezpieczony ładunek wraca z zestawem; odczepiona przyczepa zostaje.
+- Jeden przycisk pasów przy napędzie, małe początkowe złożenie zestawu,
+  wspólna skala mapy przy przesiadaniu, prąd pod wskaźnikiem wiatru.
+- Oddzielny rozrusznik SUV-a, bez klikania przy wciskaniu gazu.
+- Pojedyncza śruba ma boczny efekt na wstecznym. Napęd zaburtowy skręca
+  ciągiem od postoju; stacjonarny ma stały wał i osobny ster. Luz zachowuje
+  ruch boczny, a mocny zryw na skręcie łatwiej odrzuca rufę.
+- Wybór liczby osób i masy wyposażenia. Paliwo, załoga, ekwipunek oraz
+  woda w zęzie wpływają na masę, zanurzenie i osiągi.
+- Zęza: wskaźnik, pompa ręczna, AUTO od 20%, alarm od 50%, pobór prądu,
+  odgłos pompy i chlupotania. Przeciek powstaje po uszkodzeniach konstrukcji
+  lub silnym uderzeniu w napęd; samo otarcie łopatek nie dziurawi kadłuba.
+- Nowe kadłuby płaskodenny i RIB, różne progi ślizgu, reakcje na fale i wiatr.
+  Subtelny efekt brzegu działa w ruchu blisko nabrzeża i lądu.
+- Szybsze wybieranie cum z zachowaniem limitu siły i mocy człowieka,
+  niewielka sprężystość po naprężeniu. Śruba na luzie dotyka piasku bez
+  naliczania zużycia; piana wentylacji znika po zgaszeniu silnika.
 
 ## Uruchomienie lokalne
 

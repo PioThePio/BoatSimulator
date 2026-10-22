@@ -14,14 +14,15 @@ export function propellerContact(b,engine,dt,notify,env={}){
    if((!engine.propContact||b.time-engine.lastStrike>.45)&&(speed>.04||rotating>.1)){
     const severity=clamp(3+penetration*80+speed*speed*4+rotating*rotating*38,0,85);
     engine.propDamage=clamp(engine.propDamage+severity,0,100);engine.lastStrike=b.time;
+    if(b.bilge&&penetration>.08&&speed>.8)b.bilge.driveLeak=clamp(b.bilge.driveLeak+severity/100,0,1);
     notify(`${b.spec.jet?'Wirnik':'Śruba'}: uderzenie o kamienie · uszkodzenia ${Math.round(engine.propDamage)}%.`);
    }
   }else{
    const abrasive=floor.material==='sand'?1:.25;
-   if(!engine.propContact&&b.time-engine.lastStrike>1&&(speed>.04||rotating>.1)){
+   if(rotating>.02&&!engine.propContact&&b.time-engine.lastStrike>1){
     engine.propDamage=clamp(engine.propDamage+abrasive*(.12+Math.min(.38,penetration+rotating*.2)),0,100);engine.lastStrike=b.time;
    }
-   engine.propDamage=clamp(engine.propDamage+abrasive*(.10+2.8*rotating*rotating)*clamp(penetration/.2,0,2)*(speed+.7*rotating)*dt,0,100);
+   if(rotating>.02)engine.propDamage=clamp(engine.propDamage+abrasive*(.10+2.8*rotating*rotating)*clamp(penetration/.2,0,2)*(speed+.7*rotating)*dt,0,100);
    if(!engine.propContact&&(speed>.04||rotating>.1))notify(`${b.spec.jet?'Wirnik':'Śruba'} dotyka ${floor.material==='sand'?'piasku':'mułu'} — ogranicz obroty${b.spec.jet?' i opuść płyciznę.':' lub podnieś napęd.'}`);
   }
  }

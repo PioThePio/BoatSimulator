@@ -38,7 +38,7 @@ export function solveRopes(b,dt,notify){
   const p=cleat(b,r.end),q=mooringPoint(b,r.bollard),dx=q.x-p.x,dy=q.y-p.y,d=Math.max(.001,Math.hypot(dx,dy));
   const n={x:dx/d,y:dy/d},arm={x:p.x-b.x,y:p.y-b.y};
   const separation=(q.vx-b.vx+b.w*arm.y)*n.x+(q.vy-b.vy-b.w*arm.x)*n.y;
-  const k=b.spec.lineEA/Math.max(1,r.length),damping=2*.65*Math.sqrt(k/inverseMass(b,n,arm));
+  const k=b.spec.lineEA/Math.max(1,r.length),damping=2*.38*Math.sqrt(k/inverseMass(b,n,arm));
   r.rate=0;r.blocked=false;
   r.effortTime=r.control<0?(r.effortTime??0)+dt:0;
   r.manualForce=r.control<0?Math.min(450,120+r.effortTime*110)/hands:0;
@@ -48,7 +48,7 @@ export function solveRopes(b,dt,notify){
    const inv=inverseMass(b,n,arm)+boomInverse(b,r.bollard,n),denominator=1+(damping*dt+k*dt*dt)*inv;
    const existing=k*(d-r.length)+(damping+k*dt)*separation;
    const allowance=Math.max(0,(r.manualForce*denominator-existing)/(2*k+damping/dt));
-   const rate=Math.min(.18,65/hands/Math.max(1,r.tension));
+   const rate=Math.min(.28,65/hands/Math.max(1,r.tension));
    const amount=Math.min(rate*dt,r.length-.45,allowance);
    r.length-=amount;r.rate=-amount/dt;r.blocked=amount<.00001;
   }else if(r.control>0){const amount=Math.min(.3*dt,15-r.length);r.length+=amount;r.rate=amount/dt;}
