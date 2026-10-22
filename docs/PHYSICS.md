@@ -1,4 +1,4 @@
-# Model v16: podstawy, założenia i ograniczenia
+# Model v17: podstawy, założenia i ograniczenia
 
 Model ma odtwarzać **zależności fizyczne w manewrach**, ale nie jest
 zweryfikowanym cyfrowym bliźniakiem konkretnej motorówki. Nie dysponujemy
@@ -893,7 +893,7 @@ To parametr manewrowy, nie pomiar konkretnej przekładni czy śruby.
 Prop wash zaburtówki jest już obecny w wektorze ciągu na rzeczywistym
 ramieniu rufowym. Nie dodajemy drugi raz sztucznego momentu „skrętu w miejscu”.
 Opcja stacjonarna utrzymuje ciąg osiowy i ma osobny ster z dopływem od śruby,
-stall i słabszym sterowaniem na wstecznym. Nie symuluje saildrive ani Z-drive.
+stall i słabszym sterowaniem na wstecznym. Nie symuluje saildrive. Od v17 osobny Z-drive ma wektorowany ciąg i podnoszoną stopę z trymem.
 Roboczy trym jest dla niej zablokowany, wał nie unosi się na przyczepie.
 
 Opór każdej sekcji kadłuba nadal przeciwdziała jej prędkości `v+r*x`.
@@ -1042,3 +1042,8 @@ rzeczywistej prędkości tych punktów względem lądu; osobne drobne zmarszczki
 odpowiadają przepływowi względem wody. Zacumowany ruch portowy ma dynamiczne
 oscylatory heave/roll/pitch i rozłożone wymuszenie momentu falowego, nadal
 ograniczony fizycznymi linami do swoich punktów cumowania.
+
+
+## v17: audyt, Z-drive i lokalne poprawki
+
+[Raport audytu v17](AUDIT_V17.md) zawiera pomiary ruchu, parametry domyślnych profili, znalezione błędy i pełną listę nowych/zmienionych testów. [Dane pomiarowe](audit-v17-results.json) odtwarza `npm run audit:physics`.

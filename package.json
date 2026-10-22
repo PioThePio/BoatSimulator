@@ -1,6 +1,6 @@
 {
   "name": "boat-simulator",
-  "version": "16.0.0",
+  "version": "17.0.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -8,6 +8,7 @@
     "build": "vite build && node scripts/inline-build.mjs",
     "preview": "vite preview --host 0.0.0.0",
     "test": "node --test tests/*.test.js",
+    "audit:physics": "node scripts/audit-v17.mjs",
     "test:e2e": "playwright test",
     "test:production": "npm run build && playwright test --config playwright.production.config.js"
   },

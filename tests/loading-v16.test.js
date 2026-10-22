@@ -39,10 +39,10 @@ test('winch hauls on dry carpeted bunks, stops against the padded roller without
  r.winch.control=0;const length=r.winch.length;run(r,b,.5);assert.equal(r.winch.length,length);assert.equal(r.winch.rate,0);
 });
 
-test('wet approach meets the supporting cradle, centres a small offset, and receives a score that freezes before securing snaps the pose',()=>{
+test('wet approach meets the supporting cradle, centres a small offset, and freezes its score and achieved pose when secured',()=>{
  const b=createBoat('service'),r=createTowRig(b,{atSlip:true}),p=bodyPoint(r.trailer,r.trailer.offset-.8,.20);Object.assign(b,{x:p.x,y:p.y,a:r.trailer.a+.06});assert.ok(connectWinch(r,b).ok);r.winch.control=-1;run(r,b,12);const local=bodyLocal(r.trailer,b);
  assert.ok(Math.abs(local.y)<.15);assert.ok(Math.abs(local.x-r.trailer.offset)<.1);assert.ok(b.trailerSupport.load>100);assert.ok(r.loadingScore.quality>80);assert.equal(b.damage,0);const score=r.loadingScore.quality;
- b.engines[0].key='running';r.winch.control=0;assert.ok(trailerAction(r,b,'secure').ok);assert.equal(b.engines[0].key,'running');assert.equal(r.loadingScore.complete,true);run(r,b,.2);assert.equal(r.loadingScore.quality,score);r.boatLoaded=r.secured=false;const back=bodyPoint(r.trailer,r.trailer.offset-b.spec.length);Object.assign(b,{x:back.x,y:back.y,vx:0,vy:0});loadingScoreStep(r,b,dt);assert.equal(r.loadingScore.complete,false);assert.equal(r.loadingScore.previous,score);b.vy=-.2;loadingScoreStep(r,b,dt);assert.equal(r.loadingScore.active,true);
+ b.engines[0].key='running';r.winch.control=0;const pose={x:b.x,y:b.y,a:b.a};assert.ok(trailerAction(r,b,'secure').ok);assert.ok(Math.hypot(b.x-pose.x,b.y-pose.y)<1e-8);assert.ok(Math.abs(b.a-pose.a)<1e-8);assert.equal(b.engines[0].key,'running');assert.equal(r.loadingScore.complete,true);run(r,b,.2);assert.equal(r.loadingScore.quality,score);r.boatLoaded=r.secured=false;const back=bodyPoint(r.trailer,r.trailer.offset-b.spec.length);Object.assign(b,{x:back.x,y:back.y,vx:0,vy:0});loadingScoreStep(r,b,dt);assert.equal(r.loadingScore.complete,false);assert.equal(r.loadingScore.previous,score);b.vy=-.2;loadingScoreStep(r,b,dt);assert.equal(r.loadingScore.active,true);
 });
 
 test('winch has a real attachment range and will not retrieve a boat across the lake',()=>{

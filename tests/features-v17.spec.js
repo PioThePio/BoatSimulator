@@ -1,0 +1,19 @@
+import {test,expect} from '@playwright/test';
+
+test('Z-drive is distinct from a fixed shaft and has working shared trim/tilt controls',async({page})=>{
+ const errors=[];page.on('pageerror',e=>errors.push(e.message));await page.clock.install();await page.goto('/');await page.locator('#craft').selectOption('cabin');await page.locator('#propulsion').selectOption('zdrive');await page.locator('#engine-count').selectOption('2');await page.locator('#begin-session').click();await expect(page.locator('[data-trim="1"]')).toBeEnabled();await page.locator('[data-trim="1"]').click();await expect(page.locator('#trim-value')).toHaveText('15%');await page.clock.runFor(1000);await expect(page.locator('#gauge-trim strong')).toHaveText('15');await expect(page.locator('#gauge-rpm2')).toBeVisible();
+ await page.locator('#setup-open').click();await page.locator('#propulsion').selectOption('inboard');await page.locator('#begin-session').click();await expect(page.locator('[data-trim="1"]')).toBeDisabled();await expect(page.locator('#gauge-trim small')).toHaveText('STAŁY WAŁ');expect(errors).toEqual([]);
+});
+
+test('trailer starts show actual raised drive in SUV mode and preserve 100% after entering the boat and restarting a trial',async({page})=>{
+ await page.clock.install();await page.goto('/');await page.locator('#propulsion').selectOption('zdrive');await page.locator('#engine-count').selectOption('2');await page.locator('#start-location').selectOption('trailer');await page.locator('#begin-session').click();await expect(page.locator('#trailer-drive-position')).toHaveText('Napęd łodzi · 100% · podniesiony');await page.clock.runFor(2000);await page.locator('#switch-vehicle').click();await expect(page.locator('#trim-value')).toHaveText('100%');await expect(page.locator('#gauge-trim strong')).toHaveText('100');await expect(page.locator('#propeller-health')).toContainText('100%');await page.locator('#reset').click();await expect(page.locator('#propulsion')).toHaveValue('zdrive');await expect(page.locator('#start-location')).toHaveValue('trailer');await page.locator('#begin-session').click();await expect(page.locator('#trailer-drive-position')).toContainText('100%');
+});
+
+test('setup pairs engine and propulsion, places crew/equipment last and identifies the jet correctly',async({page})=>{
+ await page.goto('/');const engine=await page.locator('#engine-count').boundingBox(),drive=await page.locator('#propulsion').boundingBox();expect(Math.abs(engine.y-drive.y)).toBeLessThan(3);expect(drive.x).toBeGreaterThan(engine.x);
+ const order=await page.locator('#vessel-panel input,#vessel-panel select').evaluateAll(els=>els.map(el=>el.id));expect(order.slice(-2)).toEqual(['crew-count','equipment-mass']);await page.locator('#craft').selectOption('pwc');await expect(page.locator('#propulsion')).toHaveValue('jet');await expect(page.locator('#propulsion')).toBeDisabled();await page.locator('#craft').selectOption('runabout');await expect(page.locator('#propulsion')).toHaveValue('outboard');
+});
+
+test('mobile setup and revised water/drive rendering remain usable with independent wind/current arrows',async({page})=>{
+ const errors=[];page.on('pageerror',e=>errors.push(e.message));await page.setViewportSize({width:390,height:1000});await page.clock.install();await page.goto('/');await page.locator('#current').fill('0.4');await page.locator('#current-min').fill('0.4');await page.locator('#current-dir').selectOption('90');await page.locator('#spatial-effects').uncheck();await page.locator('#begin-session').click();await page.clock.runFor(1500);await expect(page.locator('#wind-indicator svg')).toHaveCount(2);await expect(page.locator('#current-speed')).toHaveText('0.40 m/s');expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);await page.screenshot({path:'/tmp/boat-v17-phone.png',fullPage:true});expect(errors).toEqual([]);
+});

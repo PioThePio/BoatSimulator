@@ -1,6 +1,6 @@
 import {clamp,bottomAt,SERVICE_STATION,PARKING,BUILDINGS,DOCKS,BOLLARDS} from './world.js';
 import {SUV_GEOMETRY,bodyPoint,bodyLocal,kick,frameZ,bunkZ,updateTowGeometry} from './tow-geometry.js';
-import {vehicleSurface} from './vehicle-terrain.js';
+import {vehicleSurface,vehicleGradient} from './vehicle-terrain.js';
 import {lockedSupport,trailerBoatContact} from './trailer-support.js';
 import {attachRope} from './rigging.js';
 import {recordImpact} from './impacts.js';
@@ -84,8 +84,8 @@ export function resetTowVehicle(r,b){
  return{ok:true,message:r.status};
 }
 export function placeTrailerBoat(r,b){
- updateTowGeometry(r);const t=r.trailer,p=trailerTarget(r);b.x=p.x;b.y=p.y;b.a=t.a;b.vx=p.vx;b.vy=p.vy;b.w=t.w;b.pitch=t.pitch;b.roll=0;
- b.heave=bunkZ(t,t.offset)+b.spec.draft;b.heaveVelocity=0;b.pitchVelocity=0;b.rollVelocity=0;b.planing=0;b.grounded=false;b.underKeel=t.bunkHeight;b.groundLoad=0;b.cameraZoom=1;
+ updateTowGeometry(r);const t=r.trailer,pose=r.securedPose??{x:t.offset,y:0,angle:0},p=bodyPoint(t,pose.x,pose.y);b.x=p.x;b.y=p.y;b.a=t.a+pose.angle;b.vx=p.vx;b.vy=p.vy;b.w=t.w;b.pitch=t.pitch;b.roll=0;
+ b.heave=bunkZ(t,pose.x)+b.spec.draft;b.heaveVelocity=0;b.pitchVelocity=0;b.rollVelocity=0;b.planing=0;b.grounded=false;b.underKeel=t.bunkHeight;b.groundLoad=0;b.cameraZoom=1;
  b.telemetry={surge:0,sway:0,thrust:0,drag:0,shaftPower:0,acceleration:0};lockedSupport(r,b);
 }
 export function trailerAction(r,b,action){
@@ -98,7 +98,11 @@ export function trailerAction(r,b,action){
  if(Math.hypot(b.vx-v.vx,b.vy-v.vy)>.3||Math.hypot(r.car.vx,r.car.vy)>.15)return{ok:false,message:'Zatrzymaj samochód i łódź przed zabezpieczeniem.'};
  if(!r.winch.attached&&!b.ropes.some(q=>q.end==='bow'&&q.bollard===trailerBollardIndex()))return{ok:false,message:'Podepnij wciągarkę lub cumę dziobową do przyczepy.'};
  if(b.ropes.some(q=>q.bollard!==trailerBollardIndex())||b.anchor.mode!=='stowed')return{ok:false,message:'Odepnij cumy od brzegu i wybierz kotwicę przed załadunkiem.'};
- loadingScoreStep(r,b,0);if(r.loadingScore.active){r.loadingScore.active=false;r.loadingScore.complete=true;}r.boatLoaded=r.secured=true;b.launchMotion=false;updateTrailerMass(r,b);placeTrailerBoat(r,b);r.status='Łódź zabezpieczona na przyczepie';return{ok:true,message:r.status};
+ loadingScoreStep(r,b,0);if(r.loadingScore.active){r.loadingScore.active=false;r.loadingScore.complete=true;}
+ // Straps fix the achieved pose. They cannot finish a mediocre approach by
+ // teleporting the hull onto an ideal centreline or improve its frozen score.
+ r.securedPose={x:p.x,y:p.y,angle:wrap(b.a-r.trailer.a)};
+ r.boatLoaded=r.secured=true;b.launchMotion=false;updateTrailerMass(r,b);placeTrailerBoat(r,b);r.status='Łódź zabezpieczona na przyczepie';return{ok:true,message:r.status};
 }
 function rampGrade(p){const q=SERVICE_STATION.slip;return p.x>q.x&&p.x<q.x+q.w&&p.y>q.y&&p.y<q.y+q.h?q.angle*Math.PI/180:0;}
 function tyre(q,x,angle,normal,mu,stiffness,dt){
@@ -155,7 +159,12 @@ export function towStep(r,b,dt){
  const foot=r.gear==='P'?1:r.brakePedal,hand=r.handbrake?rearLimit:0,resistance=nf*(sf.rolling+r.frontSink*.65)+nr*(sr.rolling+r.rearSink*.65);
  const engineBrake=running&&direction?Math.min((frontLimit+rearLimit)*.6,Math.max(0,Math.abs(speed)-(r.gear==='R'?2.8:3))*(r.gear==='R'?4000:450))*(1-r.pedal*.6):0;
  const brakeLimit=(frontLimit+rearLimit)*foot+hand+resistance+engineBrake,hold=Math.min(brakeLimit,Math.abs(speed)*c.mass/dt),force=drive-Math.sign(speed)*hold-.45*speed*Math.abs(speed);
- kick(c,Math.cos(c.a)*force*dt,Math.sin(c.a)*force*dt);c.vy+=G*Math.sin(grade)*dt;t.vy+=supported/t.mass*G*Math.sin(trailerGrade)*dt;
+ kick(c,Math.cos(c.a)*force*dt,Math.sin(c.a)*force*dt);
+ const gf=vehicleGradient(front.x,front.y),gr=vehicleGradient(rear.x,rear.y),gt=vehicleGradient(axle.x,axle.y);
+ for(const [body,gradient,normal]of [[c,gf,nf],[c,gr,nr],[t,gt,tn]]){
+  const factor=normal*dt/Math.hypot(1,gradient.x,gradient.y);
+  kick(body,-gradient.x*factor,-gradient.y*factor);
+ }
  const waterDrag=500*clamp((d.frontDepth+d.rearDepth)*.5,0,2)*Math.hypot(c.vx,c.vy);c.vx/=1+waterDrag/c.mass*dt;c.vy/=1+waterDrag/c.mass*dt;
  const ts=t.vx*Math.cos(t.a)+t.vy*Math.sin(t.a),trailerBrake=(r.trailerPark?1:t.braked?foot*.7:0)*st.mu*tn,drag=Math.min(tn*st.rolling+trailerBrake,Math.abs(ts)*t.mass/dt);
  kick(t,-Math.sign(ts)*drag*Math.cos(t.a)*dt,-Math.sign(ts)*drag*Math.sin(t.a)*dt);

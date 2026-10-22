@@ -69,8 +69,17 @@ export function bottomAt(x,y){
  const ramp=SERVICE_STATION.slip;
  // A level yard and its approach meet the dry end of the slip. Shore-distance
  // elevation used to put the parked trailer on an unintended slope.
- if(y<ramp.y&&x>=96&&x<=194&&y>=-54)depth=(ramp.y-ramp.waterY)*Math.tan(ramp.angle*Math.PI/180);
- if(x>ramp.x&&x<ramp.x+ramp.w&&y>=ramp.y&&y<ramp.y+ramp.h){const blend=clamp(Math.min(x-ramp.x,ramp.x+ramp.w-x),0,1)*clamp((ramp.y+ramp.h-y)/5,0,1);depth+=(slipDepth(x,y)-depth)*blend;}
+ const smooth=v=>{v=clamp(v,0,1);return v*v*(3-2*v);};
+ const yardDepth=(ramp.y-ramp.waterY)*Math.tan(ramp.angle*Math.PI/180);
+ // The entire parking apron is flat. Outside it, shoulders blend into the
+ // shore; at the ramp entrance even its edges meet the SAME elevation.
+ const yard=smooth((x-93)/3)*smooth((197-x)/3)*smooth((y+57)/3)*(1-smooth((y-ramp.y)/12));
+ depth+=(yardDepth-depth)*yard;
+ if(y>=ramp.y&&y<ramp.y+ramp.h){
+  const across=smooth((x-ramp.x+3)/3)*smooth((ramp.x+ramp.w+3-x)/3);
+  const end=1-smooth((y-(ramp.y+ramp.h-5))/5);
+  depth+=(slipDepth(x,y)-depth)*across*end;
+ }
  const material=x>ramp.x&&x<ramp.x+ramp.w&&y>=ramp.y&&y<ramp.y+ramp.h?'rock':shore.beach?'sand':(shore.edge==='island'&&shore.along<0)||x>73&&y<40?'rock':x>113?'mud':'sand';
  return{depth,material,name:{sand:'piasek',mud:'muł',rock:'kamienie'}[material],holding:{sand:28,mud:12,rock:3}[material],shoreDistance:dist,land:shore.land,beach:shore.beach};
 }

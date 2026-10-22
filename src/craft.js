@@ -23,7 +23,9 @@ export function specification(options={}){
  const powers=Array.from({length:engineCount},(_,i)=>clamp(Number(options.powers?.[i])||p.hp,10,350));
  const fuelCapacity=clamp(Number(options.fuelCapacity)||p.fuel,10,800),tankCount=options.tankCount===2?2:1;
  const crewCount=clamp(Math.round(Number(options.crewCount??(p.jet?1:2))),0,12),crewMass=crewCount*75,equipmentMass=clamp(Number(options.equipmentMass??(p.jet?5:25)),0,1500);
- const propulsion=p.air?'air':p.jet?'jet':options.propulsion==='inboard'?'inboard':'outboard';
+ // A sterndrive is an inboard engine with a steerable, tiltable leg. It must
+ // never share the fixed-shaft/rudder branch (inboard) merely by engine location.
+ const propulsion=p.air?'air':p.jet?'jet':['zdrive','inboard'].includes(options.propulsion)?options.propulsion:'outboard';
  const structureMass=hullMass+powers.reduce((sum,hp)=>sum+(p.jet?0:28+hp*.62),0)+fuelCapacity*.08+2*tankCount+(p.jet?0:22*(Number(!!options.bowThruster)+Number(!!options.sternThruster)));
  const dryMass=structureMass+crewMass+equipmentMass;
  const mass=dryMass+fuelCapacity*.75*.745;
@@ -69,11 +71,11 @@ export function updateEngine(en,command,inflow,dt,damage=0,context={}){
   en.startTime+=dt;en.rpm=260;en.thrust=0;en.gear=0;
   if(en.startTime>1.15)en.key='running';return 0;
  }
- if(en.key!=='running'||context.noFuel){en.n*=Math.exp(-dt/.35);en.rpm=0;en.thrust=0;en.gear=0;en.load=0;en.governorLoad=0;en.opposingFlow=0;en.waveLoad=0;en.ventilation=0;if(context.noFuel)en.key='ignition';return 0;}
+ if(en.key!=='running'||context.noFuel){en.n*=Math.exp(-dt/.35);en.rpm=0;en.thrust=0;en.gear=0;en.load=0;en.governorLoad=0;en.opposingFlow=0;en.waveLoad=0;en.ventilation=0;en.propGrip=0;if(context.noFuel)en.key='ignition';return 0;}
  const desired=Math.abs(cmd)<.035?0:Math.sign(cmd);
  const airExposure=context.air?0:clamp((.70-(context.immersion??1))/.70,0,1);
  const highAngle=context.fixedDrive||context.air?0:clamp((trimAngle(en.trim)*180/Math.PI-10)/38,0,1);
- const trimVent=context.jet||context.air?0:Math.max(airExposure,highAngle*(.15+.85*clamp((Math.abs(inflow)-.5)/6,0,1)))*clamp(en.n/.5,0,1)*(.2+.8*Math.abs(cmd));
+ const trimVent=context.air?0:Math.max(airExposure,context.jet?0:highAngle*(.15+.85*clamp((Math.abs(inflow)-.5)/6,0,1)))*clamp(en.n/.5,0,1)*(.2+.8*Math.abs(cmd));
  en.ventilation+=(trimVent-en.ventilation)*(1-Math.exp(-dt/.35));
  // Signed advance matters: backing against forward motion loads the propeller
  // more than running with the same inflow. Steering alone cannot create load.
@@ -102,7 +104,11 @@ export function updateEngine(en,command,inflow,dt,damage=0,context={}){
  const reverse=context.jet?.34:.58;
  const bollard=staticThrust*n*n*(gear<0?reverse:1)*advanceFactor;
  const powerLimit=(context.jet?.63:.55)*en.hp*735.5*n**3/Math.max(context.air?5:1,Math.abs(inflow));
- en.thrust=desired===gear?gear*Math.min(bollard,powerLimit)*(1-damage/100)*(1-en.propDamage/100)**1.5*(1-.90*en.ventilation)*(context.immersion??1)*en.thermalLimit:0;
+ // Loss of wet grip is immediate; refilling an aired propeller stream/intake
+ // takes time. A returning wave cannot restore the whole thrust in one tick.
+ const grip=(1-.90*en.ventilation)*(context.immersion??1);
+ en.propGrip=grip<(en.propGrip??1)?grip:(en.propGrip??1)+(grip-(en.propGrip??1))*(1-Math.exp(-dt/.30));
+ en.thrust=desired===gear?gear*Math.min(bollard,powerLimit)*(1-damage/100)*(1-en.propDamage/100)**1.5*en.propGrip*en.thermalLimit:0;
  // Idle governor responds to clutch load; small combustion/governor ripple, independent per engine.
  const idle=750+(gear!==0?65*clamp(n/.22,0,1):0),shaft=4750*clamp((n-.23)/.77,0,1);
  const ripple=(11+9*n)*Math.sin(en.clock*8.1+en.y*2.7)+5*Math.sin(en.clock*13.7+en.hp*.01);

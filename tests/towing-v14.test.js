@@ -37,8 +37,11 @@ test('soft ground plus overloaded spinning wheels creates ruts and bogging inste
 test('jackknifing damages SUV, trailer and hitch; a motionless parked angle does not keep adding damage',()=>{
  const {r,b}=setup({}, {loaded:true});r.trailer.a=r.car.a+1.32;const h=bodyPoint(r.car,-SUV.hitch);r.trailer.x=h.x-Math.cos(r.trailer.a)*r.trailer.hitch;r.trailer.y=h.y-Math.sin(r.trailer.a)*r.trailer.hitch;towStep(r,b,dt);assert.ok(r.carDamage>0&&r.trailerDamage>0&&r.hitchDamage>0);const damage=r.hitchDamage;run(r,b,.4);assert.equal(r.hitchDamage,damage);
 });
-test('restraints can be released during dry driving; a severe 50 km/h turn without the winch can throw the hull off and break its bow line',()=>{
- const {r,b}=setup({}, {loaded:true});position(r,b,-24);r.car.vy=r.trailer.vy=-14;placeTrailerBoat(r,b);assert.ok(trailerAction(r,b,'release').ok);assert.equal(r.secured,false);r.winch.attached=false;r.engine.key='running';r.gear='D';r.gas=1;r.steer=.59;run(r,b,8);assert.equal(r.boatLoaded,false);assert.ok(b.damage>0);assert.ok(b.grounded);assert.equal(b.ropes.length,0);
+test('restraints can be released during dry driving; a severe 50 km/h manoeuvre without the winch can throw the hull off onto the ground',()=>{
+ const {r,b}=setup({}, {loaded:true});position(r,b,-24);r.car.vy=r.trailer.vy=-14;placeTrailerBoat(r,b);assert.ok(trailerAction(r,b,'release').ok);assert.equal(r.secured,false);r.winch.attached=false;r.engine.key='running';r.gear='D';r.gas=1;r.steer=.59;run(r,b,10);assert.equal(r.boatLoaded,false);assert.ok(b.damage>0);assert.ok(b.grounded);
+ // A surviving bow line may retain the bow; the improved level shoulder no
+ // longer guarantees the old cliff impact/rupture at exactly eight seconds.
+ for(const rope of b.ropes){const p=cleat(b,rope.end),q=mooringPoint(b,rope.bollard);assert.ok(Math.hypot(p.x-q.x,p.y-q.y)<rope.length+.15);}
 });
 test('stern floats before bow, measurable bunk load declines, and deep release floats without teleporting away from its bow line',()=>{
  const partial=setup({}, {loaded:true,atSlip:true});trailerAction(partial.r,partial.b,'release');run(partial.r,partial.b,5);assert.ok(partial.b.trailerSupport.kg>20&&partial.b.trailerSupport.kg<400);assert.ok(partial.b.trailerSupport.sternFloat>.95);assert.ok(partial.b.trailerSupport.bowFloat<.9);assert.ok(partial.b.pitch<partial.r.trailer.pitch*.6);

@@ -1,14 +1,25 @@
-# Przystań — symulator manewrów motorówką v16
+# Przystań — symulator manewrów motorówką v17
 
 Przeglądarkowy symulator z widokiem z góry, bez kont i backendu. Osiem rodzajów
 łodzi, w tym skuter, zmieniane wymiary i masa, jeden lub dwa silniki do 350 KM.
 Nieregularne jezioro 600 × 400 m, wyspa z przesmykiem, plaże, mielizny,
 szuwary, port ze stanowiskami z bojami i ruchomymi Y-bomami szerokości 25 cm.
 
-Uruchom: **https://piothepio.github.io/BoatSimulator/?v=16.0.0**.
+Uruchom: **https://piothepio.github.io/BoatSimulator/?v=17.0.0**.
 
 Model służy do poznawania zależności w manewrach; nie jest skalibrowany dla
 konkretnej łodzi. [Źródła, równania i ograniczenia](docs/PHYSICS.md).
+
+## Zmiany v17 — audyt fizyki
+
+- Osobny Z-drive ze skrętem i trymem; wał z osobnym sterem pozostaje odrębnym napędem.
+- Ciąg po wentylacji wraca płynnie; zapowietrzenie wlotu waterjetu ma konsekwencje fizyczne.
+- Płaski parking i ciągłe brzegi wjazdu na slip; krawężnik 7 cm z fizyką najazdu.
+- Siły od nachylenia działają pod osiami. Wyższe opory trawy i piasku, poprawione materiały podłoża.
+- Prowadnice reagują na kontakt, pasy zachowują osiągniętą pozycję łodzi zamiast ją centrować.
+- Zamiast strzałek przy kadłubie ukośne zmarszczki od prędkości względem wody; napędy oznaczone kreskami.
+- Uporządkowany wybór napędu/silników, załoga i wyposażenie na końcu menu.
+- [Pełny raport, konfiguracje domyślne i lista testów](docs/AUDIT_V17.md), [surowe pomiary](docs/audit-v17-results.json).
 
 ## Zmiany v16
 

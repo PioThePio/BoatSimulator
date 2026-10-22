@@ -1,9 +1,10 @@
 import {PARKING,PARKING_SPACES,SERVICE_BAYS,SERVICE_STATION,bottomAt,clamp} from './world.js';
 import {bowEye,winchPost} from './trailer-winch.js';
 import {SUV,bodyPoint,trailerPost,hitchStatus} from './towing.js';
-import {SAND_PRACTICE} from './vehicle-terrain.js';
+import {SAND_PRACTICE,CURB} from './vehicle-terrain.js';
 export function drawParking(c){
  const p=PARKING;c.fillStyle='#a6b1a0';c.fillRect(p.x,p.y,p.w,p.h);c.strokeStyle='#879b87';c.lineWidth=.18;c.strokeRect(p.x,p.y,p.w,p.h);
+ c.strokeStyle='#d4d6c2';c.lineWidth=CURB.width;c.beginPath();c.moveTo(CURB.gapMin,p.y+p.h);c.lineTo(p.x,p.y+p.h);c.lineTo(p.x,p.y);c.lineTo(p.x+p.w,p.y);c.lineTo(p.x+p.w,p.y+p.h);c.lineTo(CURB.gapMax,p.y+p.h);c.stroke();
  c.fillStyle='#acb5a3';c.fillRect(119.5,-8,11,16);c.strokeStyle='#e6e9cf';c.lineWidth=.15;
  for(const q of PARKING_SPACES){c.beginPath();c.moveTo(q.x,q.y+q.h);c.lineTo(q.x,q.y);c.lineTo(q.x+q.w,q.y);c.lineTo(q.x+q.w,q.y+q.h);c.stroke();}
  for(const q of SERVICE_BAYS){c.fillStyle='#9eaf8c';c.fillRect(q.x,q.y,q.w,q.h);c.strokeStyle='#f3edbb';c.strokeRect(q.x,q.y,q.w,q.h);c.save();c.translate(q.x+q.w*.55,q.y+q.h-2);c.rotate(-Math.PI/2);c.font='bold 1px system-ui';c.fillStyle='#f4efcf';c.fillText('SERWIS '+q.id,0,0);c.restore();}

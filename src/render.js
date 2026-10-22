@@ -83,8 +83,7 @@ export function renderWorld(ctx,state){
   if(q.kind==='tree'){ctx.fillStyle='#7b6a47';ctx.beginPath();ctx.arc(q.x,q.y,.32,0,Math.PI*2);ctx.fill();ctx.fillStyle='#7f9d70';for(const [dx,dy,r]of [[-.7,-.7,.85],[.7,-.5,.9],[0,.6,1]]){ctx.beginPath();ctx.arc(q.x+dx,q.y+dy,r,0,Math.PI*2);ctx.fill();}}
   ctx.beginPath();ctx.arc(q.x,q.y,q.kind==='buoy'?.45:isSelected?.34:.22,0,Math.PI*2);ctx.fillStyle=isSelected?'#bd7541':'#d3a34b';ctx.fill();ctx.strokeStyle='#7b6943';ctx.lineWidth=.07;ctx.stroke();if(!q.trailer&&(scale>2.5||isSelected)){ctx.font=`bold ${Math.max(.9,9/scale)}px system-ui`;ctx.fillStyle='#47634c';ctx.fillText(q.id,q.x+.45,q.y-.45);}
  }
- // Actual point velocities give drift relative to a stationary pier; the
- // separate water-relative ripples show flow past the hull. Both need water.
+ // Point velocities relative to local water drive every hull ripple.
  if(previousBoat!==b){wake=[];lastWake=b.time;previousBoat=b;}
  const samples=waterMotionSamples(b,env);
  if(samples.length)drawHullWake(ctx,b.wake,b.time);
@@ -97,11 +96,18 @@ export function renderWorld(ctx,state){
  }
  wake=samples.length?wake.filter(p=>b.time-p.t<3).slice(-200):[];
  for(const p of wake){const age=b.time-p.t,x=p.x+p.current.x*age,y=p.y+p.current.y*age;if(bottomAt(x,y).depth<=.01)continue;ctx.save();ctx.translate(x,y);ctx.rotate(p.angle);ctx.strokeStyle=`rgba(250,255,246,${p.opacity*(1-age/3)})`;ctx.lineWidth=.06;ctx.beginPath();ctx.moveTo(-p.size,-p.size*(1+age*.2));ctx.quadraticCurveTo(p.size*.3,0,-p.size,p.size*(1+age*.2));ctx.stroke();ctx.restore();}
+ // Short oblique wavelets travel down-flow relative to the hull. No arrowheads
+ // or assumed forward direction: a stationary hull in still water emits none.
  for(const q of samples){
-  const vx=q.ground.x,vy=q.ground.y,speed=Math.hypot(vx,vy);if(speed<.025)continue;
-  const unit={x:vx/speed,y:vy/speed},perp={x:-unit.y,y:unit.x},length=clamp(.5+speed*2,.5,2),alpha=clamp(.25+speed,.25,.65);
-  for(const side of [-1,1]){const p={x:q.p.x+perp.x*b.spec.beam*.58*side,y:q.p.y+perp.y*b.spec.beam*.58*side},end={x:p.x+unit.x*length,y:p.y+unit.y*length};if(bottomAt(p.x,p.y).depth<=.01||bottomAt(end.x,end.y).depth<=.01)continue;
-   ctx.strokeStyle=`rgba(248,255,244,${alpha})`;ctx.lineWidth=.085;ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(end.x,end.y);ctx.moveTo(end.x-unit.x*.22-perp.x*.15,end.y-unit.y*.22-perp.y*.15);ctx.lineTo(end.x,end.y);ctx.lineTo(end.x-unit.x*.22+perp.x*.15,end.y-unit.y*.22+perp.y*.15);ctx.stroke();
+  const vx=q.relative.x,vy=q.relative.y,speed=Math.hypot(vx,vy);if(speed<.025)continue;
+  const angle=Math.atan2(vy,vx),ux=vx/speed,uy=vy/speed,nx=-uy,ny=ux;
+  for(const side of [-1,1])for(let i=0;i<3;i++){
+   const phase=(b.time*speed*.65+i/3)%1,distance=b.spec.beam*(.52+phase*.32);
+   const x=q.p.x+nx*distance*side-ux*phase*.7,y=q.p.y+ny*distance*side-uy*phase*.7;
+   if(bottomAt(x,y).depth<=.01)continue;
+   ctx.save();ctx.translate(x,y);ctx.rotate(angle+side*.6);
+   ctx.strokeStyle=`rgba(248,255,244,${Math.min(.4,.12+speed*.15)*Math.sin(phase*Math.PI)})`;ctx.lineWidth=.055;
+   ctx.beginPath();ctx.moveTo(-.22,-.06);ctx.quadraticCurveTo(0,.05,.22,-.06);ctx.stroke();ctx.restore();
   }
  }
  for(const r of b.ropes){const p=cleat(b,r.end),q=mooringPoint(b,r.bollard),d=Math.hypot(p.x-q.x,p.y-q.y),sag=Math.min(.7,Math.max(0,r.length-d));ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.quadraticCurveTo((p.x+q.x)/2+sag,(p.y+q.y)/2+sag,q.x,q.y);const load=clamp(r.tension/b.spec.lineBreak,0,1);ctx.strokeStyle=`rgb(${Math.round(147+load*48)},${Math.round(119-load*48)},${Math.round(66-load*5)})`;ctx.lineWidth=.10;ctx.stroke();}
@@ -134,7 +140,7 @@ function drawBoat(ctx,b){
  if(['cabin','cruiser'].includes(b.spec.profile)){ctx.fillStyle='#e8ece2';ctx.fillRect(-.1,-.77,1.6,1.54);ctx.fillStyle='#699393';ctx.fillRect(.9,-.65,.3,1.3);}}
  for(const engine of b.engines){
   if(b.spec.air){ctx.save();ctx.translate(-1.8,0);ctx.strokeStyle='#4b6255';ctx.lineWidth=.12;ctx.beginPath();ctx.ellipse(0,0,.36,.99,0,0,Math.PI*2);ctx.stroke();ctx.lineWidth=.045;for(const y of [-.75,-.4,0,.4,.75]){ctx.beginPath();ctx.moveTo(-.26,y);ctx.lineTo(.26,y);ctx.stroke();}const phase=engine.key==='running'?b.time*(9+engine.n*30):.5;ctx.strokeStyle='#6d7e63';ctx.lineWidth=.12;for(let i=0;i<3;i++){const a=phase+i*Math.PI*2/3;ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(Math.cos(a)*.2,Math.sin(a)*.88);ctx.stroke();}for(const side of [-1,1]){ctx.save();ctx.translate(-.8,side*.5);ctx.rotate(-b.actualSteer);ctx.fillStyle='#70856a';ctx.fillRect(-.35,-.06,.6,.12);ctx.restore();}ctx.restore();continue;}
-  ctx.save();ctx.translate(-2.6,engine.y*2.1/b.spec.beam);ctx.rotate(b.spec.propulsion==='inboard'?0:-b.actualSteer);ctx.fillStyle=engine.propDamage>=70?'#a96852':'#294d4d';ctx.fillRect(-.55,-.23,.65,.46);ctx.strokeStyle='#71928c';ctx.lineWidth=.08;ctx.strokeRect(-.55,-.23,.65,.46);
+  ctx.save();ctx.translate(-2.6,engine.y*2.1/b.spec.beam);ctx.rotate(b.spec.propulsion==='inboard'?0:-b.actualSteer);ctx.strokeStyle=engine.propDamage>=70?'#a96852':'#41675f';ctx.lineWidth=.14;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(.02,0);ctx.lineTo(-.52,0);ctx.moveTo(-.39,-.15);ctx.lineTo(-.39,.15);ctx.stroke();
   const bars=b.enginesRaised?0:propWashCount(engine),dir=engine.gear>=0?-1:1;
   if(bars){ctx.strokeStyle='#f7fff3';ctx.lineWidth=.13;for(let i=0;i<bars;i++){const pulse=(b.time*2)%1,dist=.85+(i+pulse)*.37;ctx.beginPath();ctx.moveTo(dir*dist,-.16-i*.045);ctx.lineTo(dir*dist,.16+i*.045);ctx.stroke();}}
   const foam=propFoamIntensity(engine);if(foam){ctx.strokeStyle='#ffffffbb';ctx.lineWidth=.14;for(let i=0;i<15;i++){const age=(b.time*2+i*.13)%1.6,spread=.15+age*.4;ctx.beginPath();ctx.arc(-.7-age*(1.8+foam),Math.sin(i*2.4)*spread,.07+age*.09,0,Math.PI*2);ctx.stroke();}ctx.beginPath();ctx.moveTo(-.6,0);ctx.quadraticCurveTo(-1.5,-.5*foam,-2.8-foam,-.25);ctx.stroke();}
