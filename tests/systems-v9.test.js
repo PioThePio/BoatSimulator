@@ -42,7 +42,7 @@ test('both thrusters on larger boats sustain rated thrust without low-voltage on
   const b=createBoat('open',{profile,coldStart:true,bowThruster:true,sternThruster:true});b.engines[0].key='ignition';b.thrusters.bow=b.thrusters.stern=1;let min=Infinity,max=0;
   for(let i=0;i<1800;i++){systemsStep(b,1/120);if(i>240){min=Math.min(min,b.thrusters.bowForce);max=Math.max(max,b.thrusters.bowForce);}}
   assert.ok(min>b.spec.thrusterRating*.85);assert.ok(max-min<10);assert.ok(b.battery.voltage>10.8);assert.ok(b.battery.soc<.85);
-  b.engines[0].key='off';systemsStep(b,1/120);assert.equal(b.thrusters.bowForce,0);assert.equal(b.thrusters.sternForce,0);
+  b.engines[0].key='off';b.electrics.thrusters=false;systemsStep(b,1/120);assert.equal(b.thrusters.bowForce,0);assert.equal(b.thrusters.sternForce,0);
  }
 });
 test('reverse angled outboard and thrusters reduce stern blow-off with a bow line in strong cross-current',()=>{

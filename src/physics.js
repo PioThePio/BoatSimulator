@@ -1,3 +1,4 @@
+import {enforceMainPower} from './electrical.js';
 import {contacts,boomContacts} from './contacts.js';
 import {beginFenderStep} from './fenders.js';
 import {createBuoys} from './buoys.js';
@@ -34,7 +35,7 @@ export function createBoat(scenario='approach',options={}){
 function event(b,message){b.events.unshift({time:b.time,message});b.events=b.events.slice(0,12);}
 function oscillator(state,vel,target,omega,zeta,dt,forcing=0){const acc=omega*omega*(target-state)-2*zeta*omega*vel+forcing;vel+=acc*dt;return[state+vel*dt,vel];}
 export function step(b,e,dt){
- b.time+=dt;beginFenderStep(b);const S=b.spec,c=Math.cos(b.a),s=Math.sin(b.a);
+ b.time+=dt;enforceMainPower(b);beginFenderStep(b);const S=b.spec,c=Math.cos(b.a),s=Math.sin(b.a);
  if(b.towRig?.boatLoaded&&b.towRig.secured){
   placeTrailerBoat(b.towRig,b);
   const rate=S.jet?1.6:.80;b.actualSteer+=clamp(b.steer-b.actualSteer,-rate*dt,rate*dt);
@@ -42,7 +43,7 @@ export function step(b,e,dt){
   if(b.engines.length===2)b.engines[1].trimTarget=b.engines[0].trimTarget;
   for(const [i,en]of b.engines.entries()){
    propellerContact(b,en,dt,m=>event(b,m),e);
-   updateEngine(en,i?b.throttle2:b.throttle,0,dt,b.damage,{noFuel:b.fuel.litres<=0,jet:S.jet,air:S.air,fixedDrive:S.propulsion==='inboard',moored:true,onTrailer:true,speed:0,immersion:en.immersion,intake:en.intake});
+   updateEngine(en,i?b.throttle2:b.throttle,0,dt,b.damage,{starterVoltage:b.battery.voltage,noFuel:b.fuel.litres<=0,jet:S.jet,air:S.air,fixedDrive:S.propulsion==='inboard',moored:true,onTrailer:true,speed:0,immersion:en.immersion,intake:en.intake});
    const steering=engineSteering(b,en,dt);en.forceSteer=steering;
    const delta=S.air||S.propulsion==='inboard'?0:steering,T=en.thrust*(S.jet||S.air||S.propulsion==='inboard'?1:Math.cos(trimAngle(en.trim)));en.effectiveThrust=T;
    const air=airRudderForce(S,T,b.actualSteer),X=S.air?air.x:T*Math.cos(delta),Y=S.air?air.y:-T*Math.sin(delta),fx=c*X-s*Y,fy=s*X+c*Y;
@@ -126,7 +127,7 @@ export function step(b,e,dt){
   engine.lastSurface=g.surface;
   const vertical=b.heaveVelocity+g.mountX*Math.cos(b.pitch)*b.pitchVelocity+engine.y*Math.cos(b.roll)*b.rollVelocity;
   const waveLoad=clamp(2.5*Math.abs(u)*Math.max(0,surfaceRate-vertical)/(9.81*S.length),0,.25);
-  let thrust=updateEngine(engine,i===0?b.throttle:b.throttle2,inflow,dt,b.damage,{noFuel:b.fuel.litres<=0,jet:S.jet,air:S.air,fixedDrive:S.propulsion==='inboard',onTrailer:onSupports,grounded:b.grounded,moored:b.ropes.length>0,raised:b.enginesRaised,speed:Math.hypot(ur,vr),immersion:engine.immersion,intake:engine.intake,crossflow:lateral,waveLoad});
+  let thrust=updateEngine(engine,i===0?b.throttle:b.throttle2,inflow,dt,b.damage,{starterVoltage:b.battery.voltage,noFuel:b.fuel.litres<=0,jet:S.jet,air:S.air,fixedDrive:S.propulsion==='inboard',onTrailer:onSupports,grounded:b.grounded,moored:b.ropes.length>0,raised:b.enginesRaised,speed:Math.hypot(ur,vr),immersion:engine.immersion,intake:engine.intake,crossflow:lateral,waveLoad});
   if(b.enginesRaised){thrust=0;engine.thrust=0;}
   thrust*=S.jet||S.air||S.propulsion==='inboard'?1:Math.cos(trimAngle(engine.trim));
   engine.effectiveThrust=thrust;

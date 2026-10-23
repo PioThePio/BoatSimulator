@@ -28,7 +28,7 @@ export function bilgeStep(b,dt){
  q.deckInflow=deckIngressRate(b)*wet;q.inflow=q.leakInflow+q.deckInflow;
  q.leakTotal=(q.leakTotal??0)+q.leakInflow*dt;q.deckTotal=(q.deckTotal??0)+q.deckInflow*dt;
  if(q.litres>=q.autoOnLitres)q.autoRunning=true;else if(q.litres<=q.autoOffLitres)q.autoRunning=false;
- q.running=(q.manual||q.auto&&q.autoRunning)&&b.battery.soc>.02&&q.litres>.01;
+ q.running=b.electrics?.master!==false&&(q.manual||q.auto&&q.autoRunning&&q.litres>.01)&&b.battery.soc>.02;
  q.outflow=q.running?Math.min(q.litres/dt,q.pumpRate/60*clamp(b.battery.voltage/12,0,1)):0;
  q.litres=clamp(q.litres+(q.inflow-q.outflow)*dt,0,q.capacity);q.level=q.litres/q.capacity;
  const alarm=q.level>=.5;

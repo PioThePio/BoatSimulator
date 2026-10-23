@@ -1,4 +1,4 @@
-# Przystań — symulator manewrów motorówką v22
+# Przystań — symulator manewrów motorówką v23
 
 Przeglądarkowy symulator z widokiem z góry, bez kont i backendu. Osiem rodzajów
 łodzi, w tym skuter, zmieniane wymiary i masa, jeden lub dwa silniki do 350 KM.
@@ -6,10 +6,19 @@ Mapa wzorowana na Jeziorze Zegrzyńskim: obszar 8,53 × 6,95 km (50% pierwotnych
 i Bugu, zatoki, mosty, plaże i przystanie. Port ze slipem, serwisem,
 stanowiskami z bojami i ruchomymi Y-bomami szerokości 25 cm.
 
-Uruchom: **https://piothepio.github.io/BoatSimulator/?v=22.0.0**.
+Uruchom: **https://piothepio.github.io/BoatSimulator/?v=23.0.0**.
 
 Model służy do poznawania zależności w manewrach; nie jest skalibrowany dla
 konkretnej łodzi. [Źródła, równania i ograniczenia](docs/PHYSICS.md).
+
+## Zmiany v23 — przełączniki i akumulator
+
+- Rozróżniona grafika: zaburtówka z osłoną silnika, Z-etka jako smukła noga.
+- Sześć przełączników pod napędem: główne zasilanie, instrumenty, pompa,
+  strumieniowe, GPS i echosonda. Strumieniowe działają bez zapłonu.
+- Jeden wspólny bilans Ah, napięcie spadające z SOC i poborem, alternator
+  oraz wolny/nieudany rozruch słabego akumulatora.
+- [Parametry instalacji i regresje v23](docs/FIXES_V23.md).
 
 ## Zmiany v22 — mapa, strugi, kilwater i odbijacze
 

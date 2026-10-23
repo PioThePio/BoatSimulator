@@ -157,3 +157,18 @@ main{padding-top:5px}
 #atlas-tools button{font-size:10px;padding:6px;border:1px solid #bfceb2;border-radius:4px}#atlas-tools small{font-size:8px;color:#71896c}
 @media(max-width:650px){#atlas-tools{left:7px;bottom:10px;gap:4px}#atlas-tools button{font-size:8px;padding:5px}#atlas-tools small{font-size:6px;flex-basis:100%}}
 #twin-steering{border:1px solid #cbd3bd;border-radius:8px;padding:8px;margin-top:10px}#twin-steering legend{font-size:11px}#twin-steering label{display:block;margin:6px 0}#twin-steering input[type=range]{width:100%}
+/* Six boat-style rocker switches, on the existing propulsion panel. */
+#marine-power{display:block;margin-top:9px;padding:8px 0 0}.marine-switch-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px 4px}
+#marine-power .marine-rocker{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:4px;min-width:0;margin:0;padding:0;border:0;background:transparent;color:#506d59;font-size:8px;line-height:1.1;text-align:center;cursor:pointer}
+#marine-power .marine-rocker input{position:absolute;inset:0;opacity:0;width:100%;height:100%;margin:0;cursor:pointer;z-index:1}
+.rocker-face{position:relative;display:block;width:28px;height:33px;border-radius:5px;background:linear-gradient(#263b36,#486154 48%,#20352e 52%,#142b24);border:2px solid #a5b29e;box-shadow:inset 0 2px 3px #10271f99,0 1px 2px #183c2533}
+.rocker-face:after{content:'Ⅱ';position:absolute;top:13px;left:0;right:0;font:9px system-ui;color:#bdcabb88}.rocker-face i{position:absolute;top:5px;left:8px;right:8px;height:3px;border-radius:2px;background:#79917b}
+.marine-rocker input:checked~.rocker-face,.marine-rocker[aria-pressed=true] .rocker-face{background:linear-gradient(#446d50,#37533e 48%,#263e30 52%,#4d7153)}
+.marine-rocker[data-powered=true] .rocker-face i,.marine-rocker[aria-pressed=true] .rocker-face i{background:#b8ed81;box-shadow:0 0 5px #a1e66f}
+.marine-rocker[data-device=master] input:checked~.rocker-face{background:linear-gradient(#a55644,#703d32 48%,#56362b 52%,#925144)}
+.marine-rocker input:disabled~*{opacity:.35}.marine-rocker:focus-within .rocker-face{outline:2px solid #d2a74f;outline-offset:2px}.rocker-caption{min-height:17px}
+.power-panel-footer{display:flex;justify-content:space-between;align-items:center;gap:4px;margin-top:7px}.power-panel-footer output{font-size:8px;font-variant-numeric:tabular-nums}.power-panel-footer label{white-space:nowrap}
+#instruments.master-power-off .gauge{opacity:.25}#instruments.master-power-off .gauge .needle{visibility:hidden}
+body[data-vehicle=suv] #marine-power{display:none}
+@media(max-width:1000px){.marine-switch-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:650px){#marine-power{padding-top:6px}.marine-switch-grid{gap:6px 2px}#marine-power .marine-rocker{font-size:6px;gap:3px}.rocker-face{width:23px;height:28px;border-width:1px}.rocker-face i{left:6px;right:6px}.rocker-caption{min-height:13px}.power-panel-footer{flex-wrap:wrap;justify-content:center}.power-panel-footer output{font-size:6px}}

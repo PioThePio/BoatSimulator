@@ -1,3 +1,4 @@
+import {STARTER_LIMITS} from './electrical.js';
 import {trimAngle} from './drive.js';
 import {thermalStep,THERMAL_LIMITS} from './thermal.js';
 import {clamp} from './world.js';
@@ -50,17 +51,19 @@ export function engineState(hp,y=0,coldStart=false){return{hp,y,clock:0,operatin
 export function engineKey(b,index,action){
  const en=b.engines[index];if(!en)return{ok:false,message:'Brak silnika.'};
  if(action==='off'){en.key='off';en.startTime=0;en.gear=0;en.thrust=0;en.ventilation=0;return{ok:true,message:'Silnik wyłączony.'};}
+ if(action==='ignition'&&b.electrics?.master===false)return{ok:false,message:'Włącz główne zasilanie łodzi.'};
  if(action==='ignition'){en.key='ignition';en.thrust=0;en.gear=0;return{ok:true,message:'Zapłon włączony.'};}
  if(action==='start'){
+  if(b.electrics?.master===false)return{ok:false,message:'Włącz główne zasilanie łodzi.'};
   if(en.flooded||b.sunken)return{ok:false,message:'Silnik zalany · wypompuj wodę i napraw łódź w serwisie.'};
   if(en.key==='running')return{ok:true,message:'Silnik już pracuje.'};
   if(en.temperature>THERMAL_LIMITS.restart)return{ok:false,message:'Silnik przegrzany — poczekaj, aż ostygnie poniżej 110°C.'};
   en.thermalTrip=false;
   if(Math.abs(index===0?b.throttle:b.throttle2)>.035)return{ok:false,message:'Przed rozruchem ustaw manetkę na luz.'};
   if(b.fuel.litres<=0)return{ok:false,message:'Brak paliwa.'};
-  if(b.battery.soc<.08||b.battery.voltage<10)return{ok:false,message:'Akumulator nie pozwala na rozruch.'};
+  if(b.battery.soc<STARTER_LIMITS.minimumSOC||b.battery.voltage<STARTER_LIMITS.minimumVoltage)return{ok:false,message:'Akumulator nie pozwala na rozruch.'};
   if(en.key==='off')return{ok:false,message:'Najpierw włącz zapłon.'};
-  if(en.key!=='running'){en.key='starting';en.startTime=0;}return{ok:true,message:'Rozrusznik pracuje…'};
+  if(en.key!=='running'){en.key='starting';en.startTime=0;en.crankProgress=0;en.startFailure=false;}return{ok:true,message:'Rozrusznik pracuje…'};
  }
  return{ok:false,message:'Nieznana pozycja stacyjki.'};
 }
@@ -71,8 +74,10 @@ export function updateEngine(en,command,inflow,dt,damage=0,context={}){
  const cmd=clamp(command,context.air?0:-1,1);en.command=cmd;
  thermalStep(en,dt,context);
  if(en.key==='starting'){
-  en.startTime+=dt;en.rpm=260;en.thrust=0;en.gear=0;
-  if(en.startTime>1.15)en.key='running';return 0;
+  en.startTime+=dt;const voltage=context.starterVoltage??12.6;en.rpm=260*clamp((voltage-8)/3.8,.15,1);en.thrust=0;en.gear=0;
+  en.crankProgress=(en.crankProgress??0)+(en.rpm>=STARTER_LIMITS.minimumRPM?dt*en.rpm/260:0);
+  if(en.crankProgress>1.15)en.key='running';
+  else if(voltage<9||en.startTime>STARTER_LIMITS.timeout){en.key='ignition';en.rpm=0;en.startFailure=true;}return 0;
  }
  if(en.key!=='running'||context.noFuel){en.n*=Math.exp(-dt/.35);en.rpm=0;en.thrust=0;en.gear=0;en.load=0;en.governorLoad=0;en.opposingFlow=0;en.waveLoad=0;en.ventilation=0;en.propGrip=0;en.burst=0;en.regrip=0;if(context.noFuel)en.key='ignition';return 0;}
  const desired=Math.abs(cmd)<.035?0:Math.sign(cmd);

@@ -38,14 +38,15 @@ export function systemsStep(b,dt){
  }
  for(const tank of fuel.tanks)tank.litres=fuel.litres*tank.capacity/fuel.capacity;
  bilgeStep(b,dt);updateMass(b.spec,fuel.litres,b.bilge.litres);
- const ignition=b.engines.some(e=>e.key!=='off');
+ const powered=b.electrics.master!==false&&b.electrics.thrusters!==false;
  let thrusterAmps=0;
  const forceScale=b.spec.thrusterRating,speed=Math.abs(b.telemetry.surge);
- const availability=ignition&&battery.soc>.04&&battery.voltage>10.2?1:0;
+ const availability=powered&&battery.soc>.04&&battery.voltage>10.2?1:0;
  for(const end of ['bow','stern']){
   const installed=b.spec[end+'Thruster'];
   const target=installed?b.thrusters[end]*availability:0;
   b.thrusters[end+'Actual']+=(target-b.thrusters[end+'Actual'])*(1-Math.exp(-dt/.22));
+  if(!availability)b.thrusters[end+'Actual']=0;
   const value=b.thrusters[end+'Actual'];
   b.thrusters[end+'Force']=availability*forceScale*value/(1+(speed/1.8)**2)*clamp(battery.voltage/12,0,1.1);
   thrusterAmps+=Math.abs(value)*forceScale*6.5/Math.max(10,battery.voltage);

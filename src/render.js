@@ -9,6 +9,7 @@ import {point,cleat,cleatLocal,CLEATS} from './rigging.js';
 import {towView,minimapProjection} from './camera.js';
 import {placeMapLabels} from './map-labels.js';
 import {mirrorVector} from './wave-reflections.js';
+import {drawSternDrive} from './render-drives.js';
 import {hullOutline} from './hull-geometry.js';
 import {driveWaterState} from './drive-effects.js';
 import {drawFenders} from './render-fenders.js';
@@ -243,13 +244,7 @@ function drawBoat(ctx,b){
  if(['cabin','cruiser'].includes(b.spec.profile)){ctx.fillStyle='#e8ece2';ctx.fillRect(-.1,-.77,1.6,1.54);ctx.fillStyle='#699393';ctx.fillRect(.9,-.65,.3,1.3);}}
  for(const engine of b.engines){
   if(b.spec.air){ctx.save();ctx.translate(-1.8,0);ctx.strokeStyle='#4b6255';ctx.lineWidth=.12;ctx.beginPath();ctx.ellipse(0,0,.36,.99,0,0,Math.PI*2);ctx.stroke();ctx.lineWidth=.045;for(const y of [-.75,-.4,0,.4,.75]){ctx.beginPath();ctx.moveTo(-.26,y);ctx.lineTo(.26,y);ctx.stroke();}const phase=engine.key==='running'?b.time*(9+engine.n*30):.5;ctx.strokeStyle='#6d7e63';ctx.lineWidth=.12;for(let i=0;i<3;i++){const a=phase+i*Math.PI*2/3;ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(Math.cos(a)*.2,Math.sin(a)*.88);ctx.stroke();}for(const side of [-1,1]){ctx.save();ctx.translate(-.8,side*.5);ctx.rotate(-b.actualSteer);ctx.fillStyle='#70856a';ctx.fillRect(-.35,-.06,.6,.12);ctx.restore();}ctx.restore();continue;}
-  if(['outboard','zdrive'].includes(b.spec.propulsion)){
-   ctx.save();ctx.scale(5.5/b.spec.length,2.1/b.spec.beam);ctx.translate(-b.spec.length*.51,engine.y);ctx.rotate(-(engine.forceSteer??engine.steerAngle??b.actualSteer));
-   const out=b.spec.propulsion==='outboard',tilt=engine.trim;
-   ctx.strokeStyle='#e7eee2';ctx.lineWidth=.045;ctx.fillStyle=out?'#3f5858':'#6c8280';ctx.beginPath();ctx.roundRect(out?-.56:-.44,-.17,out?.76:.50,.34,.10);ctx.fill();ctx.stroke();
-   ctx.fillStyle='#263f42';ctx.beginPath();ctx.roundRect(-.67-.28*tilt,-.09,.40+.28*tilt,.18,.055);ctx.fill();ctx.stroke();
-   ctx.fillStyle='#b9d1c6';ctx.beginPath();ctx.ellipse(-.72-.28*tilt,0,.045,.20,0,0,Math.PI*2);ctx.fill();ctx.restore();
-  }
+  if(['outboard','zdrive'].includes(b.spec.propulsion)){ctx.save();ctx.scale(5.5/b.spec.length,2.1/b.spec.beam);drawSternDrive(ctx,b,engine);ctx.restore();}
   // The separate, visible rudder belongs only to a fixed shaft drive.
   if(b.spec.propulsion==='inboard'){ctx.save();ctx.translate(-2.9,engine.y*2.1/b.spec.beam);ctx.rotate(-b.actualSteer);ctx.fillStyle='#477e83';ctx.strokeStyle='#eff6dc';ctx.lineWidth=.055;ctx.beginPath();ctx.roundRect(-.40,-.12,.62,.24,.06);ctx.fill();ctx.stroke();ctx.restore();}
  }
