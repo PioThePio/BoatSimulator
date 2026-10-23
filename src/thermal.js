@@ -1,5 +1,7 @@
 import {trimAngle} from './drive.js';
 import {clamp} from './world.js';
+export const THERMAL_LIMITS={high:95,alarm:105,overheat:120,shutdown:145,restart:110,recovered:100};
+export function thermalStage(temperature){return temperature>=THERMAL_LIMITS.overheat?'overheat':temperature>=THERMAL_LIMITS.alarm?'alarm':temperature>=THERMAL_LIMITS.high?'high':'normal';}
 // Lumped heat balance: empirical training model, not manufacturer limits.
 export function thermalStep(en,dt,context={}){
  const running=en.key==='running',speed=Math.abs(context.speed??0),n=en.n;
@@ -12,8 +14,12 @@ export function thermalStep(en,dt,context={}){
  const thermostat=clamp((en.temperature-64)/12,0,1);
  const cooling=(en.temperature-18)*(running?.00065+.024*en.cooling*thermostat:.0015);
  en.temperature=clamp(en.temperature+(heat-cooling)*dt,18,155);
- en.overheated=en.temperature>=105;
+ en.thermalStage=thermalStage(en.temperature);
+ en.overheated=en.temperature>=THERMAL_LIMITS.alarm;
  en.thermalLimit=1-.65*clamp((en.temperature-105)/30,0,1);
- if(en.temperature>=145){en.key='ignition';en.thrust=0;en.gear=0;en.thermalTrip=true;}
+ if(en.temperature>=THERMAL_LIMITS.shutdown){en.key='ignition';en.thrust=0;en.gear=0;en.thermalTrip=true;}
+ // A thermal trip is protection, not permanent engine damage. It does not
+ // restart the engine; normal key operation is possible after cooldown.
+ if(en.temperature<=THERMAL_LIMITS.recovered)en.thermalTrip=false;
  return en.thermalLimit;
 }

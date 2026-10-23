@@ -1,5 +1,5 @@
 import {trimAngle} from './drive.js';
-import {thermalStep} from './thermal.js';
+import {thermalStep,THERMAL_LIMITS} from './thermal.js';
 import {clamp} from './world.js';
 export const CRAFTS={
  tender:{name:'Łódź otwarta 4,2 m',length:4.2,beam:1.75,hullMass:380,draft:.28,hp:25,freeboard:.45,planing:true,deadrise:12,fuel:45,color:'#e8e9cf',anchorMass:6,chain:6,lineEA:80000,lineBreak:10000},
@@ -46,7 +46,7 @@ export function updateMass(spec,fuelLitres,bilgeLitres=0){
  spec.mx=spec.mass*1.08;spec.my=spec.mass*1.65;spec.iz=spec.inertia*1.55;
  return spec;
 }
-export function engineState(hp,y=0,coldStart=false){return{hp,y,clock:0,command:0,gear:0,n:0,shift:0,thrust:0,rpm:coldStart?0:750,propDamage:0,propContact:false,propClearance:10,lastStrike:-10,key:coldStart?'off':'running',startTime:0,trim:.10,trimTarget:.10,trimRate:0,immersion:1,intake:1,propDepth:.4,ventilation:0,load:0,governorLoad:0,inflow:0,opposingFlow:0,waveLoad:0,fuelFlow:0,temperature:18,cooling:0,overheated:false,thermalLimit:1,thermalTrip:false};}
+export function engineState(hp,y=0,coldStart=false){return{hp,y,clock:0,operatingHours:0,fuelUsed:0,thermalStage:'normal',command:0,gear:0,n:0,shift:0,thrust:0,rpm:coldStart?0:750,propDamage:0,propContact:false,propClearance:10,lastStrike:-10,key:coldStart?'off':'running',startTime:0,trim:.10,trimTarget:.10,trimRate:0,immersion:1,intake:1,propDepth:.4,ventilation:0,load:0,governorLoad:0,inflow:0,opposingFlow:0,waveLoad:0,fuelFlow:0,temperature:18,cooling:0,overheated:false,thermalLimit:1,thermalTrip:false};}
 export function engineKey(b,index,action){
  const en=b.engines[index];if(!en)return{ok:false,message:'Brak silnika.'};
  if(action==='off'){en.key='off';en.startTime=0;en.gear=0;en.thrust=0;en.ventilation=0;return{ok:true,message:'Silnik wyłączony.'};}
@@ -54,7 +54,7 @@ export function engineKey(b,index,action){
  if(action==='start'){
   if(en.flooded||b.sunken)return{ok:false,message:'Silnik zalany · wypompuj wodę i napraw łódź w serwisie.'};
   if(en.key==='running')return{ok:true,message:'Silnik już pracuje.'};
-  if(en.temperature>110)return{ok:false,message:'Silnik przegrzany — poczekaj, aż ostygnie poniżej 110°C.'};
+  if(en.temperature>THERMAL_LIMITS.restart)return{ok:false,message:'Silnik przegrzany — poczekaj, aż ostygnie poniżej 110°C.'};
   en.thermalTrip=false;
   if(Math.abs(index===0?b.throttle:b.throttle2)>.035)return{ok:false,message:'Przed rozruchem ustaw manetkę na luz.'};
   if(b.fuel.litres<=0)return{ok:false,message:'Brak paliwa.'};

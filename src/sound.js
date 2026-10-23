@@ -25,6 +25,7 @@ export function soundParameters(b,e={}){
   skimming,spray:skimming*clamp(speed/16,0,1)*.14,sprayCutoff:1400+clamp(speed/22,0,1)*1300,
   tyres:car?clamp(b.tyreSlip??0,0,1)*.10:0,fan:b.spec.air&&b.engines[0].key==='running'?.015+.075*b.engines[0].n:0,winch:Math.abs(b.towRig?.winch?.rate??0)>.001?.028:0,commandClick:!car,bilgePump:!car&&b.bilge?.running?.035:0,bilgeSlosh:!car?clamp(b.bilge?.level??0,0,1)*clamp(Math.abs(b.rollVelocity)+Math.abs(b.pitchVelocity)+speed*.02,0,.8)*.08:0,bilgeAlarm:!car&&!!b.bilge?.alarm,
   ignitionAlarm:!b.suppressIgnitionAlarm&&b.engines.some(en=>en.key==='ignition'),
+  temperatureAlarm:!car&&b.battery.soc>.001&&b.engines.some(en=>en.key!=='off'&&(en.temperature>=105||en.thermalTrip)),
   trimPump:b.spec.jet||b.spec.air||b.spec.propulsion==='inboard'?0:clamp(Math.max(...b.engines.map(en=>Math.abs(en.trimRate??0)))/.1,0,1),
   thrusters:['bow','stern'].map(end=>Math.abs(b.thrusters[end+'Actual']??0)*.085),pump:b.fuel.refueling?.025:0};
 }
@@ -112,7 +113,7 @@ export function createSoundscape({context=null}={}){
    for(let i=values.engines.length;i<graph.engines.length;i++){const v=graph.engines[i];target(v.gain.gain,0);target(v.exhaust.gain.gain,0);target(v.churn.gain.gain,0);}
    target(graph.waves.gain.gain,values.waves*(.75+.25*Math.sin(b.time*1.3)));target(graph.wash.gain.gain,values.wash*(1-.72*values.skimming));target(graph.wash.filter.frequency,values.waterCutoff);
    target(graph.spray.gain.gain,values.spray*.65);target(graph.spray.filter.frequency,values.sprayCutoff);target(graph.sprayRight.gain.gain,values.spray*.55);target(graph.sprayRight.filter.frequency,values.sprayCutoff*1.2);
-   values.thrusters.forEach((v,i)=>{target(graph.thrusters[i].gain.gain,v);target(graph.thrusters[i].filter.frequency,420+v*2200);});target(graph.pump.gain.gain,values.pump);target(graph.alarm.gain.gain,values.ignitionAlarm?.045:0,.025);
+   values.thrusters.forEach((v,i)=>{target(graph.thrusters[i].gain.gain,v);target(graph.thrusters[i].filter.frequency,420+v*2200);});target(graph.pump.gain.gain,values.pump);target(graph.alarm.gain.gain,(values.ignitionAlarm||values.temperatureAlarm)?.045:0,.025);
    target(graph.trim.gain.gain,values.trimPump*.022);target(graph.trim.noise.gain.gain,values.trimPump*.055);target(graph.trim.source.frequency,175+values.trimPump*28);
    if(boatRef!==b){boatRef=b;previous=null;}
    if(previous&&active){

@@ -1,4 +1,4 @@
-# Przystań — symulator manewrów motorówką v20
+# Przystań — symulator manewrów motorówką v21
 
 Przeglądarkowy symulator z widokiem z góry, bez kont i backendu. Osiem rodzajów
 łodzi, w tym skuter, zmieniane wymiary i masa, jeden lub dwa silniki do 350 KM.
@@ -6,10 +6,26 @@ Mapa wzorowana na Jeziorze Zegrzyńskim: obszar 11,95 × 9,73 km (odległości s
 i Bugu, zatoki, mosty, plaże i przystanie. Port ze slipem, serwisem,
 stanowiskami z bojami i ruchomymi Y-bomami szerokości 25 cm.
 
-Uruchom: **https://piothepio.github.io/BoatSimulator/?v=20.0.0**.
+Uruchom: **https://piothepio.github.io/BoatSimulator/?v=21.0.0**.
 
 Model służy do poznawania zależności w manewrach; nie jest skalibrowany dla
 konkretnej łodzi. [Źródła, równania i ograniczenia](docs/PHYSICS.md).
+
+## Zmiany v21 — czas eksploatacyjny i instalacja
+
+- Osobny licznik logiczny ×1,428571: 700 m mapy = 1000 m przebiegu.
+  Czas podróży, motogodziny każdego silnika, zużycie paliwa i statystyki
+  kompensują mapę 70%; zegar fizyki nadal 1:1.
+- Aktualne L/h oznacza litry na godzinę logicznej pracy. Ubytek ze zbiornika
+  jest rzeczywisty i nadal wpływa na dotychczasowy model masy.
+- HIGH TEMP / ALARM / OVERHEAT, odwracalne ograniczenie mocy i odzyskanie
+  sprawności po ostygnięciu; bez trwałego zatarcia.
+- Dotychczasowy akumulator zasila rozrusznik, strumieniowe, pompę, światła,
+  GPS, sonar i instrumenty. Alternator 12–34 A na silnik zależnie od RPM.
+  Przełączniki i bilans amperów pod konsolą; woltomierz zachowuje kalibrację.
+- Wybór przystani i ETA w czasie logicznym przy zbliżaniu do celu.
+  Oszacowanie w linii prostej, bez wyznaczania trasy omijającej przeszkody.
+- [Zakres zmian, parametry, rozdział zegarów i testy v21](docs/OPERATIONS_V21.md).
 
 ## Zmiany v20 — strugi, fale i kompaktowy kokpit
 

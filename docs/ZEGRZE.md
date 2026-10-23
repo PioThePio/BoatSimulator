@@ -59,6 +59,11 @@ Dokładne zapytania o najbliższy brzeg wykonuje indeks BVH odcinków, zamiast
 rasteryzacji wielokilometrowego jeziora. Nie traci to rozdzielczości kontaktu
 małego kadłuba z brzegiem. Rysowanie wektorowe nie tworzy ogromnej tekstury.
 
+Od v21 osobny czas eksploatacyjny ma współczynnik 1 / 0,70 = 1,428571.
+Liczniki, motogodziny i paliwo zależne od czasu uwzględniają skrócone odległości;
+700 m mapy daje 1000 m przebiegu logicznego. Czas i prędkości fizyki pozostają
+bez zmian. [Dokładny rozdział zegarów](OPERATIONS_V21.md).
+
 ## Porty, paliwo i naprawa
 
 Główny port znajduje się przy cyplu Zegrza Północnego. Zachowano istniejące

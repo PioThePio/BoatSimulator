@@ -1,3 +1,4 @@
+import {createOperations,operationsStep,consumeOperatingFuel} from './operations.js';
 import {clamp,bottomAt,SERVICE_STATION,PARKING,BUILDINGS,DOCKS,BOLLARDS} from './world.js';
 import {SUV_GEOMETRY,bodyPoint,bodyLocal,kick,frameZ,bunkZ,updateTowGeometry} from './tow-geometry.js';
 import {vehicleSurface,vehicleGradient} from './vehicle-terrain.js';
@@ -20,7 +21,7 @@ export function createTowRig(b,{loaded=false,atSlip=false,slipCarY=7,misalignmen
  const r={car,trailer:t,boatLength:S.length,boatLoaded:loaded,secured:loaded,attached:true,trailerPark:false,handbrake:false,awd:false,frontSink:0,rearSink:0,carDamage:0,trailerDamage:0,hitchDamage:0,postBroken:false,lastJackknife:-10,
   gear:'P',steer:0,actualSteer:0,gas:0,brake:0,pedal:0,brakePedal:0,speed:0,time:0,slip:0,traction:1,grade:0,drawbarForce:0,contacts:0,ropeForce:{x:0,y:0,torque:0},status:loaded?'Łódź zabezpieczona · cuma dziobowa PRZ':'Pusta przyczepa na parkingu',
   engine:{key:'off',rpm:0,n:0,load:0,hp:SUV.hp,gear:0,temperature:18,startTime:0,immersion:0,ventilation:0,thrust:0,inflow:0,opposingFlow:0,trim:0,trimRate:0},fuel:{litres:65,capacity:75,flow:0}};
- r.winch=createWinch(S);r.loadingScore={active:false,best:0,quality:0,samples:0,angleSum:0,offsetSum:0};
+ r.operations=createOperations();r.winch=createWinch(S);r.loadingScore={active:false,best:0,quality:0,samples:0,angleSum:0,offsetSum:0};
  b.towRig=r;updateTowGeometry(r);updateTrailerMass(r,b);
  if(loaded){b.throttle=b.throttle2=0;for(const en of b.engines){en.key='off';en.rpm=en.n=en.gear=en.thrust=0;if(!S.jet&&!S.air&&S.propulsion!=='inboard')en.trim=en.trimTarget=1;}placeTrailerBoat(r,b);attachRope(b,'bow',trailerBollardIndex());connectWinch(r,b);}
  return r;
@@ -201,7 +202,8 @@ export function towStep(r,b,dt){
  en.load=running?clamp((Math.abs(drive)+drawbar*.5)/14000,0,1):0;en.gear=direction;en.thrust=drive;en.inflow=speed;
  const rpmTarget=en.key==='starting'?220:running?780+r.pedal*(['P','N'].includes(r.gear)?3600:1600)+Math.abs(speed)*95+en.load*900+r.slip*1200:0;
  en.rpm+=(rpmTarget-en.rpm)*(1-Math.exp(-dt/(running?.28:.12)));if(en.rpm<1)en.rpm=0;en.n=clamp(en.rpm/6000,0,1);en.temperature+=((running?87:18)-en.temperature)*dt/(running?100:450);
- r.fuel.flow=running?1.2+Math.abs(drive*speed)/735.5*.24+r.pedal*3:0;r.fuel.litres=Math.max(0,r.fuel.litres-r.fuel.flow/3600*dt);
+ en.fuelFlow=running?1.2+Math.abs(drive*speed)/735.5*.24+r.pedal*3:0;
+ consumeOperatingFuel(r.fuel,[en],r.operations,dt);operationsStep(r.operations,[en],c,dt);
  r.tyreSlip=r.slip*r.pedal*clamp(Math.max(d.frontDepth,d.rearDepth)/.08,0,1);
  updateTowGeometry(r);if(r.boatLoaded&&r.secured)placeTrailerBoat(r,b);
 }

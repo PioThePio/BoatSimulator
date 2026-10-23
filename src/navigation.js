@@ -1,0 +1,17 @@
+import {REMOTE_HARBORS,FUEL_STATION} from './world.js';
+import {logicalDistance,operationalSeconds} from './operations.js';
+const wetApproach=q=>{const [nx,ny]={east:[1,0],west:[-1,0],south:[0,1],north:[0,-1]}[q.direction];return{x:q.x+nx*(q.length+14),y:q.y+ny*(q.length+14)};};
+export const DESTINATIONS=[{id:'main',name:'Port główny',x:90,y:55},
+ ...REMOTE_HARBORS.map(q=>({id:q.id,name:q.name,...wetApproach(q)})),
+ {id:'fuel',name:'Stacja paliw · Rynia',x:FUEL_STATION.x+15,y:FUEL_STATION.y}];
+export function destinationStatus(b,id){
+ const target=DESTINATIONS.find(q=>q.id===id);
+ if(!target)return{target:null,distance:null,eta:null,arrived:false};
+ const dx=target.x-b.x,dy=target.y-b.y,physical=Math.hypot(dx,dy),distance=logicalDistance(physical),arrived=physical<18;
+ const closing=physical>.1?(dx*b.vx+dy*b.vy)/physical:0;
+ const online=b.electrics.powered.gps;
+ // A logical distance divided by unmodified SOG gives logical ETA. A boat
+ // stopped or travelling away does not get a fabricated arrival countdown.
+ return{target,distance:online?distance:null,arrived:online&&arrived,
+  eta:online&&!arrived&&closing>.15&&b.operations.started?operationalSeconds(physical/closing):null};
+}

@@ -1,6 +1,8 @@
-# Model v20: podstawy, założenia i ograniczenia
+# Model v21: podstawy, założenia i ograniczenia
 
-Aktualne strugi, pompy, odbicia fal i kompresja geografii: [raport v20](FIXES_V20.md).
+Czas eksploatacyjny, chłodzenie, instalacja i zachowanie czasu fizyki 1:1: [raport v21](OPERATIONS_V21.md).
+
+Strugi, pompy, odbicia fal i kompresja geografii: [raport v20](FIXES_V20.md).
 
 Poprawki v19, energia kolizji, zalewanie i konfiguracje napędów:
 [osobny raport](FIXES_V19.md). Starsze rozdziały i pomiary opisują też historię modelu.
