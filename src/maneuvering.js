@@ -1,4 +1,8 @@
 import {DOCKS,bottomAt,clamp} from './world.js';
+export function airRudderForce(S,thrust,delta){
+ const sharp=clamp((Math.abs(delta)/S.maxSteer-.65)/.35,0,1),s=Math.sin(delta);
+ return{x:thrust*(1-(.25+.62*sharp)*s*s),y:-thrust*(.7+.5*sharp)*s};
+}
 // Right-handed propeller: the stern walks to port in reverse. Twin installations
 // are assumed counter-rotating, so this small transverse component cancels.
 export function propWalkForce(S,en,speed,planing){

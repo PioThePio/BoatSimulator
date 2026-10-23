@@ -32,18 +32,18 @@ test('island shore uses the same gradual grounding physics as the mainland',()=>
 });
 function abrasion(x,y,raised=false){const b=createBoat('open');b.x=x;b.y=y;b.a=0;b.vx=.2;b.enginesRaised=raised;const en=b.engines[0];en.gear=1;en.n=.6;for(let i=0;i<120;i++){b.time+=1/120;propellerContact(b,en,1/120,()=>{});}return en;}
 test('rock strikes harm the propeller much more than sand abrasion',()=>{
- const p=sandPosition(5.5),sand=abrasion(p.x,p.y),rocks=abrasion(80,6.4);assert.ok(sand.propContact&&rocks.propContact);assert.ok(sand.propDamage>0&&sand.propDamage<2);assert.ok(rocks.propDamage>sand.propDamage*10);assert.ok(rocks.propDamage<=100);
+ const p=sandPosition(5.5),sand=abrasion(p.x,p.y),rocks=abrasion(80,6.1);assert.ok(sand.propContact&&rocks.propContact);assert.ok(sand.propDamage>0&&sand.propDamage<2);assert.ok(rocks.propDamage>sand.propDamage*10);assert.ok(rocks.propDamage<=100);
 });
 test('a stationary nonrotating propeller does not abrade itself in sand',()=>{
  const b=createBoat('beach');b.a=0;for(let i=0;i<1200;i++){b.time+=1/120;propellerContact(b,b.engines[0],1/120,()=>{});}assert.equal(b.engines[0].propDamage,0);
 });
 test('twin props contact the bottom independently',()=>{
- const b=createBoat('open',{engineCount:2});b.x=80;b.y=6.9;b.a=0;b.vx=.3;
+ const b=createBoat('open',{engineCount:2});b.x=80;b.y=6.1;b.a=0;b.vx=.3;
  for(const en of b.engines){en.gear=1;en.n=.5;propellerContact(b,en,1/120,()=>{});}
  assert.ok(b.engines[0].propDamage>0);assert.equal(b.engines[1].propDamage,0);
 });
 test('raised drive avoids prop strikes and produces no thrust',()=>{
- assert.equal(abrasion(80,6.4,true).propDamage,0);
+ assert.equal(abrasion(80,6.1,true).propDamage,0);
  const b=createBoat('open');b.enginesRaised=true;b.throttle=1;run(b,4);assert.equal(b.engines[0].thrust,0);assert.equal(b.vx,0);assert.equal(b.vy,0);
 });
 test('a destroyed prop removes thrust while a partly damaged one loses efficiency',()=>{

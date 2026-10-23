@@ -10,9 +10,9 @@ export const SUV=SUV_GEOMETRY;
 const G=9.81,wrap=a=>Math.atan2(Math.sin(a),Math.cos(a));
 export const trailerBollardIndex=()=>BOLLARDS.findIndex(p=>p.trailer);
 function body(x,y,a,mass,iz){return{x,y,a,mass,iz,vx:0,vy:0,w:0,z:0,pitch:0};}
-export function createTowRig(b,{loaded=false,atSlip=false,misalignment=(loaded&&!atSlip ? .065 : 0)}={}){
+export function createTowRig(b,{loaded=false,atSlip=false,slipCarY=7,misalignment=(loaded&&!atSlip ? .065 : 0)}={}){
  const S=b.spec,mass=220+S.length*65+Math.max(0,S.mass-1200)*.055,offset=.14*S.length,hitch=offset+.5*S.length+1.45,a=-Math.PI/2;
- const car=body(124.5,atSlip?9:-32,a,SUV.mass,SUV.iz),hp=bodyPoint(car,-SUV.hitch);
+ const car=body(124.5,atSlip?slipCarY:-32,a,SUV.mass,SUV.iz),hp=bodyPoint(car,-SUV.hitch);
  const trailerAngle=a+misalignment;
  const t=body(hp.x-Math.cos(trailerAngle)*hitch,hp.y-Math.sin(trailerAngle)*hitch,trailerAngle,mass,mass*(S.length*S.length+S.beam*S.beam)/12);
  Object.assign(t,{emptyMass:mass,hitch,offset,length:S.length+2.15,beam:Math.max(1.65,S.beam+.35),axles:mass+S.mass>4500?3:mass+S.mass>1800?2:1,braked:mass+S.mass>750,bunkHeight:.6+S.draft*.15});
@@ -91,18 +91,25 @@ export function placeTrailerBoat(r,b){
 export function trailerAction(r,b,action){
  if(action==='release'){if(!r.boatLoaded)return{ok:false,message:'Przyczepa jest pusta.'};r.secured=false;b.launchMotion=true;r.unloadedTime=0;updateTrailerMass(r,b);r.status='Zabezpieczenia zwolnione · łódź może się zsunąć, cuma PRZ trzyma dziób';return{ok:true,message:r.status};}
  if(r.secured&&r.boatLoaded)return{ok:true,message:'Łódź zabezpieczona na przyczepie'};
- const p=bodyLocal(r.trailer,b),d=trailerImmersion(r,b),v=trailerTarget(r);
- if(!r.boatLoaded&&d.tooDeep)return{ok:false,message:'Przyczepa za głęboko · podjedź SUV-em do przodu.'};
- if(!r.boatLoaded&&d.tooShallow)return{ok:false,message:'Przyczepa za płytko · zanurz podpory, cofając SUV-em.'};
- if(Math.abs(p.y)>b.spec.beam*.2+.1||Math.abs(p.x-r.trailer.offset)>.70||Math.abs(wrap(b.a-r.trailer.a))>.20)return{ok:false,message:'Wprowadź łódź prosto między prowadnice, dziobem do polera PRZ.'};
- if(Math.hypot(b.vx-v.vx,b.vy-v.vy)>.3||Math.hypot(r.car.vx,r.car.vy)>.15)return{ok:false,message:'Zatrzymaj samochód i łódź przed zabezpieczeniem.'};
- if(!r.winch.attached&&!b.ropes.some(q=>q.end==='bow'&&q.bollard===trailerBollardIndex()))return{ok:false,message:'Podepnij wciągarkę lub cumę dziobową do przyczepy.'};
- if(b.ropes.some(q=>q.bollard!==trailerBollardIndex())||b.anchor.mode!=='stowed')return{ok:false,message:'Odepnij cumy od brzegu i wybierz kotwicę przed załadunkiem.'};
+ const allowed=securingStatus(r,b);if(!allowed.ok)return allowed;const p=allowed.local;
  loadingScoreStep(r,b,0);if(r.loadingScore.active){r.loadingScore.active=false;r.loadingScore.complete=true;}
  // Straps fix the achieved pose. They cannot finish a mediocre approach by
  // teleporting the hull onto an ideal centreline or improve its frozen score.
  r.securedPose={x:p.x,y:p.y,angle:wrap(b.a-r.trailer.a)};
  r.boatLoaded=r.secured=true;b.launchMotion=false;updateTrailerMass(r,b);placeTrailerBoat(r,b);r.status='Łódź zabezpieczona na przyczepie';return{ok:true,message:r.status};
+}
+export function securingStatus(r,b){
+ const p=bodyLocal(r.trailer,b),d=trailerImmersion(r,b),v=trailerTarget(r);
+ const supported=(b.trailerSupport?.load??0)>b.spec.mass*9.81*.08;
+ // Depth controls floating onto the cradle, not the straps. Once supported,
+ // an aligned boat can be strapped on a shallow ramp or completely on land.
+ if(!r.boatLoaded&&!supported&&d.tooDeep)return{ok:false,message:'Przyczepa za głęboko · podjedź SUV-em do przodu.'};
+ if(!r.boatLoaded&&!supported&&d.tooShallow)return{ok:false,message:'Łódź nie spoczywa na podporach · wprowadź ją wciągarką albo zanurz przyczepę.'};
+ if(Math.abs(p.y)>b.spec.beam*.2+.1||Math.abs(p.x-r.trailer.offset)>.70||Math.abs(wrap(b.a-r.trailer.a))>.20)return{ok:false,message:'Wprowadź łódź prosto między prowadnice, dziobem do polera PRZ.'};
+ if(Math.hypot(b.vx-v.vx,b.vy-v.vy)>.3||Math.hypot(r.car.vx,r.car.vy)>.15)return{ok:false,message:'Zatrzymaj samochód i łódź przed zabezpieczeniem.'};
+ if(!r.winch.attached&&!b.ropes.some(q=>q.end==='bow'&&q.bollard===trailerBollardIndex()))return{ok:false,message:'Podepnij wciągarkę lub cumę dziobową do przyczepy.'};
+ if(b.ropes.some(q=>q.bollard!==trailerBollardIndex())||b.anchor.mode!=='stowed')return{ok:false,message:'Odepnij cumy od brzegu i wybierz kotwicę przed załadunkiem.'};
+ return{ok:true,message:'Gotowa do zabezpieczenia · zapnij pasy',local:p};
 }
 function rampGrade(p){const q=SERVICE_STATION.slip;return p.x>q.x&&p.x<q.x+q.w&&p.y>q.y&&p.y<q.y+q.h?q.angle*Math.PI/180:0;}
 function tyre(q,x,angle,normal,mu,stiffness,dt){

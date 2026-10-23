@@ -1,4 +1,7 @@
-# Model v18: podstawy, założenia i ograniczenia
+# Model v19: podstawy, założenia i ograniczenia
+
+Aktualne poprawki v19, energia kolizji, zalewanie i konfiguracje napędów:
+[osobny raport](FIXES_V19.md). Starsze rozdziały i pomiary opisują też historię modelu.
 
 Mapa Zegrza, skala, źródła i poprawki v18: [osobny opis](ZEGRZE.md).
 
@@ -167,7 +170,7 @@ Ramię silnika: `-0,44*L`, rozstaw dwóch: `0,46*B`. Sumujemy siły i momenty
 każdego, dlatego przeciwny bieg obraca łódź, a równe wychylenia przeciwnych
 manetek nie równoważą ciągów. Skeg działa także na luzie, gdy opływa go woda.
 Oba zaburtowe skręcają wspólnie, z ograniczeniem szybkości rzeczywistego
-kąta do 0,38 rad/s. Koło wykonuje dwa i pół obrotu między oporami i nie wraca do zera.
+kąta do 0,80 rad/s. Koło motorówki wykonuje dwa i pół obrotu między oporami i nie wraca do zera.
 
 Skuter: inna masa, zanurzenie, bezwładność, kąt dyszy ±28°, ramię `-0,40*L`,
 ciąg statyczny `62*KM^0,8`, sprawność 0,63, deflektor wstecz 34%.
@@ -178,8 +181,8 @@ hamowania/iBR, wyrzutu pasażera ani pełnej hydrauliki deflektora.
 
 Koło ma różny skok między oporami: otwarta 1,5 obrotu, motorówka 2,5,
 kabinowa 3, wypornościowa 3,5; skuter 0,25 obrotu, czyli 90°.
-Kąt napędu zaburtowego: od v18 domyślnie ±45°, wybór ±30/35/40/45°; to zakres
-konfiguracji modelu, bez deklaracji zgodności z instrukcją konkretnego
+Kąt napędu zaburtowego: domyślnie ±45°, od v19 przypisany do jednostki;
+wybór maksymalnego kąta usunięto z menu. To parametr modelu, bez deklaracji zgodności z instrukcją konkretnego
 silnika. Dysza skutera pozostaje ±28°, bez trymu. Prędkość fizycznego
 przestawienia: zaburtowy/Z-drive 0,80 rad/s, dysza skutera 1,6 rad/s.
 Klawiatura przestawia koło z czasem od środka do oporu odpowiednio
@@ -511,10 +514,13 @@ Są to wyniki symulatora, nie dane z prób morskich ani gwarantowane osiągi.
 ## Kolizje
 
 Prędkość normalna punktu kontaktu uwzględnia ruch i obrót; energia
-`0,5*m_ef*v_normalna²`. Zachowano umowne progi dydaktyczne:
-bez szkód do 0,15 m/s, z kontaktem przez odbijacz do 0,30 m/s; zniszczenie
-od 1,50 / 1,80 m/s. To nie są potwierdzone bezpieczne prędkości prawdziwej
-łodzi, pomostu ani rzeczywistych odbijaczy. Celem manewru jest kontakt bliski zeru.
+`0,5*m_ef*v_normalna²`. Od v19 szkoda rośnie z nadmiarem energii ponad
+kontakt 0,15 m/s (0,30 m/s przez odbijacz), podzielonym przez umowną
+energię konstrukcji `max(4500,structureMass*8) J`, z mnożnikiem odporności
+2,5 dla odbijacza. Nie ma automatycznego 100% od prędkości 1,5/1,8 m/s.
+Te progi mogą nadal oznaczać silny błysk kontaktu. Ciągły nacisk dolicza
+jedynie wzrost szczytu szkody, nie tę samą energię co krok solvera.
+Celem manewru jest kontakt bliski zeru; współczynniki nie są danymi producentów.
 Kolizje z Y-bomami używają odcinka o rzeczywistej szerokości,
 z ruchem punktu kontaktu, bezwładnością obrotu i reakcją na zawiasie.
 Cztery odbijacze mają osobne okręgi kontaktu, zgodne z pozycjami na mapie.
@@ -700,9 +706,9 @@ osiadanie bez szkód ma żółty status. Ułamkowe otarcie śruby jest widoczne
 przy odczycie zdrowia z dokładnością do 0,1 punktu procentowego.
 
 Slip w v13 leży przy x=121–128, y=−8–36, obok pomostów serwisowych.
-Naprawę można rozpocząć przy całym kadłubie w prostokącie x=119,5–130,5,
-y=16–31, prędkości do 0,12 m/s, obrocie do 0,025 rad/s, wyłączonym zapłonie
-i rzeczywistej cumie do tego stanowiska. Kadłub odnawia 3 punkty zdrowia
+Od v19 naprawę można rozpocząć po przycumowaniu do dowolnej dostępnej
+strony pomostów serwisu, przy prędkości do 0,30 m/s, obrocie do 0,08 rad/s
+i wyłączonym zapłonie. Nie wymaga całego kadłuba w prostokącie. Kadłub odnawia 3 punkty zdrowia
 na sekundę, śruby po 4. Zerwanie warunków przerywa pracę. Proces nie
 przemieszcza łodzi ani nie zmienia szkód pomostu. Slipowanie przyczepą
 jest osobnym mechanizmem opisanym niżej; naprawa nadal odbywa się przy pomoście.
@@ -959,8 +965,10 @@ Manualne ON wymusza pracę. Od v18 AUTO odczytuje faktyczne litry przed
 decyzją pływaka: start `min(15 l, 5% pojemności)`, stop `min(3 l, 1%)`.
 Działa z akumulatora także bez zapłonu; poniżej 2% ładunku przestaje działać.
 Alarm i czerwony wskaźnik zaczynają się od 50%. Naprawa konstrukcji i napędu
-usuwa przeciek, ale wodę trzeba wypompować. Ten model nie oblicza zatonięcia,
-zalewania przez nadburcie ani utraty stateczności przez swobodną powierzchnię.
+usuwa przeciek, ale wodę trzeba wypompować. Od v19 przy dużym zalaniu
+utrata rezerwy wyporu dodatkowo obniża kadłub, aż do całkowitego zanurzenia;
+silnik może zgasnąć po zanurzeniu osłony. To uproszczony mechanizm opisany
+w raporcie v19, bez pełnego modelu 3D swobodnej powierzchni i wszystkich otworów.
 
 ### Cumy i transport
 

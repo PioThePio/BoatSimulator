@@ -71,9 +71,9 @@ for(const [index,d]of DOCKS.entries()){
  }
 }
 for(const y of [16,22,28,34,38])BOLLARDS.push({x:132,y,kind:'bollard',id:'SER'+y,label:'Serwis przy slipie · '+y,service:true});
-export const MAP_STARTS={retrieve:{x:125,y:24,a:-Math.PI/2},beach:{x:BEACHES[0].x+1,y:BEACHES[0].y-6,a:Math.PI/2},island:{x:ISLAND.x,y:ISLAND.y+ISLAND.ry+5,a:Math.PI},canal:{x:rz.x,y:rz.y,a:0},fuel:{x:FUEL_STATION.x+2,y:FUEL_STATION.y,a:Math.PI/2}};
+export const MAP_STARTS={retrieve:{x:125,y:22,a:-Math.PI/2},beach:{x:BEACHES[0].x+1,y:BEACHES[0].y-6,a:Math.PI/2},island:{x:ISLAND.x,y:ISLAND.y+ISLAND.ry+30,a:Math.PI},canal:{x:rz.x,y:rz.y,a:0},fuel:{x:FUEL_STATION.x+2,y:FUEL_STATION.y,a:Math.PI/2}};
 export function bottomAt(x,y){
- const shore=shoreAt(x,y),dist=shore.distance,slope=shore.beach?.085:shore.edge==='canal'?.65:.24;
+ const shore=shoreAt(x,y),dist=shore.distance,slope=shore.beach?.085:shore.edge==='canal'?.65:.21*(1+.28*Math.sin(x*.027)+.16*Math.cos(y*.041));
  const basin=shore.edge==='canal'?3.2:8.5;
  let depth=dist>=0?basin*(1-Math.exp(-dist*slope/basin)):dist*(shore.beach?.07:.32);
  if(dist>=0){for(const s of SHOALS)depth-=s.drop*Math.exp(-((x-s.x)**2/s.rx**2+(y-s.y)**2/s.ry**2));depth=Math.max(.015,depth+.10*Math.sin(x*.13)*Math.sin(y*.16)*clamp(dist/12,0,1));}
@@ -81,6 +81,9 @@ export function bottomAt(x,y){
  // A level yard and its approach meet the dry end of the slip. Shore-distance
  // elevation used to put the parked trailer on an unintended slope.
  const smooth=v=>{v=clamp(v,0,1);return v*v*(3-2*v);};
+ // A maintained harbour has a dredged basin. The smooth apron lies outside
+ // the ramp and never changes the dry yard or the axle/ramp transition.
+ if(dist>0&&x>0&&x<150&&y>7&&y<70){const basin=smooth((x-0)/4)*smooth((150-x)/5)*smooth((y-7)/3)*(1-smooth((y-45)/25))*smooth((dist-1)/4);depth+=Math.max(0,2.7+.18*Math.sin(x*.07)-depth)*basin;}
  const yardDepth=(ramp.y-ramp.waterY)*Math.tan(ramp.angle*Math.PI/180);
  // The entire parking apron is flat. Outside it, shoulders blend into the
  // shore; at the ramp entrance even its edges meet the SAME elevation.

@@ -24,7 +24,7 @@ test('mouse controls, environment and mooring are usable',async({page})=>{
  await weather(page);await page.locator('#preset').selectOption('crosswind');await expect(page.locator('#wind-value')).toHaveText('6.0 m/s');await weather(page);await page.locator('#preset').selectOption('gusty');await expect(page.locator('#wind-value')).toHaveText('5.0–11.0 m/s');await expect(page.locator('#wind-min')).toHaveValue('5');await expect(page.locator('#wind-dir-variation')).toHaveValue('30');
  await page.locator('#wheel').scrollIntoViewIfNeeded();const r=await page.locator('#wheel').boundingBox(),cx=r.x+r.width/2,cy=r.y+r.height/2,radius=r.width*.4;await page.mouse.move(cx,cy-radius);await page.mouse.down();for(let i=1;i<=12;i++){const a=-Math.PI/2+i*Math.PI/24;await page.mouse.move(cx+Math.cos(a)*radius,cy+Math.sin(a)*radius);}await page.mouse.up();expect(+(await page.locator('#wheel').getAttribute('aria-valuenow'))).toBeGreaterThan(3);
  await page.locator('#throttle').fill('40');await expect(page.locator('#gear')).toContainText('40%');await page.locator('#neutral').click();await expect(page.locator('#gear')).toContainText('LUZ');
- await page.locator('#help').click();await expect(page.locator('#info')).toBeVisible();await expect(page.locator('#info')).toContainText('umowne progi dydaktyczne');await page.keyboard.press('Escape');await expect(page.locator('#info')).not.toBeVisible();
+ await page.locator('#help').click();await expect(page.locator('#info')).toBeVisible();await expect(page.locator('#info')).toContainText('Szkody zależą od energii');await page.keyboard.press('Escape');await expect(page.locator('#info')).not.toBeVisible();
 });
 test('mobile layout fits viewport and renders map',async({page})=>{
  await page.setViewportSize({width:390,height:844});await page.goto('/');await page.locator('#begin-session').click();await expect(page.locator('#lake')).toBeVisible();
@@ -166,7 +166,7 @@ test('anchor window drags and applies a condition-dependent scope suggestion to 
  await page.locator('#close-anchor').click();await weather(page);await page.locator('#wind').fill('9');await page.locator('[data-steady=wind]').click();await page.locator('#close-weather').click();await page.locator('#show-anchor').click();await expect(page.locator('#map-anchor-advice')).toContainText('7:1');await page.locator('#map-anchor-suggest').click();const stronger=+(await page.locator('#map-anchor-target').inputValue());expect(stronger).toBeGreaterThan(suggested);
 });
 test('trim detents, propeller-ground diagram and actual steering position are visible',async({page})=>{
- await page.goto('/');await page.locator('#craft').selectOption('cruiser');await page.locator('#start-location').selectOption('beach');await page.locator('#begin-session').click();await expect(page.locator('#prop-water-state')).toContainText('Śruba w wodzie');await expect(page.locator('#attitude-bottom')).not.toHaveAttribute('d','');
+ await page.goto('/');await page.locator('#craft').selectOption('tender');await page.locator('#start-location').selectOption('beach');await page.locator('#begin-session').click();await expect(page.locator('#prop-water-state')).toContainText('Śruba w wodzie');await expect(page.locator('#attitude-bottom')).not.toHaveAttribute('d','');
  for(let i=0;i<6;i++)await page.locator('[data-trim="1"]').click();await expect(page.locator('#trim-value')).toHaveText('40%');await page.locator('[data-trim="1"]').click();await expect(page.locator('#trim-value')).toHaveText('50%');for(let i=0;i<3;i++)await page.locator('[data-trim="1"]').click();await expect(page.locator('#trim-value')).toHaveText('80%');
  await expect(page.locator('#prop-water-state')).not.toContainText('ŚRUBA DOTYKA DNA',{timeout:9000});
  await page.locator('.wheel-section h2').click();await page.keyboard.down('ArrowRight');await page.waitForTimeout(450);await page.keyboard.up('ArrowRight');await expect(page.locator('#rudder-angle')).toContainText('P');
@@ -186,7 +186,7 @@ test('contact diagram shows the real fender and damaged bow, then fades while ke
   const strike={color:el.getAttribute('stroke'),flash:el.dataset.contact,damage:el.dataset.damage,label:document.querySelector('#impact-info').textContent};
   bow.time+=2;updateContactInstrument(bow);return{safe,strike,faded:{color:el.getAttribute('stroke'),flash:el.dataset.contact,damage:el.dataset.damage}};
  });
- expect(states.safe).toEqual({color:'#66bd8a',flash:'true',damage:0});expect(states.strike.flash).toBe('true');expect(+states.strike.damage).toBeGreaterThan(0);expect(states.strike.label).toContain('Dziób');expect(states.faded.flash).toBe('false');expect(states.faded.color).toBe('#df9c54');expect(states.faded.damage).toBe(states.strike.damage);
+ expect(states.safe).toEqual({color:'#66bd8a',flash:'true',damage:0});expect(states.strike.flash).toBe('true');expect(+states.strike.damage).toBeGreaterThan(0);expect(states.strike.label).toContain('Dziób');expect(states.faded.flash).toBe('false');expect(states.faded.color).toBe('#d8c36c');expect(states.faded.damage).toBe(states.strike.damage);
 });
 test('phone keeps compact vessel condition below the attitude graphic with legible percentages',async({page})=>{
  await page.setViewportSize({width:390,height:844});await page.goto('/');await page.locator('#begin-session').click();

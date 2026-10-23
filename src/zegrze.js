@@ -19,7 +19,14 @@ const bank=[
  [660,1005],[650.9,1018],[650.9,1042],[649.1,1042],[649.1,1018],[641,1008],[637,989],[633,978],[626,977],[623,951],[628,928],[621,920],[599,909],[587,898],[563,891],[548,882],[525,881],[507,872],[490,857],[490,843],[502,828],[514,815],[522,796],[531,781],[541,766],[556,748],
  [526,735],[503,725],[476,709],[448,686],[417,666],[392,652],[370,630],[345,609],[319,596],[298,575],[278,561],[258,546],[236,535],[219,521],[184,515],[146,500],[108,482],[66,478],[30,475],[0,476]
 ];
-export const ZEGRZE_SHORE=bank.map(([x,y])=>fromAtlas(x,y));
+// Preserve atlas landmarks and the engineered main quay; add metre-scale
+// coves between them rather than large, ruler-straight stretches of bank.
+export const ZEGRZE_SHORE=bank.flatMap(([x,y],i)=>{
+ const a=fromAtlas(x,y),next=bank[(i+1)%bank.length],b=fromAtlas(...next),dx=b.x-a.x,dy=b.y-a.y,length=Math.hypot(dx,dy),count=Math.max(1,Math.ceil(length/65));
+ const marina=Math.hypot((a.x+b.x)/2-80,(a.y+b.y)/2)<450;
+ const beach=[[525,881],[345,609],[764,858]].some(([px,py])=>Math.hypot((x+next[0])/2-px,(y+next[1])/2-py)<18);
+ return Array.from({length:count},(_,j)=>{const t=j/count,amplitude=marina||beach||length<160?0:Math.min(8,length*.015),bend=amplitude*Math.sin(Math.PI*t)*(Math.sin(t*Math.PI*4+i*1.7)+.35*Math.sin(t*Math.PI*9+i));return{x:a.x+dx*t-dy/length*bend,y:a.y+dy*t+dx/length*bend};});
+});
 const lo=fromAtlas(0,0),hi=fromAtlas(1280,1042);
 export const ZEGRZE_BOUNDS={left:lo.x,top:lo.y,right:hi.x,bottom:hi.y};
 export const ZEGRZE_ISLANDS=[{...fromAtlas(1020,246),rx:100,ry:36},{...fromAtlas(1098,230),rx:130,ry:44},{...fromAtlas(1170,233),rx:80,ry:30}];

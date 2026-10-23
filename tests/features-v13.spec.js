@@ -16,7 +16,7 @@ test('touch pedals rise and release progressively, car arrow keys do not turn th
 });
 
 test('wind arrow shows local live speed and destination direction; a retrieval start has a submerged trailer',async({page})=>{
- await page.goto('/');await page.locator('#start-location').selectOption('retrieve');await page.locator('#begin-session').click();await page.locator('[data-vehicle=suv]').click();await expect(page.locator('#tow-summary')).toContainText('pusta');await expect(page.locator('#tow-immersion-state')).toHaveText('Łódź może pływać');expect(parseFloat(await page.locator('#trailer-depth').textContent())).toBeGreaterThan(.3);
+ await page.goto('/');await page.locator('#start-location').selectOption('retrieve');await page.locator('#begin-session').click();await page.locator('[data-vehicle=suv]').click();await expect(page.locator('#tow-summary')).toContainText('pusta');await expect(page.locator('#tow-immersion-state')).toHaveText('Podpory częściowo zanurzone');expect(parseFloat(await page.locator('#trailer-depth').textContent())).toBeGreaterThan(.15);await expect(page.locator('#car-front-depth')).toHaveText('0.00 m');
  await page.locator('#weather-open').click();await page.locator('#preset').selectOption('crosswind');await expect(page.locator('#wind-speed')).toHaveText(/\d\.\d m\/s/);await expect(page.locator('#wind-heading')).toHaveText('270° → W');await expect(page.locator('#wind-arrow')).toHaveAttribute('style',/270deg/);await page.locator('#close-weather').click();
  await page.locator('#lake').scrollIntoViewIfNeeded();await page.screenshot({path:'/tmp/boat-v13-ramp.png',fullPage:false});
 });

@@ -89,5 +89,5 @@ test('45 degree low-speed steering makes a tighter real arc than 35 degrees and 
 });
 
 test('SUV camera looks behind in reverse, ahead in drive, recentres in P and preserves metre zoom',()=>{
- const b=createBoat('lake'),r=createTowRig(b);r.gear='R';assert.ok(vehicleLookAhead(r)<-9);r.gear='D';assert.ok(vehicleLookAhead(r)>9);r.gear='P';assert.equal(vehicleLookAhead(r),0);r.gear='D';r.car.vx=8;assert.ok(vehicleLookAhead(r)>18);
+ const b=createBoat('lake'),r=createTowRig(b);r.gear='R';assert.equal(vehicleLookAhead(r),-1.5);r.gear='D';assert.equal(vehicleLookAhead(r),1.5);r.gear='P';assert.equal(vehicleLookAhead(r),0);r.gear='D';r.car.vx=8;assert.equal(vehicleLookAhead(r),1.5);
 });

@@ -29,7 +29,7 @@ test('unsecured boat stays supported at rest without either bow restraint; gentl
 });
 
 test('SUV pulls an empty tandem trailer up the default wet slip in rear drive; tyre slip produces its own noise',()=>{
- const b=createBoat('lake',{profile:'cabin'}),r=createTowRig(b,{atSlip:true});b.x=80;b.y=110;r.engine.key='running';r.gear='D';r.gas=1;let noise=0;for(let i=0;i<480;i++){towStep(r,b,dt);step(b,{},dt);trailerContact(r,b,dt);noise=Math.max(noise,soundParameters(towAudioBoat(r,b)).tyres);}
+ const b=createBoat('lake',{profile:'cabin'}),r=createTowRig(b,{atSlip:true,slipCarY:9});b.x=80;b.y=110;r.engine.key='running';r.gear='D';r.gas=1;let noise=0;for(let i=0;i<480;i++){towStep(r,b,dt);step(b,{},dt);trailerContact(r,b,dt);noise=Math.max(noise,soundParameters(towAudioBoat(r,b)).tyres);}
  assert.equal(r.trailer.axles,2);assert.ok(r.car.y<5);assert.ok(r.speed>1);assert.ok(noise>.01);r.engine.key='off';r.gas=r.pedal=r.tyreSlip=0;assert.equal(soundParameters(towAudioBoat(r,b)).tyres,0);
 });
 
@@ -40,7 +40,7 @@ test('winch hauls on dry carpeted bunks, stops against the padded roller without
 });
 
 test('wet approach meets the supporting cradle, centres a small offset, and freezes its score and achieved pose when secured',()=>{
- const b=createBoat('service'),r=createTowRig(b,{atSlip:true}),p=bodyPoint(r.trailer,r.trailer.offset-.8,.20);Object.assign(b,{x:p.x,y:p.y,a:r.trailer.a+.06});assert.ok(connectWinch(r,b).ok);r.winch.control=-1;run(r,b,12);const local=bodyLocal(r.trailer,b);
+ const b=createBoat('service'),r=createTowRig(b,{atSlip:true,slipCarY:9}),p=bodyPoint(r.trailer,r.trailer.offset-.8,.20);Object.assign(b,{x:p.x,y:p.y,a:r.trailer.a+.06});assert.ok(connectWinch(r,b).ok);r.winch.control=-1;run(r,b,12);const local=bodyLocal(r.trailer,b);
  assert.ok(Math.abs(local.y)<.15);assert.ok(Math.abs(local.x-r.trailer.offset)<.1);assert.ok(b.trailerSupport.load>100);assert.ok(r.loadingScore.quality>80);assert.equal(b.damage,0);const score=r.loadingScore.quality;
  b.engines[0].key='running';r.winch.control=0;const pose={x:b.x,y:b.y,a:b.a};assert.ok(trailerAction(r,b,'secure').ok);assert.ok(Math.hypot(b.x-pose.x,b.y-pose.y)<1e-8);assert.ok(Math.abs(b.a-pose.a)<1e-8);assert.equal(b.engines[0].key,'running');assert.equal(r.loadingScore.complete,true);run(r,b,.2);assert.equal(r.loadingScore.quality,score);r.boatLoaded=r.secured=false;const back=bodyPoint(r.trailer,r.trailer.offset-b.spec.length);Object.assign(b,{x:back.x,y:back.y,vx:0,vy:0});loadingScoreStep(r,b,dt);assert.equal(r.loadingScore.complete,false);assert.equal(r.loadingScore.previous,score);b.vy=-.2;loadingScoreStep(r,b,dt);assert.equal(r.loadingScore.active,true);
 });

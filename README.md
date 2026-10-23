@@ -1,4 +1,4 @@
-# Przystań — symulator manewrów motorówką v18
+# Przystań — symulator manewrów motorówką v19
 
 Przeglądarkowy symulator z widokiem z góry, bez kont i backendu. Osiem rodzajów
 łodzi, w tym skuter, zmieniane wymiary i masa, jeden lub dwa silniki do 350 KM.
@@ -6,10 +6,30 @@ Mapa wzorowana na Jeziorze Zegrzyńskim: obszar 17 × 14 km, ramiona Narwi
 i Bugu, zatoki, mosty, plaże i przystanie. Port ze slipem, serwisem,
 stanowiskami z bojami i ruchomymi Y-bomami szerokości 25 cm.
 
-Uruchom: **https://piothepio.github.io/BoatSimulator/?v=18.0.0**.
+Uruchom: **https://piothepio.github.io/BoatSimulator/?v=19.0.0**.
 
 Model służy do poznawania zależności w manewrach; nie jest skalibrowany dla
 konkretnej łodzi. [Źródła, równania i ograniczenia](docs/PHYSICS.md).
+
+## Zmiany v19 — poprawki zgłoszonych manewrów
+
+- Naprawa przy cumie do pomostów obok slipu, po obu dostępnych stronach;
+  przycisk na mapie. Zniknął warunek całego kadłuba w wąskim prostokącie.
+- Koło, napęd, zegary i panel informacji w jednym rzędzie. Pompa przy napędzie,
+  woda w zęzie po prawej; ON pokazuje także faktyczną pracę AUTO.
+- Szkody zależą od energii; solver nie nalicza powtórnie tego samego kontaktu
+  ani nie niszczy automatycznie łodzi przy 1,5 m/s.
+- Ładowanie z płytszego startu, prowadzenie częściowo pływającej rufy,
+  wciągarka i pasy dopuszczone na suchych podporach. Cały cykl ma regresję.
+- Kamera SUV-a obejmuje zestaw i przesuwa się lekko tylko według biegu;
+  łódź ma wyraźniejsze płynne oddalanie przy prędkości i powrót po zwolnieniu.
+- Marker łodzi na całym akwenie, lokalna minimapa 3,5 km, rozdzielone napisy
+  i nazwa jeziora na górze z informacją o okolicy.
+- Napędy przypisane do typów łodzi, mocniejszy airboat przy pełnym skręcie,
+  czytelny osobny ster wału. Usunięty wybór maksymalnego skrętu z menu.
+- Delikatna woda na jałowym, kotłowanie pod obciążeniem, ślady prądu i wiatru,
+  rozróżnienie plaży od wody, bezpieczny start przy wyspie i zalewanie/zatapianie.
+- [Opis przyczyn, parametrów, konfiguracji napędów i regresji v19](docs/FIXES_V19.md).
 
 ## Zmiany v18 — Zegrze i obsługa na telefonie
 
@@ -144,12 +164,12 @@ Uszkodzenia są zawsze aktywne.
 | Dźwięk | Przełącznik i głośność w konsoli; uruchamia się po dotknięciu ekranu, wycisza na pauzie |
 | Silniki osobno | Suwak „Silniki” 0–200%, zapisany razem z głośnością ogólną; nie ścisza wody, alarmów ani kliknięć |
 | Trym — dźwięk | Pompa elektryczna jest słyszalna podczas fizycznego ruchu napędu, również na wyłączonym silniku |
-| Naprawa | Osobny pomost po prawej stronie slipu: postój, co najmniej jedna cuma do serwisu i wyłączony zapłon; „Napraw przy slipie” |
+| Naprawa | Cumowanie do dostępnej strony pomostów obok slipu, postój i wyłączony zapłon; przycisk pojawia się na mapie |
 | Widok | ◎ centruje łódź, minimapa przesuwa widok, „Cały akwen” pokazuje jezioro, „Ślad” przełącza linię trasy |
 
 Skok koła między oporami: otwarta 1,5 obrotu, motorówka 2,5, kabinowa 3,
 wypornościowa 3,5; skuter tylko 90°. Koło nie wraca do zera. Zaburtowy ma
-domyślnie ±45°, z wyborem ±30/35/40/45° w menu; dysza skutera ±28°.
+domyślnie ±45° przypisane do jednostki; dysza skutera ±28°. Menu nie zmienia tego zakresu.
 Klawiatura szybciej zmienia manetkę po przytrzymaniu: pełny zakres w około
 1,3 s, na skuterze około 0,95 s. Krótkie naciśnięcie nadal wybiera pełzający.
 Strzałki po ustawieniu fokusu na stacyjce sterują łodzią; stacyjka nie zmienia pozycji. Manetki też pozostają

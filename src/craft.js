@@ -16,6 +16,8 @@ for(const [id,p]of Object.entries(CRAFTS)){
  const [hullType,propWalkStrength,windageFactor,planingThreshold,waveResponse]=hulls[id];
  Object.assign(p,{maxHp:350,hullType,propWalkStrength,windageFactor,planingThreshold,waveResponse});
 }
+export const PROPULSIONS={tender:['outboard'],runabout:['outboard','zdrive'],cabin:['outboard','zdrive','inboard'],cruiser:['inboard'],pwc:['jet'],flat:['outboard'],rib:['outboard'],swamp:['air']};
+for(const [id,p]of Object.entries(CRAFTS)){p.propulsions=PROPULSIONS[id];p.steeringDegrees=p.jet?28:45;}
 export function specification(options={}){
  const profile=options.profile in CRAFTS?options.profile:'runabout',p=CRAFTS[profile];
  const length=clamp(Number(options.length)||p.length,2.8,11),beam=clamp(Number(options.beam)||p.beam,1.1,3.8),hullMass=clamp(Number(options.hullMass)||p.hullMass,200,8000);
@@ -25,15 +27,15 @@ export function specification(options={}){
  const crewCount=clamp(Math.round(Number(options.crewCount??(p.jet?1:2))),0,12),crewMass=crewCount*75,equipmentMass=clamp(Number(options.equipmentMass??(p.jet?5:25)),0,1500);
  // A sterndrive is an inboard engine with a steerable, tiltable leg. It must
  // never share the fixed-shaft/rudder branch (inboard) merely by engine location.
- const propulsion=p.air?'air':p.jet?'jet':['zdrive','inboard'].includes(options.propulsion)?options.propulsion:'outboard';
+ const propulsion=p.propulsions.includes(options.propulsion)?options.propulsion:p.propulsions[0];
  const structureMass=hullMass+powers.reduce((sum,hp)=>sum+(p.jet?0:28+hp*.62),0)+fuelCapacity*.08+2*tankCount+(p.jet?0:22*(Number(!!options.bowThruster)+Number(!!options.sternThruster)));
  const dryMass=structureMass+crewMass+equipmentMass;
  const mass=dryMass+fuelCapacity*.75*.745;
  const base={...p,profile,length,beam,hullMass,engineCount,powers,fuelCapacity,tankCount,dryMass,mass,structureMass,crewCount,crewMass,equipmentMass,propulsion,
   propWalkStrength:clamp(Number(options.propWalkStrength??p.propWalkStrength),0,1),windageFactor:clamp(Number(options.windageFactor??p.windageFactor),0,2),
-  referenceMass:structureMass+(p.jet?75:150)+(p.jet?5:25)+fuelCapacity*.75*.745,referenceDraft:p.draft*(hullMass/p.hullMass)**.32,draft:p.draft*(hullMass/p.hullMass)**.32,engineSpacing:engineCount===2?beam*.46:0,maxSteer:(p.jet?28:clamp(Number(options.steeringLimit)||45,30,45))*Math.PI/180,
+  referenceMass:structureMass+(p.jet?75:150)+(p.jet?5:25)+fuelCapacity*.75*.745,referenceDraft:p.draft*(hullMass/p.hullMass)**.32,draft:p.draft*(hullMass/p.hullMass)**.32,engineSpacing:engineCount===2?beam*.46:0,maxSteer:(p.jet?p.steeringDegrees:clamp(Number(options.steeringLimit)||p.steeringDegrees,30,45))*Math.PI/180,
   wheelTurns:({tender:1.5,runabout:2.5,cabin:3,cruiser:3.5,pwc:.25,flat:1.5,rib:2,swamp:.75})[profile],steeringLockTime:({tender:1,runabout:1.4,cabin:1.7,cruiser:1.9,pwc:.45,flat:1,rib:1.1,swamp:.65})[profile],thrusterRating:clamp(length*beam*45,220,1550),
-  engineLever:p.jet?-.40*length:-.44*length,bowThruster:!p.jet&&!!options.bowThruster,sternThruster:!p.jet&&!!options.sternThruster};
+  engineLever:p.jet?-.40*length:p.air?-.50*length:propulsion==='inboard'?-.36*length:-.44*length,rudderLever:-.53*length,bowThruster:!p.jet&&!p.air&&!!options.bowThruster,sternThruster:!p.jet&&!p.air&&!!options.sternThruster};
  return updateMass(base,fuelCapacity*.75);
 }
 export function updateMass(spec,fuelLitres,bilgeLitres=0){
@@ -50,6 +52,7 @@ export function engineKey(b,index,action){
  if(action==='off'){en.key='off';en.startTime=0;en.gear=0;en.thrust=0;en.ventilation=0;return{ok:true,message:'Silnik wyłączony.'};}
  if(action==='ignition'){en.key='ignition';en.thrust=0;en.gear=0;return{ok:true,message:'Zapłon włączony.'};}
  if(action==='start'){
+  if(en.flooded||b.sunken)return{ok:false,message:'Silnik zalany · wypompuj wodę i napraw łódź w serwisie.'};
   if(en.key==='running')return{ok:true,message:'Silnik już pracuje.'};
   if(en.temperature>110)return{ok:false,message:'Silnik przegrzany — poczekaj, aż ostygnie poniżej 110°C.'};
   en.thermalTrip=false;
@@ -99,7 +102,7 @@ export function updateEngine(en,command,inflow,dt,damage=0,context={}){
   en.n+=(target-en.n)*(1-Math.exp(-dt/tau));
  }
  const n=en.n,gear=en.gear;
- const staticThrust=(context.air?25:context.jet?62:85)*en.hp**.8,advance=gear*inflow;
+ const staticThrust=(context.air?40:context.jet?62:85)*en.hp**.8,advance=gear*inflow;
  const advanceFactor=context.air?clamp(1-.16*advance/(8+30*n),.3,1.1):clamp(1-.22*advance/(2+11*n),.12,1.35);
  const reverse=context.jet?.34:.58;
  const bollard=staticThrust*n*n*(gear<0?reverse:1)*advanceFactor;

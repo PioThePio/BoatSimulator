@@ -12,7 +12,8 @@ import {createTraffic,trafficStep} from './traffic.js';
 import {specification,engineState,updateEngine} from './craft.js';
 import {placeTrailerBoat} from './towing.js';
 import {launchVerticalStep} from './trailer-support.js';
-import {propWalkForce,bankInfluence} from './maneuvering.js';
+import {propWalkForce,bankInfluence,airRudderForce} from './maneuvering.js';
+import {floodingDepth,floodingStep} from './flooding.js';
 import {point,cleat,attachRope,solveRopes,createAnchor,updateAnchor,inverseMass,impulse} from './rigging.js';
 export {clamp,DOCKS,SOLIDS,BOLLARDS,environment,bottomAt,waveAt,point,cleat,attachRope};
 export const MODEL=specification();
@@ -39,7 +40,7 @@ export function step(b,e,dt){
    propellerContact(b,en,dt,m=>event(b,m),e);
    updateEngine(en,i?b.throttle2:b.throttle,0,dt,b.damage,{noFuel:b.fuel.litres<=0,jet:S.jet,air:S.air,fixedDrive:S.propulsion==='inboard',moored:true,onTrailer:true,speed:0,immersion:en.immersion,intake:en.intake});
    const delta=S.air||S.propulsion==='inboard'?0:b.actualSteer,T=en.thrust*(S.jet||S.air||S.propulsion==='inboard'?1:Math.cos(trimAngle(en.trim)));
-   const X=T*Math.cos(delta)*(S.air?1-.25*Math.sin(b.actualSteer)**2:1),Y=S.air?-T*.7*Math.sin(b.actualSteer):-T*Math.sin(delta),fx=c*X-s*Y,fy=s*X+c*Y;
+   const air=airRudderForce(S,T,b.actualSteer),X=S.air?air.x:T*Math.cos(delta),Y=S.air?air.y:-T*Math.sin(delta),fx=c*X-s*Y,fy=s*X+c*Y;
    b.towRig.ropeForce.x+=fx;b.towRig.ropeForce.y+=fy;
    const arm=point(b,S.engineLever,en.y);b.towRig.ropeForce.torque+=(arm.x-b.towRig.trailer.x)*fy-(arm.y-b.towRig.trailer.y)*fx;
   }
@@ -58,7 +59,8 @@ export function step(b,e,dt){
  // Oscillatory orbital flow at draft, with independent restoring heave/roll/pitch.
  const water={x:env.current.x+wave.vx*.65,y:env.current.y+wave.vy*.65};
  const onSupports=b.towRig?launchVerticalStep(b.towRig,b,e,dt):false,wetFraction=onSupports?(b.wetFraction??1):1;
- if(!onSupports)[b.heave,b.heaveVelocity]=oscillator(b.heave,b.heaveVelocity,wave.eta*(1+(S.waveResponse-1)*b.planing)-(b.anchor.shape?.V??0)/(1000*9.81*S.length*S.beam*.65),4.2+3*b.planing,.65,dt);
+ if(!onSupports)[b.heave,b.heaveVelocity]=oscillator(b.heave,b.heaveVelocity,wave.eta*(1+(S.waveResponse-1)*b.planing)-floodingDepth(b)-(b.anchor.shape?.V??0)/(1000*9.81*S.length*S.beam*.65),4.2+3*b.planing,.65,dt);
+ floodingStep(b,dt,wave.eta);
  const windSide=-env.wind.x*s+env.wind.y*c;
  const rollTarget=clamp(Math.atan(-wave.sx*s+wave.sy*c)*S.waveResponse+windSide*Math.abs(windSide)*S.freeboard/(S.mass*.9)-b.planing*Math.atan((b.telemetry.surge??0)*b.w/9.81)*.6,-.3,.3);
  if(!onSupports)[b.roll,b.rollVelocity]=oscillator(b.roll,b.rollVelocity,rollTarget,Math.sqrt(9.81/(S.beam*.32)),.28,dt);
@@ -66,7 +68,7 @@ export function step(b,e,dt){
  const vr=-(b.vx-env.current.x)*s+(b.vy-env.current.y)*c;
  const u=(b.vx-water.x)*c+(b.vy-water.y)*s;
  const v=-(b.vx-water.x)*s+(b.vy-water.y)*c;
- const viewTarget=1-.22*clamp((Math.hypot(ur,vr)-3)/12,0,1);b.cameraZoom+=(viewTarget-b.cameraZoom)*(1-Math.exp(-dt/2));
+ const viewTarget=1-.40*clamp((Math.hypot(ur,vr)-2)/8,0,1);b.cameraZoom+=(viewTarget-b.cameraZoom)*(1-Math.exp(-dt/1.5));
  let X=0,Y=0,N=0;
  const force=(x,y,px=0,py=0)=>{X+=x;Y+=y;N+=px*y-py*x;};
  const fn=Math.abs(u)/Math.sqrt(9.81*S.length);
@@ -122,12 +124,13 @@ export function step(b,e,dt){
   thrust*=S.jet||S.air||S.propulsion==='inboard'?1:Math.cos(trimAngle(engine.trim));
   // Vectored thrust is the outboard's prop wash: it works before the hull moves.
   // An inboard keeps axial thrust and feeds a separate, stalling rudder.
-  force(thrust*Math.cos(driveDelta)*(S.air?1-.25*Math.sin(delta)**2:1),S.air?-thrust*.7*Math.sin(delta):-thrust*Math.sin(driveDelta),x,y);totalThrust+=thrust;
+  const air=airRudderForce(S,thrust,delta);
+  force(S.air?air.x:thrust*Math.cos(driveDelta),S.air?air.y:-thrust*Math.sin(driveDelta),x,y);totalThrust+=thrust;
   if(S.propulsion==='inboard'){
    const wash=thrust>0?Math.sqrt(thrust/(.5*1000*.18))*.55:0;
    const flow=u+wash,side=(flow-b.w*y)*Math.sin(delta)+(v+b.w*x)*Math.cos(delta);
    const rudder=-.5*1000*.16*Math.hypot(flow,side)*side/(1+Math.abs(side)/Math.max(.5,Math.abs(flow)));
-   force(rudder*Math.sin(delta),rudder*Math.cos(delta),x,y);
+   force(rudder*Math.sin(delta),rudder*Math.cos(delta),S.rudderLever,y);
   }
   const walk=propWalkForce(S,engine,Math.hypot(u,v),b.planing);force(0,walk,x,y);engine.propWalk=walk;
   // Submerged skeg: flow creates steering even in neutral; stalls at large incidence.
@@ -149,7 +152,7 @@ export function step(b,e,dt){
  const vdot=(Y-S.mass*ur*b.w)/(S.mass+(S.my-S.mass)*wetFraction);
  // Empirical hull stability cancels the bare potential-flow Munk moment.
  // Leaving it uncalibrated amplifies sideslip into a spin at planing speed.
- const rotationalDrag=(S.air?.55:1)*.5*1000*S.beam*S.length**4*(.004+.003*b.planing)*b.w*Math.abs(b.w);
+ const rotationalDrag=(S.air?.35:1)*.5*1000*S.beam*S.length**4*(.004+.003*b.planing)*b.w*Math.abs(b.w);
  const rdot=(N-rotationalDrag)/S.iz-(.10+.04*Math.abs(u)/S.length)*b.w;
  // Convert body acceleration to world acceleration without double-counting frame rotation.
  const du=udot-b.w*vr,dv=vdot+b.w*ur;

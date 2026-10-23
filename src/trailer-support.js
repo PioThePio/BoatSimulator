@@ -78,13 +78,27 @@ export function trailerBoatContact(r,b,dt){
   // hull. Only penetration into a face creates a spring/damper normal force.
   // No positional correction, centre attraction or prescribed heading.
   for(const q of support.samples){
-   q.guideForce=0;if(!q.inside||q.load<=0)continue;
-   const penetration=Math.abs(q.p.y)-.015;if(penetration<=0)continue;
+   q.guideForce=0;if(!q.inside||Math.abs(q.p.y)>t.beam*.5-.02||q.keel>q.bed+.34||q.keel<q.bed-.25)continue;
+   // Rear guide posts extend above the bunks and still contact a floating stern.
+   // There is no force inside their clearance or above the physical posts.
+   const bearing=Math.max(q.load,S.mass*9.81*q.weight*.12),gap=q.load>20?.015:.08;
+   const penetration=Math.abs(q.p.y)-gap;if(penetration<=0)continue;
    const sign=Math.sign(q.p.y),n={x:Math.sin(t.a)*sign,y:-Math.cos(t.a)*sign},arm={x:q.world.x-b.x,y:q.world.y-b.y},p=bodyPoint(t,q.p.x,q.p.y);
    const relative=(q.world.vx-p.vx)*n.x+(q.world.vy-p.vy)*n.y,lever=(p.x-t.x)*n.y-(p.y-t.y)*n.x;
-   const inv=inverseMass(b,n,arm)+1/t.mass+lever*lever/t.iz,k=q.load/.02,damping=Math.sqrt(k/inv);
-   const f=clamp((k*penetration-damping*relative)/(1+(damping*dt+k*dt*dt)*inv),0,q.load*.48);
+   const inv=inverseMass(b,n,arm)+1/t.mass+lever*lever/t.iz,k=bearing/.02,damping=1.3*Math.sqrt(k/inv);
+   const f=clamp((k*penetration-damping*relative)/(1+(damping*dt+k*dt*dt)*inv),0,bearing*.48);
    q.guideForce=f;impulse(b,n,f*dt,arm);kick(t,-n.x*f*dt,-n.y*f*dt,p.x-t.x,p.y-t.y);
+  }
+  // An approach outside a guide meets its OUTER face. It must not be pulled
+  // through the post by the inward V-guide model. These padded contacts also
+  // act above submerged bunks; force integrates normally, without snapping.
+  for(const q of support.samples){
+   if(Math.abs(q.p.y)<t.beam*.5-.02||q.keel>q.bed+.34||q.keel<q.bed-.25)continue;
+   const side=Math.sign(q.p.y),rail=side*t.beam*.5,penetration=S.beam*.43+.06-Math.abs(q.p.y-rail);if(penetration<=0)continue;
+   const sign=Math.sign(q.p.y-rail)||side,n={x:-Math.sin(t.a)*sign,y:Math.cos(t.a)*sign},arm={x:q.world.x-b.x,y:q.world.y-b.y},p=bodyPoint(t,q.p.x,rail);
+   const relative=(q.world.vx-p.vx)*n.x+(q.world.vy-p.vy)*n.y,k=S.mass*9.81*q.weight/.04,damping=Math.sqrt(k*S.mass*q.weight);
+   const f=clamp(k*penetration-damping*relative,0,S.mass*9.81*.45);
+   impulse(b,n,f*dt,arm);kick(t,-n.x*f*dt,-n.y*f*dt,p.x-t.x,p.y-t.y);
   }
  }
  if(!r.secured&&near){

@@ -15,13 +15,24 @@ export function contactZone(b,arm){
 export function recordImpact(b,{arm,speed,effective,protectedContact=false,fender=null,target='dock',dock=true,damage:contactDamage},notify=()=>{}){
  if(speed<.025)return;
  const bottom=target==='bottom',zone=bottom?bottomZone(b,arm):contactZone(b,arm),key=target+':'+(fender||zone);
- b.impactTimes??={};if(b.time-(b.impactTimes[key]??-10)<.45)return;
- b.impactTimes[key]=b.time;
  const energy=.5*effective*speed*speed,kind=contactDamage===undefined?impactClass(speed,protectedContact):contactDamage>=100?'destruction':contactDamage>0?'damage':'gentle';
- const damage=contactDamage??(kind==='gentle'?0:kind==='destruction'?100:Math.min(75,Math.max(1,(energy-(protectedContact?40:10))/9)));
+ // Use absorbed energy, not a speed threshold that instantly writes off a hull.
+ // A continuous squeeze is one impact: only an increase of its peak severity
+ // adds damage. Oscillating contact solvers cannot charge the same energy again.
+ const threshold=protectedContact?.30:.15,excess=Math.max(0,energy-.5*effective*threshold**2);
+ const capacity=Math.max(4500,(b.spec.structureMass??b.spec.mass)*8)*(protectedContact?2.5:1);
+ const raw=contactDamage??(kind==='gentle'?0:100*excess/capacity);
+ b.contactEpisodes??={};let episode=b.contactEpisodes[key];
+ if(!episode||b.time-episode.seen>.35)episode=b.contactEpisodes[key]={seen:b.time,peak:0,dockPeak:0};
+ episode.seen=b.time;
+ const damage=contactDamage===undefined?Math.max(0,raw-episode.peak):raw;episode.peak=Math.max(episode.peak,raw);
+ const dockRaw=dock?100*Math.max(0,energy-80)/Math.max(9000,b.spec.mass*12):0,dockLoss=Math.max(0,dockRaw-episode.dockPeak);episode.dockPeak=Math.max(episode.dockPeak,dockRaw);
+ b.impactTimes??={};if(contactDamage!==undefined&&b.time-(b.impactTimes[key]??-10)<.45)return;
+ const report=b.time-(b.impactTimes[key]??-10)>=.45||damage>.1;
  b.damage=clamp(b.damage+damage,0,100);
- if(dock)b.dockDamage=clamp(b.dockDamage+(kind==='destruction'?100:Math.max(0,(energy-80)/18)),0,100);
+ if(dock)b.dockDamage=clamp(b.dockDamage+dockLoss,0,100);
  const sections=bottom?(b.bottomDamage??={}):(b.sectionDamage??={});sections[zone]=clamp((sections[zone]??0)+damage,0,100);
+ if(!report)return;b.impactTimes[key]=b.time;
  const impact={time:b.time,speed,energy,kind,protectedContact,fender,zone,target,damage};
  b.lastImpact=impact;b.impacts??=[];b.impacts.push(impact);if(b.impacts.length>24)b.impacts.shift();
  if(speed>.08)notify(`${kind==='gentle'?'Łagodny kontakt':kind==='damage'?'Uszkodzenie':'Silna kolizja'} · ${ZONES[zone]??BOTTOM_ZONES[zone]}: ${speed.toFixed(2)} m/s · ${Math.round(energy)} J${protectedContact?' · odbijacz':''}`);

@@ -27,7 +27,7 @@ test('the three bottom regions and side impacts retain separate damage, with gra
 });
 test('the first moving sand scuff is slight but visible; stone contact is much more severe, each prop independent',()=>{
  const sample=(x,y)=>{const b=createBoat('lake');Object.assign(b,{x,y,a:0,vx:.2});const en=b.engines[0];en.gear=1;en.n=.3;propellerContact(b,en,1/120,()=>{});return en;};
- const p=sandPosition(5.5),sand=sample(p.x,p.y),rock=sample(80,6.4);assert.ok(sand.propDamage>0&&sand.propDamage<1);assert.ok(rock.propDamage>sand.propDamage*10);assert.equal(damageColor(sand.propDamage),'#d8c36c');
+ const p=sandPosition(5.5),sand=sample(p.x,p.y),rock=sample(80,6.1);assert.ok(sand.propDamage>0&&sand.propDamage<1);assert.ok(rock.propDamage>sand.propDamage*10);assert.equal(damageColor(sand.propDamage),'#d8c36c');
 });
 test('trim pump sound follows physical travel and stops at the detent, and a PWC has no trim motor sound',()=>{
  const b=createBoat('lake'),en=b.engines[0];en.trimTarget=.15;updateEngine(en,0,0,1/120);assert.ok(soundParameters(b).trimPump>0);for(let i=0;i<100;i++)updateEngine(en,0,0,1/120);assert.equal(soundParameters(b).trimPump,0);

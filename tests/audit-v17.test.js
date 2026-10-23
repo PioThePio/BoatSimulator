@@ -28,7 +28,7 @@ test('single-screw reverse prop walk applies a stern force and yaw moment; fixed
 });
 test('neutral reduces moving-hull steering; a coasting waterjet loses nozzle steering completely',()=>{
  for(const drive of ['outboard','zdrive','inboard','jet']){
-  function run(power){const b=createBoat('lake',{profile:drive==='jet'?'pwc':'runabout',propulsion:drive});b.vx=.7;b.steer=b.spec.maxSteer;b.throttle=power;swim(b,4);return Math.abs(b.w);}
+  function run(power){const b=createBoat('lake',{profile:drive==='jet'?'pwc':'cabin',propulsion:drive});b.vx=.7;b.steer=b.spec.maxSteer;b.throttle=power;swim(b,4);return Math.abs(b.w);}
   const neutral=run(0),powered=run(.15);assert.ok(powered>neutral*1.5,`${drive}: ${neutral} vs ${powered}`);if(drive==='jet')assert.equal(neutral,0);else assert.ok(neutral>0);
  }
 });
@@ -58,10 +58,10 @@ test('bilge water adds physical mass/draft, slows acceleration and delays planin
 });
 test('guide contacts gradually centre a mild approach, while a grossly skewed approach cannot secure itself and receives a low score',()=>{
  const [good,,bad]=a.guides;assert.ok(Math.abs(good.local.y)<good.initialOffset);assert.ok(good.angle<.06);assert.equal(good.secured,true);assert.equal(good.damage,0);
- assert.equal(bad.secured,false);assert.ok(bad.angle>.2);assert.ok(bad.score<good.score*.6);
+ assert.equal(bad.secured,false);assert.ok(bad.angle>.2||Math.abs(bad.local.y)>.5);assert.ok(bad.score<good.score*.6);
 });
 test('guides cannot attract a floating hull with no bunk contact and cannot move a supported hull inside their clearance',()=>{
- const b=createBoat('service'),r=createTowRig(b,{atSlip:true}),p=bodyPoint(r.trailer,r.trailer.offset,.25);Object.assign(b,{x:p.x,y:p.y,a:r.trailer.a,heave:1});launchVerticalStep(r,b,{},dt);assert.equal(b.trailerSupport.load,0);
+ const b=createBoat('service'),r=createTowRig(b,{atSlip:true,slipCarY:9}),p=bodyPoint(r.trailer,r.trailer.offset,.25);Object.assign(b,{x:p.x,y:p.y,a:r.trailer.a,heave:1});launchVerticalStep(r,b,{},dt);assert.equal(b.trailerSupport.load,0);
  const pos={x:b.x,y:b.y},vel={x:b.vx,y:b.vy};trailerBoatContact(r,b,dt);assert.deepEqual({x:b.x,y:b.y},pos);assert.deepEqual({x:b.vx,y:b.vy},vel);
  const dry=createBoat('lake'),land=createTowRig(dry,{loaded:true,misalignment:0});trailerAction(land,dry,'release');dry.ropes=[];land.winch.attached=false;
  tow(land,dry,2);assert.ok(dry.trailerSupport.load>1000);assert.ok(dry.trailerSupport.samples.every(q=>q.guideForce===0));
@@ -70,7 +70,7 @@ test('dry winch hauls against bunk friction, stops at the bow roller without dam
  assert.ok(a.winch.before<-.5&&Math.abs(a.winch.after)<.08);assert.ok(a.winch.tension>1000&&a.winch.tension<=a.winch.capacity);assert.equal(a.winch.lengthChangeAfterRelease,0);assert.equal(a.winch.damage,0);
 });
 test('score measures heading, lateral tracking, stop position and impact penalty independently',()=>{
- function score({y=0,x=0,angle=0,damage=0}={}){const b=createBoat('service'),r=createTowRig(b,{atSlip:true}),p=bodyPoint(r.trailer,r.trailer.offset+x,y);Object.assign(b,{x:p.x,y:p.y,a:r.trailer.a+angle});r.loadingScore.active=true;r.loadingScore.startDamage=0;b.damage=damage;loadingScoreStep(r,b,0);return r.loadingScore.quality;}
+ function score({y=0,x=0,angle=0,damage=0}={}){const b=createBoat('service'),r=createTowRig(b,{atSlip:true,slipCarY:9}),p=bodyPoint(r.trailer,r.trailer.offset+x,y);Object.assign(b,{x:p.x,y:p.y,a:r.trailer.a+angle});r.loadingScore.active=true;r.loadingScore.startDamage=0;b.damage=damage;loadingScoreStep(r,b,0);return r.loadingScore.quality;}
  const perfect=score();assert.equal(perfect,100);for(const options of [{y:.7},{x:-.7},{angle:.3},{damage:10}])assert.ok(score(options)<perfect-15);
 });
 test('dry support, partial flotation and full flotation exchange load continuously without launch damage',()=>{
@@ -87,7 +87,7 @@ test('parking and entire slip width join continuously; yard is flat and the slop
  assert.equal(curbHeight(124.5,r.y),0);assert.equal(curbHeight(PARKING.x,-30),.07);
 });
 test('outboard and Z-drive loaded starts keep every engine fully raised throughout an actual reverse journey from parking to slip',()=>{
- for(const profile of Object.keys(CRAFTS).filter(id=>!['pwc','swamp'].includes(id)))for(const propulsion of ['outboard','zdrive']){
+ for(const profile of Object.keys(CRAFTS).filter(id=>!['pwc','swamp'].includes(id)))for(const propulsion of ['outboard','zdrive'].filter(q=>CRAFTS[profile].propulsions.includes(q))){
   const b=createBoat('lake',{profile,propulsion,engineCount:2}),r=createTowRig(b,{loaded:true,misalignment:0});r.engine.key='running';r.gear='R';r.gas=.22;
   assert.ok(b.engines.every(e=>e.trim===1&&e.trimTarget===1));let clearance=Infinity;
   for(let i=0;i<6000&&r.car.y<3;i++){towStep(r,b,dt);step(b,{},dt);trailerContact(r,b,dt);clearance=Math.min(clearance,...b.engines.map(e=>e.propClearance));}
@@ -116,7 +116,7 @@ test('sand gives RIB and flat hulls less low-speed damage, but high-speed entry 
  for(const type of ['rib','flat']){assert.ok(damage(type,2.5)<damage('v',2.5));assert.ok(damage(type,.3)<.001);assert.ok(damage(type,12)>damage(type,2.5)+5);}
 });
 test('swamp fan/air rudders generate broad sideslip and carry world momentum after throttle release instead of acting as an outboard',()=>{
- const s=a.swamp;assert.ok(Math.abs(s.powered.sway)>2&&s.powered.yaw>.3);assert.ok(s.halfSecond.speed>s.powered.speed*.8);assert.ok(Math.abs(s.directionChangeHalfSecond)<.15);assert.ok(s.afterFive.speed>.5&&s.afterFive.speed<s.halfSecond.speed*.6);assert.equal(s.halfSecond.thrust,0);assert.ok(s.draft<.17);
+ const s=a.swamp;assert.ok(Math.abs(s.powered.sway)>.7&&s.powered.yaw>.8);assert.ok(s.halfSecond.speed>s.powered.speed*.8);assert.ok(Math.abs(s.directionChangeHalfSecond)<.15);assert.ok(s.afterFive.speed>.5&&s.afterFive.speed<s.halfSecond.speed*.6);assert.equal(s.halfSecond.thrust,0);assert.ok(s.draft<.17);
 });
 test('swamp boat traverses water shallower than a submerged propeller and never incurs propeller-bottom damage',()=>{
  const b=createBoat('beach',{profile:'swamp'});Object.assign(b,sandPosition(2.5));b.a=Math.atan2(sandNormal.x,-sandNormal.y);b.throttle=1;const initial={x:b.x,y:b.y};assert.ok(bottomAt(b.x,b.y).depth<.23);

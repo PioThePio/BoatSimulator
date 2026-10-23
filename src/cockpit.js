@@ -29,7 +29,7 @@ export function installCockpit(api){
  return function update(){
   const b=api.boat(),S=b.spec,en=b.engines,avg=k=>en.reduce((sum,e)=>sum+e[k],0)/en.length;
   const noTrim=S.air||S.jet||S.propulsion==='inboard',trim=b.enginesRaised?1:avg('trim'),temperature=Math.max(...en.map(e=>e.temperature));
-  $('#gauge-rpm2').hidden=en.length!==2;$('#instruments').classList.toggle('twins',en.length===2);$('#gauge-rpm .gauge-name').textContent=en.length===2?'OBROTY · LEWY':'OBROTOMIERZ';
+  $('#first-engine h3').textContent=en.length===2?'Lewy':'Solo';$('#gauge-rpm2').hidden=en.length!==2;$('#instruments').classList.toggle('twins',en.length===2);$('#gauge-rpm .gauge-name').textContent=en.length===2?'OBROTY · LEWY':'OBROTOMIERZ';
   const values={rpm:en[0].rpm,rpm2:en[1]?.rpm??0,speed:Math.hypot(b.vx,b.vy)*3.6,fuel:100*b.fuel.litres/b.fuel.capacity,trim:100*trim,volt:b.battery.voltage,temp:temperature};
   for(const [id,value]of Object.entries(values)){const el=$('#gauge-'+id),fraction=Math.max(0,Math.min(1,(value-+el.dataset.min)/(+el.dataset.max-+el.dataset.min)));el.querySelector('.needle').style.transform=`rotate(${fraction*180}deg)`;el.querySelector('strong').textContent=value.toFixed(['rpm','rpm2','fuel','trim','temp'].includes(id)?0:1);}
   $('#gauge-fuel strong').textContent=b.fuel.litres.toFixed(1)+' l';$('#gauge-fuel small').textContent=b.fuel.flow.toFixed(1)+' L/h';
@@ -42,15 +42,26 @@ export function installCockpit(api){
   $('#fuel-status').textContent=`${b.fuel.litres.toFixed(1)} / ${b.fuel.capacity} l · ${b.fuel.flow.toFixed(1)} L/h${b.fuel.refueling?' · TANKOWANIE':b.fuel.status?' · '+b.fuel.status:''}`;
   $('#refuel').textContent=b.fuel.refueling?'■ Stop tankowania':'⛽ Tankuj';
   $('#repair').textContent=b.service.active?'■ Przerwij naprawę':b.towRig?.boatLoaded?'🔧 Napraw na stanowisku':'🔧 Napraw przy slipie';$('#repair-status').textContent=b.service.status+(b.service.active?' · '+Math.round(b.service.progress*100)+'%':'');
-  const q=b.bilge;$('#bilge-level').textContent=Math.round(q.level*100)+'%';$('#bilge-meter').value=q.level*100;$('#bilge-state').textContent=`${q.litres.toFixed(1)} l · ${q.running?(q.manual?'pompa ręczna':'pompa AUTO'):q.auto&&b.battery.soc<=.02?'brak zasilania':q.auto?'AUTO czeka do '+q.autoOnLitres.toFixed(0)+' l':'pompa wyłączona'}${q.inflow>.001?' · '+(q.inflow*60).toFixed(1)+' l/min':''}`;$('#bilge-pump').textContent=q.manual?'POMPA ON':'POMPA OFF';$('#bilge-pump').setAttribute('aria-pressed',String(q.manual));$('#bilge-auto').checked=q.auto;$('#bilge-auto').title=`Pływak: start ${q.autoOnLitres.toFixed(0)} l, stop ${q.autoOffLitres.toFixed(0)} l. Pompa działa również bez zapłonu.`;$('.bilge-panel').classList.toggle('danger',q.alarm);const warnings=[];if(q.alarm)warnings.push('UWAGA — WODA W ZĘZIE');
+  const q=b.bilge;updateBilgePanel(b);const warnings=[];if(b.sunken)warnings.push('ŁÓDŹ ZATOPIONA');else if(b.swamped)warnings.push('Zalany pokład · pompuj i wracaj do serwisu');if(q.alarm)warnings.push('UWAGA — WODA W ZĘZIE');
   if(en.some(e=>e.overheated||e.thermalTrip))warnings.push('PRZEGRZANIE · zmniejsz gaz i opuść napęd'+(en.some(e=>e.thermalTrip)?' · silnik zatrzymany':''));
   else if(en.some(e=>e.key==='running'&&e.cooling<.25))warnings.push('Brak chłodzenia — opuść napęd');
   if(en.some(e=>e.key==='running'&&e.ventilation>.15))warnings.push(S.jet?'Zapowietrzony wlot — zmniejsz gaz i zanurz wlot':'Napowietrzona struga — zmniejsz trym');if(b.fuel.litres<b.fuel.capacity*.1)warnings.push('Rezerwa paliwa');if(b.battery.voltage<11.5)warnings.push('Niskie napięcie');if(b.reeds>.2)warnings.push('Szuwary · większy opór');
-  $('#engine-warning').hidden=!warnings.length;$('#engine-warning').textContent=warnings.join(' · ');$('#engine-warning').classList.toggle('critical',en.some(e=>e.overheated||e.thermalTrip));
+  $('#engine-warning').hidden=!warnings.length;$('#engine-warning').textContent=warnings.join(' · ');$('#engine-warning').classList.toggle('critical',b.sunken||q.alarm||en.some(e=>e.overheated||e.thermalTrip));
   for(const [i,e]of en.entries()){
    $('#key-state-'+i).textContent=({off:'Wyłączony',ignition:'Zapłon',starting:'Rozrusznik…',running:'Pracuje'})[e.key];$('#key-'+i+' .key-pointer').style.transform=`rotate(${e.key==='off'?-48:e.key==='starting'?48:0}deg)`;$('#key-'+i).classList.toggle('running',e.key==='running');$('#temperature-'+i).textContent=Math.round(e.temperature)+'°C';$('#temperature-'+i).classList.toggle('danger',e.overheated);
   }
   document.querySelectorAll('[data-trim]').forEach(btn=>btn.disabled=!!noTrim);
   $('#thruster-panel').hidden=!S.bowThruster&&!S.sternThruster;for(const end of ['bow','stern'])$('#thruster-'+end).hidden=!S[end+'Thruster'];
  };
+}
+
+export function updateBilgePanel(b){
+ const q=b.bilge,powerLost=(q.manual||q.auto)&&b.battery.soc<=.02;
+ const state=q.running?(q.manual?'pompa ręczna':'pompa AUTO'):powerLost?'brak zasilania':q.manual?'ręczna czeka na wodę':q.auto?'AUTO czeka do '+q.autoOnLitres.toFixed(0)+' l':'pompa wyłączona';
+ $('#bilge-level').textContent=Math.round(q.level*100)+'%';$('#bilge-meter').value=q.level*100;
+ $('#bilge-state').textContent=`${q.litres.toFixed(1)} l · ${state}${q.inflow>.001?' · '+(q.inflow*60).toFixed(1)+' l/min':''}`;
+ $('#bilge-pump').textContent=q.running||q.manual?'POMPA ON':'POMPA OFF';$('#bilge-pump').setAttribute('aria-pressed',String(q.running||q.manual));
+ $('#bilge-pump').dataset.mode=q.manual?'manual':q.running?'auto':'off';$('#bilge-auto').checked=q.auto;
+ $('#bilge-auto').title=`Pływak: start ${q.autoOnLitres.toFixed(0)} l, stop ${q.autoOffLitres.toFixed(0)} l. Pompa działa również bez zapłonu.`;
+ $('.bilge-panel').classList.toggle('danger',q.alarm);
 }

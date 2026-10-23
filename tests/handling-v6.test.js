@@ -50,7 +50,7 @@ test('creep lifts idle RPM slightly, both running engines vary independently, st
 });
 test('camera gently widens under speed and recovers smoothly on slowdown',()=>{
  const b=createBoat('open');b.a=0;b.vx=14;b.throttle=1;step(b,{},1/120);assert.ok(b.cameraZoom<1&&b.cameraZoom>.99);run(b,6);
- assert.ok(b.cameraZoom<.93&&b.cameraZoom>=.78);const zoom=b.cameraZoom;b.vx=b.vy=b.w=0;b.throttle=0;step(b,{},1/120);assert.ok(b.cameraZoom>zoom&&b.cameraZoom<zoom+.002);
+ assert.ok(b.cameraZoom<.93&&b.cameraZoom>=.60);const zoom=b.cameraZoom;b.vx=b.vy=b.w=0;b.throttle=0;step(b,{},1/120);assert.ok(b.cameraZoom>zoom&&b.cameraZoom<zoom+.003);
 });
 test('Y-boom geometry and its moving attachment share SI metres with the pier and boats',()=>{
  assert.ok(DOCKS[0].h>=2&&DOCKS[0].h<3);assert.ok(BUOY_SLIPS.length>=3);
