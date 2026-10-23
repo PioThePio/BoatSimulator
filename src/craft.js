@@ -65,7 +65,7 @@ export function engineKey(b,index,action){
  return{ok:false,message:'Nieznana pozycja stacyjki.'};
 }
 export function updateEngine(en,command,inflow,dt,damage=0,context={}){
- en.clock+=dt;
+ en.clock+=dt;const previousN=en.n;
  const trimStep=clamp(en.trimTarget-en.trim,-(en.trim>.4?.16:.10)*dt,(en.trim>.4?.16:.10)*dt);
  en.trim+=trimStep;en.trimRate=dt>0?trimStep/dt:0;en.inflow=inflow;
  const cmd=clamp(command,context.air?0:-1,1);en.command=cmd;
@@ -74,7 +74,7 @@ export function updateEngine(en,command,inflow,dt,damage=0,context={}){
   en.startTime+=dt;en.rpm=260;en.thrust=0;en.gear=0;
   if(en.startTime>1.15)en.key='running';return 0;
  }
- if(en.key!=='running'||context.noFuel){en.n*=Math.exp(-dt/.35);en.rpm=0;en.thrust=0;en.gear=0;en.load=0;en.governorLoad=0;en.opposingFlow=0;en.waveLoad=0;en.ventilation=0;en.propGrip=0;if(context.noFuel)en.key='ignition';return 0;}
+ if(en.key!=='running'||context.noFuel){en.n*=Math.exp(-dt/.35);en.rpm=0;en.thrust=0;en.gear=0;en.load=0;en.governorLoad=0;en.opposingFlow=0;en.waveLoad=0;en.ventilation=0;en.propGrip=0;en.burst=0;if(context.noFuel)en.key='ignition';return 0;}
  const desired=Math.abs(cmd)<.035?0:Math.sign(cmd);
  const airExposure=context.air?0:clamp((.70-(context.immersion??1))/.70,0,1);
  const highAngle=context.fixedDrive||context.air?0:clamp((trimAngle(en.trim)*180/Math.PI-10)/38,0,1);
@@ -102,6 +102,10 @@ export function updateEngine(en,command,inflow,dt,damage=0,context={}){
   en.n+=(target-en.n)*(1-Math.exp(-dt/tau));
  }
  const n=en.n,gear=en.gear;
+ // A short-lived disturbed jet after clutch engagement / rapid spool-up.
+ // This is engine-time state, independent of render frame rate.
+ const burstTarget=gear?clamp(((n-previousN)/dt-.12)*1.6,0,1):0;
+ en.burst=Math.max(burstTarget,(en.burst??0)*Math.exp(-dt/.65));
  const staticThrust=(context.air?40:context.jet?62:85)*en.hp**.8,advance=gear*inflow;
  const advanceFactor=context.air?clamp(1-.16*advance/(8+30*n),.3,1.1):clamp(1-.22*advance/(2+11*n),.12,1.35);
  const reverse=context.jet?.34:.58;

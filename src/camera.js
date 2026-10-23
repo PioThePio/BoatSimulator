@@ -1,6 +1,6 @@
 import {clamp,WORLD} from './world.js';
 import {SUV_GEOMETRY,bodyPoint} from './tow-geometry.js';
-export function vehicleLookAhead(r){return r.gear==='R'?-1.5:r.gear==='D'?1.5:0;}
+export function vehicleLookAhead(r){return (r.gear==='R'?-1:r.gear==='D'?1:r.cameraDirection??0)*1.5;}
 export function towView(r,b,width,height,requestedScale){
  const points=[];
  const box=(q,left,right,beam)=>{for(const x of [left,right])for(const y of [-beam/2,beam/2])points.push(bodyPoint(q,x,y));};

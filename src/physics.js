@@ -1,7 +1,7 @@
 // SI, x east / y south. Heading clockwise from east. Physics reference: docs/PHYSICS.md.
-import {clamp,DOCKS,SOLIDS,BOLLARDS,SERVICE_STATION,MAP_STARTS,environment,bottomAt,waveAt,reedDensityAt} from './world.js';
+import {clamp,DOCKS,SOLIDS,BOLLARDS,SERVICE_STATION,MAP_STARTS,environment,bottomAt,waveAt,reflectionFacesNear,reedDensityAt} from './world.js';
 import {trimAngle} from './drive.js';
-import {recordHullWake,sampleHullWake} from './wake.js';
+import {recordHullWake,sampleWakeField} from './wake.js';
 import {FENDERS,recordImpact} from './impacts.js';
 export {impactClass} from './impacts.js';
 import {createBooms,boomPoint,boomStep} from './marina.js';
@@ -47,12 +47,13 @@ export function step(b,e,dt){
   systemsStep(b,dt);trafficStep(b,e,dt);boomStep(b,e,dt);return;
  }
  const env=environment(b.time,e,b.x,b.y),wave=waveAt(b.x,b.y,b.time,e);
- const ownWave=sampleHullWake(b.wake,b.x,b.y,b.time);
+ const reflections=b.wake.length>1?reflectionFacesNear(b.x,b.y):[];
+ const ownWave=sampleWakeField(b.wake,b.x,b.y,b.time,reflections);
  for(const key of ['eta','sx','sy','vx','vy','ax','ay'])wave[key]+=ownWave[key];
  // Bow/stern encounter slopes capture pitching over one's own curved wake even
  // when the centre happens to lie between its two crests.
  const bow=point(b,S.length*.4,0),stern=point(b,-S.length*.4,0);
- const foreWake=sampleHullWake(b.wake,bow.x,bow.y,b.time),aftWake=sampleHullWake(b.wake,stern.x,stern.y,b.time);
+ const foreWake=sampleWakeField(b.wake,bow.x,bow.y,b.time,reflections),aftWake=sampleWakeField(b.wake,stern.x,stern.y,b.time,reflections);
  const encounterSlope=(foreWake.eta-aftWake.eta)/(S.length*.8),centreSlope=ownWave.sx*c+ownWave.sy*s;
  wave.sx+=(encounterSlope-centreSlope)*c;wave.sy+=(encounterSlope-centreSlope)*s;
  b.wakeEncounter=Math.max(Math.abs(ownWave.eta),Math.abs(foreWake.eta),Math.abs(aftWake.eta));

@@ -1,6 +1,8 @@
-# Model v19: podstawy, założenia i ograniczenia
+# Model v20: podstawy, założenia i ograniczenia
 
-Aktualne poprawki v19, energia kolizji, zalewanie i konfiguracje napędów:
+Aktualne strugi, pompy, odbicia fal i kompresja geografii: [raport v20](FIXES_V20.md).
+
+Poprawki v19, energia kolizji, zalewanie i konfiguracje napędów:
 [osobny raport](FIXES_V19.md). Starsze rozdziały i pomiary opisują też historię modelu.
 
 Mapa Zegrza, skala, źródła i poprawki v18: [osobny opis](ZEGRZE.md).

@@ -1,5 +1,6 @@
 import {clamp} from './world.js';
-export function createBilge(spec){const capacity=Math.max(100,spec.length*spec.beam*55);return{litres:0,capacity,autoOnLitres:Math.min(15,capacity*.05),autoOffLitres:Math.min(3,capacity*.01),level:0,manual:false,auto:true,autoRunning:false,running:false,inflow:0,outflow:0,driveLeak:0,alarm:false};}
+export const BILGE_PUMPS={tender:32,flat:32,rib:50,runabout:50,cabin:95,cruiser:126,pwc:32,swamp:32}; // nominal L/min at 12 V
+export function createBilge(spec){const capacity=Math.max(100,spec.length*spec.beam*55),pumpRate=BILGE_PUMPS[spec.profile]??32;return{litres:0,capacity,pumpRate,pumpAmps:4.5*Math.sqrt(pumpRate/32),autoOnLitres:Math.min(15,capacity*.05),autoOffLitres:Math.min(3,capacity*.01),level:0,manual:false,auto:true,autoRunning:false,running:false,inflow:0,outflow:0,driveLeak:0,alarm:false};}
 export function bilgeStep(b,dt){
  const q=b.bilge;if(!q)return;
  // Derive level from the physical water amount before checking the float.
@@ -15,7 +16,7 @@ export function bilgeStep(b,dt){
  q.inflow=.62*breach*Math.sqrt(2*9.81*head)*1000*wet; // m² × m/s → L/s
  if(q.litres>=q.autoOnLitres)q.autoRunning=true;else if(q.litres<=q.autoOffLitres)q.autoRunning=false;
  q.running=(q.manual||q.auto&&q.autoRunning)&&b.battery.soc>.02&&q.litres>.01;
- q.outflow=q.running?Math.min(q.litres/dt,.55*clamp(b.battery.voltage/12,0,1.2)):0;
+ q.outflow=q.running?Math.min(q.litres/dt,q.pumpRate/60*clamp(b.battery.voltage/12,0,1)):0;
  q.litres=clamp(q.litres+(q.inflow-q.outflow)*dt,0,q.capacity);q.level=q.litres/q.capacity;
  const alarm=q.level>=.5;
  if(alarm&&!q.alarm){b.events.unshift({time:b.time,message:'UWAGA — WODA W ZĘZIE · włącz pompę i wracaj do serwisu.'});b.events.splice(12);}

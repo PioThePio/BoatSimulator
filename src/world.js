@@ -1,6 +1,7 @@
-import {ZEGRZE_BOUNDS,ZEGRZE_SHORE,ZEGRZE_ISLANDS,BRIDGES,REMOTE_HARBORS,FUEL_LOCATION,fromAtlas} from './zegrze.js';
+import {ZEGRZE_BOUNDS,ZEGRZE_SHORE,ZEGRZE_ISLANDS,BRIDGES,REMOTE_HARBORS,FUEL_LOCATION,fromAtlas,compressWorld,WORLD_DISTANCE_SCALE} from './zegrze.js';
 import {createShoreQuery} from './shore-geometry.js';
 import {weatherAt} from './weather.js';
+import {mirrorPoint,mirrorVector,wallDistance} from './wave-reflections.js';
 export {weatherAt} from './weather.js';
 export const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 export {BRIDGES,REMOTE_HARBORS,MAP_LABELS,fromGeo,toGeo,METRES_PER_MAP_PIXEL} from './zegrze.js';
@@ -9,12 +10,14 @@ const lakeQuery=createShoreQuery(LAKE);
 export function islandRadius(a,q=ISLAND){return(1+.075*Math.sin(3*a)+.035*Math.cos(5*a))/Math.hypot(Math.cos(a)/q.rx,Math.sin(a)/q.ry);}
 export function islandOutline(padding=0,q=ISLAND){return Array.from({length:80},(_,i)=>{const a=i*Math.PI/40,r=islandRadius(a,q)+padding;return{x:q.x+Math.cos(a)*r,y:q.y+Math.sin(a)*r};});}
 const rz=fromAtlas(951,576);
-export function canalAt(x){return{y:rz.y-(x-rz.x)*.08,slope:-.08,halfWidth:28};}
+export function canalAt(x){return{y:rz.y-(x-rz.x)*.08,slope:-.08,halfWidth:28*WORLD_DISTANCE_SCALE};}
 // Original small marina, extended along the same shore with two extra piers.
 export const DOCKS=[{x:6,y:10,w:23,h:2.8},{x:17,y:12.8,w:2.8,h:17},{x:29,y:10,w:2.8,h:16},
  {x:31.8,y:10,w:78.2,h:2.8},{x:49,y:12.8,w:2.8,h:20},{x:70,y:12.8,w:2.8,h:24},
  {x:4,y:190,w:14,h:1.5},{x:17,y:185,w:1.4,h:13},{x:328,y:260,w:1.6,h:25},{x:328,y:283.5,w:15,h:1.6},
  {x:110,y:10,w:9.5,h:2.8,service:true},{x:118,y:12.8,w:1.5,h:18.2,service:true},{x:130.5,y:7,w:1.5,h:33,service:true}];
+// Relocate the small outlying piers, preserving their physical length and width.
+for(const d of DOCKS.slice(6,10))Object.assign(d,compressWorld(d));
 export const SERVICE_STATION={x:132,y:14,w:14,h:25,slip:{x:121,y:-8,w:7,h:44,waterY:7.5,angle:8},start:{x:134,y:24,a:-Math.PI/2}};
 export const PARKING={x:101,y:-48,w:64,h:40};
 export const SERVICE_BAYS=[{id:1,x:141,y:-44,w:8,h:30},{id:2,x:152,y:-44,w:8,h:30}];
@@ -35,9 +38,9 @@ export const FUEL_FENDERS=Array.from({length:5},(_,id)=>({x:FUEL_STATION.x,y:FUE
 export const BRIDGE_SOLIDS=BRIDGES.flatMap(q=>q.dam?[{id:q.id,x:Math.min(q.a.x,q.b.x)-q.width/2,y:Math.min(q.a.y,q.b.y),w:Math.max(q.width,Math.abs(q.b.x-q.a.x)),h:Math.max(q.width,Math.abs(q.b.y-q.a.y))}]:q.piers.map((t,i)=>({id:q.id+'-pier-'+i,x:q.a.x+(q.b.x-q.a.x)*t-2.2,y:q.a.y+(q.b.y-q.a.y)*t-3.5,w:4.4,h:7})));
 export const SOLIDS=[...DOCKS,...FUEL_FENDERS,...BUILDINGS,...BRIDGE_SOLIDS,
  {x:WORLD.left-24,y:WORLD.top-24,w:WORLD.right-WORLD.left+48,h:12},{x:WORLD.left-24,y:WORLD.top-12,w:12,h:WORLD.bottom-WORLD.top+48},{x:WORLD.left-12,y:WORLD.bottom+12,w:WORLD.right-WORLD.left+36,h:12},{x:WORLD.right+12,y:WORLD.top-12,w:12,h:WORLD.bottom-WORLD.top+48}];
-export const BEACHES=[{...fromAtlas(525,881),r:145,name:'Dzika Plaża · Nieporęt'},{...fromAtlas(345,609),r:180,name:'Plaża Wieliszew'},{...fromAtlas(764,858),r:120,name:'Białobrzegi'}];
+export const BEACHES=[{...fromAtlas(525,881),r:145*WORLD_DISTANCE_SCALE,name:'Dzika Plaża · Nieporęt'},{...fromAtlas(345,609),r:180*WORLD_DISTANCE_SCALE,name:'Plaża Wieliszew'},{...fromAtlas(764,858),r:120*WORLD_DISTANCE_SCALE,name:'Białobrzegi'}];
 export const REEDS=[{x:fromAtlas(954,371).x-20,y:fromAtlas(954,371).y-10,r:85},{...fromAtlas(991,568),r:40},{...fromAtlas(650,1005),r:20},{...fromAtlas(1080,250),r:40}];
-export const SHOALS=[{...fromAtlas(1005,225),rx:95,ry:55,drop:4.5},{...fromAtlas(894,577),rx:55,ry:26,drop:4.6},{...fromAtlas(1160,245),rx:120,ry:38,drop:4.4}];
+export const SHOALS=[{...fromAtlas(1005,225),rx:95*WORLD_DISTANCE_SCALE,ry:55*WORLD_DISTANCE_SCALE,drop:4.5},{...fromAtlas(894,577),rx:55*WORLD_DISTANCE_SCALE,ry:26*WORLD_DISTANCE_SCALE,drop:4.6},{...fromAtlas(1160,245),rx:120*WORLD_DISTANCE_SCALE,ry:38*WORLD_DISTANCE_SCALE,drop:4.4}];
 const islandTree=a=>{const r=islandRadius(a)-1.2;return{x:ISLAND.x+Math.cos(a)*r,y:ISLAND.y+Math.sin(a)*r};};
 const docksPoints=DOCKS.filter((d,i)=>i>=3&&!d.service).flatMap((d,i)=>d.w>d.h?Array.from({length:Math.max(2,Math.floor(d.w/6))},(_,j)=>({x:d.x+1+j*(d.w-2)/Math.max(1,Math.floor(d.w/6)-1),y:d.y+d.h})):Array.from({length:Math.max(2,Math.floor(d.h/6))},(_,j)=>({x:d.x+d.w,y:d.y+1+j*(d.h-2)/Math.max(1,Math.floor(d.h/6)-1)})));
 export const BOLLARDS=[...[[12,12.8],[17,18],[17,25],[19.8,28],[29,17],[29,23],[25,12.8]].map(([x,y],i)=>({x,y,kind:'bollard',id:`P${i+1}`,label:`Poler ${i+1}`})),
@@ -122,14 +125,38 @@ export function environment(t,e={},x=null,y=null){
  return{wind,current,shelter,waveScale:dry?0:.4+.6*shelter};
 }
 export function waveHeight(e,t=0){return e.autoWaves?Math.min(.55,.004*weatherAt(t,e).windSpeed**2):(e.waveHeight??0);}
+export function reflectionFacesNear(x,y,radius=70){
+ const p={x,y},faces=[];
+ for(const [i,d]of DOCKS.entries())for(const [side,a,b,nx,ny]of [
+  ['L',{x:d.x,y:d.y},{x:d.x,y:d.y+d.h},-1,0],['R',{x:d.x+d.w,y:d.y},{x:d.x+d.w,y:d.y+d.h},1,0],
+  ['T',{x:d.x,y:d.y},{x:d.x+d.w,y:d.y},0,-1],['B',{x:d.x,y:d.y+d.h},{x:d.x+d.w,y:d.y+d.h},0,1]]){
+  const f={id:'dock'+i+side,a,b,nx,ny,coefficient:.42},dx=b.x-a.x,dy=b.y-a.y;
+  const u=clamp(((x-a.x)*dx+(y-a.y)*dy)/(dx*dx+dy*dy),0,1),distance=Math.hypot(x-a.x-u*dx,y-a.y-u*dy);
+  if(distance<radius&&wallDistance(p,f)>.001)faces.push({...f,distance});
+ }
+ faces.sort((a,b)=>a.distance-b.distance);faces.splice(4);
+ const s=shoreAt(x,y);
+ if(s.distance>0&&s.distance<radius){const q={x:x-s.nx*s.distance,y:y-s.ny*s.distance},half=65;
+  faces.push({id:'shore',a:{x:q.x-s.ny*half,y:q.y+s.nx*half},b:{x:q.x+s.ny*half,y:q.y-s.nx*half},nx:s.nx,ny:s.ny,coefficient:s.beach?.12:.26,distance:s.distance});
+ }
+ return faces;
+}
 export function waveAt(x,y,t,e){
  if(bottomAt(x,y).depth<=0)return{eta:0,sx:0,sy:0,vx:0,vy:0,ax:0,ay:0,direction:{x:0,y:0}};
  const H=waveHeight(e,t)*(e.spatialEffects?environment(t,e,x,y).waveScale:1),a=(e.waveDirection??e.windDirection??90)*Math.PI/180,n={x:Math.sin(a),y:-Math.cos(a)};let eta=0,sx=0,sy=0,vx=0,vy=0,ax=0,ay=0;
- const h=Math.max(.4,bottomAt(x,y).depth);
+ const h=Math.max(.4,bottomAt(x,y).depth),faces=H>0?reflectionFacesNear(x,y,24):[];
  for(const [weight,period,phase,offset]of [[.65,2.8,0,0],[.25,1.9,1.7,.32],[.1,3.9,3.2,-.4]]){
   const omega=2*Math.PI/period;let k=omega*omega/9.81;for(let i=0;i<5;i++)k=omega*omega/(9.81*Math.tanh(k*3));
   const nx=Math.sin(a+offset),ny=-Math.cos(a+offset),A=H*.5*weight,theta=k*(x*nx+y*ny)-omega*t+phase,co=Math.cos(theta),si=Math.sin(theta),orb=A*omega/Math.tanh(Math.max(.2,k*h));
   eta+=A*co;sx-=A*k*si*nx;sy-=A*k*si*ny;vx+=orb*co*nx;vy+=orb*co*ny;ax+=orb*omega*si*nx;ay+=orb*omega*si*ny;
+  for(const f of faces){
+   const incident=nx*f.nx+ny*f.ny;if(incident>=-.08)continue;
+   const reflected=mirrorVector({x:nx,y:ny},f),d=wallDistance({x,y},f),travel=d/(-incident);
+   const hit={x:x-reflected.x*travel,y:y-reflected.y*travel},dx=f.b.x-f.a.x,dy=f.b.y-f.a.y,u=((hit.x-f.a.x)*dx+(hit.y-f.a.y)*dy)/(dx*dx+dy*dy);
+   if(u<0||u>1)continue;
+   const p=mirrorPoint({x,y},f),theta=k*(p.x*nx+p.y*ny)-omega*t+phase,g=f.coefficient*Math.exp(-travel/30),co=Math.cos(theta)*g,si=Math.sin(theta)*g;
+   eta+=A*co;sx-=A*k*si*reflected.x;sy-=A*k*si*reflected.y;vx+=orb*co*reflected.x;vy+=orb*co*reflected.y;ax+=orb*omega*si*reflected.x;ay+=orb*omega*si*reflected.y;
+  }
  }
  return {eta,sx,sy,vx,vy,ax,ay,direction:n};
 }

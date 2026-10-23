@@ -3,6 +3,7 @@ header{height:27px;margin:0 10px;gap:10px}
 .brand{font-size:14px;letter-spacing:-.4px}.brand>span{font-size:17px;margin-right:2px}
 .subtitle{font-size:8px}header>div{gap:4px}header .round{width:22px;height:22px;font-size:10px}
 main{padding-top:5px}
+.water-wrap{height:clamp(420px,60dvh,800px)}
 .lake-title{position:absolute;top:9px;right:14px;font-size:9px;letter-spacing:.8px;color:#426b5d;pointer-events:none;text-align:right}
 .lake-title small{display:block;font-size:8px;margin-top:3px;letter-spacing:0}
 .map-toolbar{top:47px;left:auto;justify-content:flex-end}
@@ -15,15 +16,15 @@ main{padding-top:5px}
 #service-map{position:absolute;z-index:4;max-width:160px;background:#f6f8e9ed;border:1px solid #b7caa8;border-radius:7px;box-shadow:0 3px 12px #244e3020;padding:3px 6px}
 #service-map #repair{padding:5px 7px;font-size:10px;background:transparent;border:0}
 #service-map #repair-status{display:block;max-width:150px;font-size:8px;line-height:1.35}
-.controls{grid-template-columns:minmax(150px,.8fr) minmax(195px,1fr) minmax(200px,1.2fr) minmax(200px,1.15fr);align-items:start}
+.controls{grid-template-columns:minmax(150px,.9fr) minmax(195px,1.1fr) minmax(260px,1.8fr) minmax(150px,.8fr);align-items:start}
 .wheel-section{grid-column:1;grid-row:1}.throttle-section{grid-column:2;grid-row:1}
 .wheel-section,.throttle-section{padding:12px;min-width:0;border:0}
 .wheel-section{border-right:1px solid #dce4d2}
 .helm-handling{flex-direction:column;gap:8px}#wheel{width:min(100%,145px);height:auto;aspect-ratio:1}
-.instruments,.instruments.twins{grid-column:3;grid-row:1;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:10px;min-width:0;border-left:1px solid #dce4d2;border-right:1px solid #dce4d2}
+.instruments,.instruments.twins{grid-column:3;grid-row:1;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;padding:10px;min-width:0;border-left:1px solid #dce4d2;border-right:1px solid #dce4d2}
 .instruments #fuel-status,.instruments.twins #fuel-status{grid-column:1/-1;font-size:8px}
-.gauge .gauge-dial{max-height:47px}.gauge strong{font-size:18px}.gauge small{font-size:8px}
-.gauge-name{font-size:6px}.gauge .gauge-icon{width:11px;height:11px}
+.gauge .gauge-dial{max-height:72px}.gauge strong{font-size:22px}.gauge small{font-size:8px}
+.gauge-name{font-size:8px}.gauge .gauge-icon{width:11px;height:11px}
 .attitude-column{grid-column:4;grid-row:1;padding:8px;min-width:0}
 .attitude-column .pitch-gauge{display:flex;flex-direction:column;gap:3px;padding:5px;min-width:0}
 .attitude-column .pitch-gauge>span{max-width:none;text-align:center;font-size:7px}
@@ -64,12 +65,12 @@ main{padding-top:5px}
 .cleat-legend span:nth-child(2){color:#4f8a59}.cleat-legend span:nth-child(3){color:#94663b}.cleat-legend span:nth-child(4){color:#c54838}
 .diagram-cleat .cleat-icon:disabled{opacity:1}.diagram-cleat.selected-target{outline:1px dashed #99ae8b;outline-offset:2px;border-radius:5px}
 @media(max-width:1000px){
- .controls{grid-template-columns:minmax(90px,.75fr) minmax(155px,1.1fr) minmax(155px,1fr) minmax(155px,1fr)}
+ .controls{grid-template-columns:minmax(90px,.75fr) minmax(155px,1.1fr) minmax(200px,1.5fr) minmax(130px,.75fr)}
  .wheel-section,.throttle-section{padding:8px}#wheel{max-width:115px}
  .key-row>button[data-key-turn]{display:none}.section-heading h2{font-size:9px}
  .wheel-section .hint,.throttle-section>.hint{font-size:7px}
  .attitude-column{padding:6px}.attitude-column .attitude-svg{height:75px}
- .gauge .gauge-dial{max-height:41px}.gauge strong{font-size:17px}
+ .gauge .gauge-dial{max-height:60px}.gauge strong{font-size:20px}
  .instruments,.instruments.twins{gap:6px;padding:8px}
  .engine-bank{gap:4px}.engine-card{width:35px}.ignition{width:35px}
  .engine-card .key-row{display:flex;justify-content:center}
@@ -82,7 +83,7 @@ main{padding-top:5px}
 }
 @media(max-width:650px){
  header{height:25px;margin:0 9px}.brand{font-size:13px}.brand>span{font-size:16px}main{padding:4px 7px 0}
- .water-wrap{height:clamp(340px,48dvh,460px)}
+ .water-wrap{height:clamp(400px,58dvh,720px)}
  .telemetry{left:7px;right:7px;top:7px;justify-content:space-between;padding:5px 6px;gap:4px}
  .telemetry>div{min-width:0}.telemetry strong{font-size:10px}.telemetry span{font-size:5px;letter-spacing:0}
  .telemetry small{font-size:6px}.telemetry .round{width:23px;height:23px;flex-shrink:0}
@@ -90,7 +91,7 @@ main{padding-top:5px}
  .lake-title small{font-size:6px;line-height:1.2}
  .map-toolbar{top:49px;left:auto;right:7px}.map-toolbar>div{gap:3px}.map-toolbar button{font-size:6.5px;padding:6px 5px}
  #wind-indicator{right:7px;top:86px;padding:4px 6px}#wind-indicator svg{width:22px;height:22px}#wind-indicator strong{font-size:9px}
- .controls{grid-template-columns:minmax(52px,.65fr) minmax(110px,1.17fr) minmax(88px,1fr) minmax(94px,1.1fr);margin-top:7px}
+ .controls{grid-template-columns:minmax(52px,.6fr) minmax(106px,1.2fr) minmax(114px,1.4fr) minmax(78px,.8fr);margin-top:7px}
  .wheel-section,.throttle-section{padding:6px 3px}#wheel{width:100%;height:auto;max-width:80px}
  .section-heading{gap:2px;margin-bottom:6px}.section-heading h2{font-size:6.5px}.value-tag{font-size:5px;padding:2px}
  .rudder-indicator{gap:2px;font-size:5px;margin-bottom:6px}.rudder-indicator output{font-size:5.5px;min-width:13px}
@@ -106,8 +107,8 @@ main{padding-top:5px}
  .engine-card .key-knob{width:25px;height:29px}
  .engine-link-controls{font-size:6px;gap:2px;margin-top:6px}.engine-link-controls label{display:flex;align-items:center;gap:2px}
  .instruments,.instruments.twins{grid-column:3;grid-row:1;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px;padding:5px 3px}
- .gauge .gauge-dial{max-height:28px}.gauge .gauge-title{gap:1px;min-height:13px}.gauge .gauge-icon{width:8px;height:8px}
- .gauge-name{font-size:4.5px;white-space:normal}.gauge strong{font-size:12px}.gauge small{font-size:5px}.warning-led{width:4px;height:4px}
+ .gauge .gauge-dial{max-height:42px}.gauge .gauge-title{gap:1px;min-height:13px}.gauge .gauge-icon{width:8px;height:8px}
+ .gauge-name{font-size:5.5px;white-space:normal}.gauge strong{font-size:15px}.gauge small{font-size:5px}.warning-led{width:4px;height:4px}
  .instruments #fuel-status,.instruments.twins #fuel-status{font-size:5.5px;line-height:1.4}
  .attitude-column{padding:5px 3px}.attitude-column .pitch-gauge{padding:2px;gap:2px}
  .attitude-column .pitch-gauge>span{font-size:5px;letter-spacing:0}.attitude-column .attitude-svg{height:61px}
@@ -119,7 +120,7 @@ main{padding-top:5px}
  .attitude-column #propeller-health .health-row{font-size:5px;gap:2px}.attitude-column #impact-info{font-size:5px;min-height:12px}
  .attitude-column .motion-readings,.attitude-column .motion-readings b{font-size:4.5px;gap:2px 4px}
  .attitude-column .tow-attitude>span{font-size:5px}.attitude-column .tow-attitude svg{height:85px}.attitude-column .tow-depths{font-size:5.5px;line-height:1.6}.attitude-column .tow-attitude>strong{font-size:5.5px;margin:4px 0}
- .bilge-panel{padding:5px 2px}.bilge-panel>div{gap:2px 3px}.bilge-panel span{font-size:5px}.bilge-panel strong{font-size:10px}.bilge-panel small{font-size:5.5px}
+ .bilge-panel{padding:5px 2px}.bilge-panel>div{gap:3px}.bilge-panel span{font-size:5px}.bilge-panel strong{font-size:10px}.bilge-panel small{font-size:5.5px}
  .bilge-controls{gap:3px;margin-top:6px;padding-top:5px}.bilge-controls button{font-size:6px;padding:5px 3px}.bilge-controls label{font-size:6px;gap:1px}.bilge-controls input{width:11px;height:11px;margin:0}
  .vehicle-selector{padding:6px 8px;gap:5px}.vehicle-selector button{font-size:8px;padding:7px 9px}.vehicle-selector small{font-size:6.5px}
  .car-pedals{gap:3px}.car-pedals>div{min-width:25px}.car-pedals .lever-track{height:83px}.car-pedals label,.car-transmission>span{font-size:5px}
@@ -131,4 +132,10 @@ main{padding-top:5px}
  #car-incline{padding:4px;gap:3px;flex-wrap:wrap}#car-incline strong{font-size:11px}#car-incline span,#car-incline small{font-size:5px}
  .car-ignition .key-positions{font-size:5px}.car-ignition #car-key-state{font-size:6px}
 }
-@media(max-width:360px){.controls{grid-template-columns:52px minmax(98px,1.15fr) minmax(72px,1fr) minmax(78px,1.1fr)}.engine-bank{gap:2px}.engine-card{width:24px}.shared-lever-buttons button{width:19px}.trim-buttons button{width:18px}}
+@media(max-width:360px){.controls{grid-template-columns:52px minmax(100px,1.2fr) minmax(110px,1.4fr) minmax(78px,.8fr)}.engine-bank{gap:2px}.engine-card{width:24px}.shared-lever-buttons button{width:19px}.trim-buttons button{width:18px}}
+
+/* All four bilge readings use the same numerals; no duplicate pump status. */
+.bilge-panel>div{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}
+.bilge-panel>div>span:first-child{grid-column:1/-1;font-size:7px}
+.bilge-panel #bilge-level,.bilge-panel #bilge-inflow,.bilge-panel #bilge-litres,.bilge-panel #bilge-outflow{font-size:11px;font-weight:500;font-variant-numeric:tabular-nums;white-space:nowrap}
+@media(max-width:650px){.bilge-panel>div{grid-template-columns:1fr;gap:3px}.bilge-panel>div>span:first-child{font-size:5px}.bilge-panel #bilge-level,.bilge-panel #bilge-inflow,.bilge-panel #bilge-litres,.bilge-panel #bilge-outflow{font-size:8px}}

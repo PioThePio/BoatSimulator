@@ -1,13 +1,17 @@
 // Interpreted shoreline from the user's Zegrze maps, not a navigation chart.
-// 75 pixels = 1 km on the supplied port atlas. Physical coordinates are metres.
+// Atlas: 75 pixels = 1 real km. v20 compresses geographic distances to 70%;
+// physical boat, pier, slip and tree dimensions / SI speed and time stay unchanged.
 // Independent checks: GeoNames Serock/Nieporęt and the BDOT10k/OSM geoportal.
 // See docs/ZEGRZE.md for provenance, scale checks and bathymetry limitations.
-export const METRES_PER_MAP_PIXEL=1000/75;
+export const WORLD_DISTANCE_SCALE=.70;
+export const METRES_PER_MAP_PIXEL=1000/75*WORLD_DISTANCE_SCALE;
+// Compress geography about the main quay; all manufactured objects retain SI dimensions.
+export const compressWorld=p=>({x:80+(p.x-80)*WORLD_DISTANCE_SCALE,y:4+(p.y-4)*WORLD_DISTANCE_SCALE});
 const origin={x:610,y:739,latitude:52.458,longitude:21.034916};
 const R=6371008.8,rad=Math.PI/180;
-export const fromAtlas=(x,y)=>({x:(x-origin.x)*METRES_PER_MAP_PIXEL,y:(y-origin.y)*METRES_PER_MAP_PIXEL});
-export function fromGeo(latitude,longitude){return{x:(longitude-origin.longitude)*rad*R*Math.cos(origin.latitude*rad),y:(origin.latitude-latitude)*rad*R};}
-export function toGeo(x,y){return{latitude:origin.latitude-y/(R*rad),longitude:origin.longitude+x/(R*rad*Math.cos(origin.latitude*rad))};}
+export const fromAtlas=(x,y)=>compressWorld({x:(x-origin.x)*1000/75,y:(y-origin.y)*1000/75});
+export function fromGeo(latitude,longitude){return compressWorld({x:(longitude-origin.longitude)*rad*R*Math.cos(origin.latitude*rad),y:(origin.latitude-latitude)*rad*R});}
+export function toGeo(x,y){x=80+(x-80)/WORLD_DISTANCE_SCALE;y=4+(y-4)/WORLD_DISTANCE_SCALE;return{latitude:origin.latitude-y/(R*rad),longitude:origin.longitude+x/(R*rad*Math.cos(origin.latitude*rad))};}
 const bank=[
  [0,449],[32,450],[90,459],[144,480],[219,493],[253,519],[310,553],[345,591],[395,619],[441,643],[480,663],[525,688],[567,690],[555,714],[589,737],
  // The simulator marina has a short engineered quay on the Zegrze headland.
@@ -22,14 +26,14 @@ const bank=[
 // Preserve atlas landmarks and the engineered main quay; add metre-scale
 // coves between them rather than large, ruler-straight stretches of bank.
 export const ZEGRZE_SHORE=bank.flatMap(([x,y],i)=>{
- const a=fromAtlas(x,y),next=bank[(i+1)%bank.length],b=fromAtlas(...next),dx=b.x-a.x,dy=b.y-a.y,length=Math.hypot(dx,dy),count=Math.max(1,Math.ceil(length/65));
- const marina=Math.hypot((a.x+b.x)/2-80,(a.y+b.y)/2)<450;
+ const a=fromAtlas(x,y),next=bank[(i+1)%bank.length],b=fromAtlas(...next),dx=b.x-a.x,dy=b.y-a.y,length=Math.hypot(dx,dy),count=Math.max(1,Math.ceil(length/(65*WORLD_DISTANCE_SCALE)));
+ const marina=Math.hypot((a.x+b.x)/2-80,(a.y+b.y)/2)<450*WORLD_DISTANCE_SCALE;
  const beach=[[525,881],[345,609],[764,858]].some(([px,py])=>Math.hypot((x+next[0])/2-px,(y+next[1])/2-py)<18);
- return Array.from({length:count},(_,j)=>{const t=j/count,amplitude=marina||beach||length<160?0:Math.min(8,length*.015),bend=amplitude*Math.sin(Math.PI*t)*(Math.sin(t*Math.PI*4+i*1.7)+.35*Math.sin(t*Math.PI*9+i));return{x:a.x+dx*t-dy/length*bend,y:a.y+dy*t+dx/length*bend};});
+ return Array.from({length:count},(_,j)=>{const t=j/count,amplitude=marina||beach||length<160*WORLD_DISTANCE_SCALE?0:Math.min(8*WORLD_DISTANCE_SCALE,length*.015),bend=amplitude*Math.sin(Math.PI*t)*(Math.sin(t*Math.PI*4+i*1.7)+.35*Math.sin(t*Math.PI*9+i));return{x:a.x+dx*t-dy/length*bend,y:a.y+dy*t+dx/length*bend};});
 });
 const lo=fromAtlas(0,0),hi=fromAtlas(1280,1042);
 export const ZEGRZE_BOUNDS={left:lo.x,top:lo.y,right:hi.x,bottom:hi.y};
-export const ZEGRZE_ISLANDS=[{...fromAtlas(1020,246),rx:100,ry:36},{...fromAtlas(1098,230),rx:130,ry:44},{...fromAtlas(1170,233),rx:80,ry:30}];
+export const ZEGRZE_ISLANDS=[{...fromAtlas(1020,246),rx:100*WORLD_DISTANCE_SCALE,ry:36*WORLD_DISTANCE_SCALE},{...fromAtlas(1098,230),rx:130*WORLD_DISTANCE_SCALE,ry:44*WORLD_DISTANCE_SCALE},{...fromAtlas(1170,233),rx:80*WORLD_DISTANCE_SCALE,ry:30*WORLD_DISTANCE_SCALE}];
 export const MAP_LABELS=[['Zegrze Północne',607,722],['Zegrze Południowe',532,783],['Nieporęt',646,978],['Białobrzegi',761,864],['Rynia',860,715],['Serock',808,293],['Jachranka',270,500],['Skubianka',393,607],['Dębe',86,443],['Wierzbica',824,80],['Narew',884,128],['Bug',1110,218],['Rządza',1060,544],['Kanał Żerański',664,1020]].map(([name,x,y])=>({name,...fromAtlas(x,y)}));
 export const REMOTE_HARBORS=[
  {id:'NIE',name:'Nieporęt',...fromAtlas(625,930),direction:'east',length:38},

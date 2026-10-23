@@ -11,7 +11,7 @@ import {connectWinch} from '../src/trailer-winch.js';
 import {systemsStep} from '../src/systems.js';
 import {towView,vehicleLookAhead,minimapProjection} from '../src/camera.js';
 import {driveGeometry} from '../src/drive.js';
-import {propSurfaceIntensity} from '../src/render.js';
+import {propSurfaceIntensity,coolingWaterIntensity} from '../src/render.js';
 import {placeMapLabels} from '../src/map-labels.js';
 const dt=1/120;
 function swim(b,t,e={}){for(let i=0;i<t*120;i++)step(b,e,dt);return b;}
@@ -76,8 +76,8 @@ test('propulsion choices and steering angles belong to the craft, with the fixed
  for(const [profile,allowed]of Object.entries(choices)){assert.deepEqual(CRAFTS[profile].propulsions,allowed);for(const propulsion of ['outboard','inboard','zdrive','jet','air']){const S=specification({profile,propulsion});assert.ok(allowed.includes(S.propulsion));assert.equal(S.maxSteer,(profile==='pwc'?28:45)*Math.PI/180);}}
  const b=createBoat('lake',{profile:'cabin',propulsion:'inboard'}),g=driveGeometry(b,b.engines[0]);assert.ok(g.localX>-.5*b.spec.length);assert.ok(b.spec.rudderLever<-.5*b.spec.length);
 });
-test('propeller surface motion exists at neutral idle, grows under real load/reverse mixing, and stops when off or dry',()=>{
- const b=createBoat('lake'),en=b.engines[0];swim(b,2);const idle=propSurfaceIntensity(b,en);assert.ok(idle>0&&idle<.15);b.throttle=1;swim(b,5);assert.ok(propSurfaceIntensity(b,en)>idle*3);en.opposingFlow=4;const mix=propSurfaceIntensity(b,en);en.opposingFlow=0;assert.ok(mix>=propSurfaceIntensity(b,en));en.key='off';assert.equal(propSurfaceIntensity(b,en),0);en.key='running';en.immersion=0;assert.equal(propSurfaceIntensity(b,en),0);
+test('idle has cooling discharge without prop bubbles; disturbed flow foams only while the wet propeller is working',()=>{
+ const b=createBoat('lake'),en=b.engines[0];swim(b,2);assert.equal(propSurfaceIntensity(b,en),0);assert.ok(coolingWaterIntensity(b,en)>0);b.throttle=1;swim(b,2);assert.ok(propSurfaceIntensity(b,en)>.05);swim(b,12);assert.ok(propSurfaceIntensity(b,en)<.01);en.opposingFlow=4;assert.ok(propSurfaceIntensity(b,en)>.4);en.key='off';assert.equal(propSurfaceIntensity(b,en),0);assert.equal(coolingWaterIntensity(b,en),0);en.key='running';en.immersion=0;assert.equal(propSurfaceIntensity(b,en),0);assert.equal(coolingWaterIntensity(b,en),0);
 });
 test('island starts are afloat with propeller clearance for every craft instead of resting on yellow sand',()=>{
  for(const profile of Object.keys(CRAFTS)){const b=createBoat('island',{profile,coldStart:true});swim(b,2);assert.ok(bottomAt(b.x,b.y).depth>b.spec.draft+.5,profile);assert.equal(b.grounded,false,profile);assert.ok(driveGeometry(b,b.engines[0]).clearance>.5,profile);}

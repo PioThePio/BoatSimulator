@@ -46,6 +46,7 @@ export function carKey(r,direction){
 export function selectCarGear(r,gear){
  if(!['P','R','N','D'].includes(gear))return{ok:false,message:'Nieznany bieg'};
  if(gear!==r.gear&&gear!=='N'&&Math.hypot(r.car.vx,r.car.vy)>.25)return{ok:false,message:'Zatrzymaj zestaw przed zmianą kierunku lub włączeniem P.'};
+ if(gear==='R'||gear==='D')r.cameraDirection=gear==='R'?-1:1;
  r.gear=gear;r.gas=0;return{ok:true,message:'SUV · '+({P:'parking',R:'wsteczny',N:'luz',D:'naprzód'})[gear]};
 }
 export function stepCarGear(r,direction){const order=['P','R','N','D'];return selectCarGear(r,order[clamp(order.indexOf(r.gear)+direction,0,3)]);}
@@ -70,7 +71,7 @@ export function hitchAction(r){
 export function resetTowVehicle(r,b){
  const carry=r.attached&&r.boatLoaded&&r.secured;
  const c=r.car;c.x=r.attached?124.5:137;c.y=-32;c.a=-Math.PI/2;c.vx=c.vy=c.w=0;
- r.gear='P';r.handbrake=true;r.steer=r.actualSteer=r.gas=r.brake=r.pedal=r.brakePedal=0;
+ r.gear='P';r.cameraDirection=0;r.handbrake=true;r.steer=r.actualSteer=r.gas=r.brake=r.pedal=r.brakePedal=0;
  r.frontSink=r.rearSink=r.slip=r.carDamage=r.hitchDamage=0;r.engine.key='off';r.engine.rpm=r.engine.n=r.engine.thrust=r.engine.load=r.engine.startTime=0;r.speed=r.drawbarForce=0;
  if(r.attached){
   const t=r.trailer;t.a=c.a+.065;const p=bodyPoint(c,-SUV.hitch);t.x=p.x-Math.cos(t.a)*t.hitch;t.y=p.y-Math.sin(t.a)*t.hitch;t.vx=t.vy=t.w=0;

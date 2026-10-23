@@ -10,8 +10,8 @@ import {throttleStep,angleDelta,rimPosition} from '../src/controls.js';
 import {propWashCount} from '../src/render.js';
 function run(b,t){for(let i=0;i<t*120;i++)step(b,{},1/120);}
 test('Zegrze has metre-scale arms, Bug islands and progressively shallow beaches',()=>{
- assert.ok(WORLD.right-WORLD.left>16000);assert.ok(WORLD.bottom-WORLD.top>13000);
- assert.ok(bottomAt(ISLAND.x,ISLAND.y+25).depth<0);assert.ok(shoreAt(ISLAND.x,ISLAND.y+25).land);
+ assert.ok(WORLD.right-WORLD.left>11200);assert.ok(WORLD.bottom-WORLD.top>9100);
+ assert.ok(bottomAt(ISLAND.x,ISLAND.y+ISLAND.ry*.6).depth<0);assert.ok(shoreAt(ISLAND.x,ISLAND.y+ISLAND.ry*.6).land);
  assert.ok(bottomAt(MAP_STARTS.canal.x,MAP_STARTS.canal.y).depth>2);assert.ok(!shoreAt(MAP_STARTS.canal.x,MAP_STARTS.canal.y).land);
  assert.ok(islandOutline().length>50);assert.ok(!shoreAt(400,210).land);
  const depths=[5,8,15,30].map(d=>{const p=sandPosition(d);return bottomAt(p.x,p.y).depth;});for(let i=1;i<depths.length;i++)assert.ok(depths[i]>depths[i-1]);

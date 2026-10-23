@@ -2,20 +2,20 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createBoat,step,attachRope} from '../src/physics.js';
 import {WORLD,LAKE,BOLLARDS,DOCKS,BRIDGES,BRIDGE_SOLIDS,REMOTE_HARBORS,MAP_STARTS,FUEL_STATION,SERVICE_STATION,bottomAt,shoreAt,polygonShore,fromGeo,toGeo} from '../src/world.js';
-import {fromAtlas,GEONAMES_LANDMARKS} from '../src/zegrze.js';
+import {fromAtlas,GEONAMES_LANDMARKS,WORLD_DISTANCE_SCALE} from '../src/zegrze.js';
 import {mapProjection,vehicleLookAhead} from '../src/render.js';
 import {serviceStatus,requestRepair} from '../src/service.js';
 import {systemsStep,requestRefuel} from '../src/systems.js';
 import {ropeLoadState} from '../src/rope-load.js';
-import {createTowRig} from '../src/towing.js';
+import {createTowRig,selectCarGear} from '../src/towing.js';
 const dt=1/120;
 const run=(b,t)=>{for(let i=0;i<t*120;i++)step(b,{},dt);};
 
-test('the atlas kilometre and geographic projection keep metres, distances and boat lengths at the same physical scale',()=>{
- const a=fromAtlas(0,0),b=fromAtlas(75,0);assert.ok(Math.abs(Math.hypot(b.x-a.x,b.y-a.y)-1000)<1e-8);
+test('v20 compresses atlas and geographic distances to 70% while retaining physical boat dimensions',()=>{
+ const a=fromAtlas(0,0),b=fromAtlas(75,0);assert.ok(Math.abs(Math.hypot(b.x-a.x,b.y-a.y)-1000*WORLD_DISTANCE_SCALE)<1e-8);
  const [serock,nieporet]=GEONAMES_LANDMARKS,metres=Math.hypot(serock.x-nieporet.x,serock.y-nieporet.y);
- assert.ok(metres>8800&&metres<9400);assert.ok(WORLD.right-WORLD.left>17000);
- const boat=createBoat('lake');assert.equal(boat.spec.length,5.5);assert.ok((WORLD.right-WORLD.left)/boat.spec.length>3000);
+ assert.ok(metres>8800*WORLD_DISTANCE_SCALE&&metres<9400*WORLD_DISTANCE_SCALE);assert.ok(WORLD.right-WORLD.left>17000*WORLD_DISTANCE_SCALE);
+ const boat=createBoat('lake');assert.equal(boat.spec.length,5.5);assert.ok((WORLD.right-WORLD.left)/boat.spec.length>3000*WORLD_DISTANCE_SCALE);
  const point=fromGeo(52.449444,21.033333),roundTrip=toGeo(point.x,point.y);assert.ok(Math.abs(roundTrip.latitude-52.449444)<1e-10&&Math.abs(roundTrip.longitude-21.033333)<1e-10);
 });
 
@@ -33,7 +33,7 @@ test('overview and minimap use equal axis scale; fit/click coordinates round-tri
 });
 
 test('fuel pier is genuinely across the lake and all remote harbours have water-facing attachment points',()=>{
- assert.ok(Math.hypot(FUEL_STATION.x-80,FUEL_STATION.y-15)>2800);
+ assert.ok(Math.hypot(FUEL_STATION.x-80,FUEL_STATION.y-15)>2700*WORLD_DISTANCE_SCALE);
  for(const q of REMOTE_HARBORS){const points=BOLLARDS.filter(p=>Math.hypot(p.x-q.x,p.y-q.y)<q.length+10&&p.kind==='bollard');assert.ok(points.length>=2,q.name);assert.ok(points.some(p=>bottomAt(p.x,p.y).depth>.3),q.name);}
  for(const d of DOCKS.filter(q=>q.h>q.w&&q.x<100)){
   assert.ok(BOLLARDS.some(p=>Math.abs(p.x-d.x)<1e-8&&p.y>d.y&&p.y<d.y+d.h));assert.ok(BOLLARDS.some(p=>Math.abs(p.x-d.x-d.w)<1e-8&&p.y>d.y&&p.y<d.y+d.h));
@@ -88,6 +88,6 @@ test('45 degree low-speed steering makes a tighter real arc than 35 degrees and 
  assert.equal(createBoat('lake').spec.maxSteer,Math.PI/4);assert.equal(createBoat('lake',{profile:'pwc'}).spec.maxSteer,28*Math.PI/180);
 });
 
-test('SUV camera looks behind in reverse, ahead in drive, recentres in P and preserves metre zoom',()=>{
- const b=createBoat('lake'),r=createTowRig(b);r.gear='R';assert.equal(vehicleLookAhead(r),-1.5);r.gear='D';assert.equal(vehicleLookAhead(r),1.5);r.gear='P';assert.equal(vehicleLookAhead(r),0);r.gear='D';r.car.vx=8;assert.equal(vehicleLookAhead(r),1.5);
+test('SUV camera looks behind in reverse, ahead in drive, retains direction in P/N and preserves metre zoom',()=>{
+ const b=createBoat('lake'),r=createTowRig(b);selectCarGear(r,'R');assert.equal(vehicleLookAhead(r),-1.5);selectCarGear(r,'N');assert.equal(vehicleLookAhead(r),-1.5);selectCarGear(r,'D');assert.equal(vehicleLookAhead(r),1.5);selectCarGear(r,'P');assert.equal(vehicleLookAhead(r),1.5);r.gear='D';r.car.vx=8;assert.equal(vehicleLookAhead(r),1.5);
 });

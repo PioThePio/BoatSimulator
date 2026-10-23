@@ -1,4 +1,5 @@
 import {point} from './rigging.js';
+import {mirrorPoint,wallDistance,wallHit,reflectField} from './wave-reflections.js';
 const LIFETIME=28;
 // Advected snapshots leave diverging wave fronts on the travelled path, including turns.
 export function recordHullWake(history,b,current){
@@ -26,8 +27,9 @@ export function drawHullWake(ctx,history,time){
 }
 // Sample the SAME propagating V fronts that are drawn. Neighbouring snapshots form
 // one crest, so overlapping segments are averaged rather than summed by frame rate.
-export function sampleHullWake(history,x,y,time){
+export function sampleHullWake(history,x,y,time,face=null){
  const out={eta:0,sx:0,sy:0,vx:0,vy:0,ax:0,ay:0};let weight=0;
+ if(face){if(wallDistance({x,y},face)<=0)return out;const p=mirrorPoint({x,y},face);x=p.x;y=p.y;}
  for(let i=1;i<history.length;i++){
   const a=history[i-1],b=history[i],age=time-b.time;
   if(age<1||age>LIFETIME||b.time-a.time>.55)continue;
@@ -38,6 +40,7 @@ export function sampleHullWake(history,x,y,time){
     if(length2<.01)continue;
     const t=((x-p.x)*dx+(y-p.y)*dy)/length2;
     if(t<-.1||t>1.1)continue;
+    if(face){const s=Math.max(0,Math.min(1,t)),source={x:a.x+(b.x-a.x)*s+a.currentX*age,y:a.y+(b.y-a.y)*s+a.currentY*age};if(!wallHit(source,{x,y},face))continue;}
     const length=Math.sqrt(length2),nx=-dy/length,ny=dx/length,d=(x-p.x)*nx+(y-p.y)*ny;
     const sigma=.65+age*.04;
     if(Math.abs(d)>sigma*4)continue;
@@ -54,5 +57,24 @@ export function sampleHullWake(history,x,y,time){
   }
  }
  if(weight>1)for(const key of Object.keys(out))out[key]/=weight;
- return out;
+ return face?reflectField(out,face):out;
+}
+export function sampleWakeField(history,x,y,time,faces=[]){
+ const wave=sampleHullWake(history,x,y,time);
+ if(history.length<2)return wave;
+ for(const face of faces){const reflected=sampleHullWake(history,x,y,time,face);for(const key of Object.keys(wave))wave[key]+=reflected[key];}
+ return wave;
+}
+export function drawReflectedWake(ctx,history,time,faces){
+ for(const face of faces)for(let i=1;i<history.length;i++){
+  const a=history[i-1],b=history[i],age=time-b.time;if(age<1||age>LIFETIME||b.time-a.time>.55)continue;
+  const from=wakeEdges(a,time),to=wakeEdges(b,time);
+  for(let side=0;side<2;side++){
+   const sourceA={x:a.x+a.currentX*age,y:a.y+a.currentY*age},sourceB={x:b.x+b.currentX*age,y:b.y+b.currentY*age};
+   if(!wallHit(sourceA,from[side],face)||!wallHit(sourceB,to[side],face))continue;
+   const p=mirrorPoint(from[side],face),q=mirrorPoint(to[side],face);
+   ctx.strokeStyle=`rgba(241,255,245,${face.coefficient*Math.exp(-age/10)*(1-age/LIFETIME)*.7})`;ctx.lineWidth=.12;
+   ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(q.x,q.y);ctx.stroke();
+  }
+ }
 }

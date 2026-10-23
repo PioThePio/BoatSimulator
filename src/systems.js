@@ -37,7 +37,7 @@ export function systemsStep(b,dt){
  for(const tank of fuel.tanks)tank.litres=fuel.litres*tank.capacity/fuel.capacity;
  bilgeStep(b,dt);updateMass(b.spec,fuel.litres,b.bilge.litres);
  const ignition=b.engines.some(e=>e.key!=='off');
- let draw=(ignition?1.2:0)+(b.bilge.running?4.5:0);
+ let draw=(ignition?1.2:0)+(b.bilge.running?b.bilge.pumpAmps:0);
  for(const en of b.engines){if(en.key==='starting')draw+=110;if(en.key==='running')draw-=12+22*en.n;}
  const forceScale=b.spec.thrusterRating,speed=Math.abs(b.telemetry.surge);
  const availability=ignition&&battery.soc>.04&&battery.voltage>10.2?1:0;

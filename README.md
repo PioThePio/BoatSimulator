@@ -1,15 +1,31 @@
-# Przystań — symulator manewrów motorówką v19
+# Przystań — symulator manewrów motorówką v20
 
 Przeglądarkowy symulator z widokiem z góry, bez kont i backendu. Osiem rodzajów
 łodzi, w tym skuter, zmieniane wymiary i masa, jeden lub dwa silniki do 350 KM.
-Mapa wzorowana na Jeziorze Zegrzyńskim: obszar 17 × 14 km, ramiona Narwi
+Mapa wzorowana na Jeziorze Zegrzyńskim: obszar 11,95 × 9,73 km (odległości skrócone o 30%), ramiona Narwi
 i Bugu, zatoki, mosty, plaże i przystanie. Port ze slipem, serwisem,
 stanowiskami z bojami i ruchomymi Y-bomami szerokości 25 cm.
 
-Uruchom: **https://piothepio.github.io/BoatSimulator/?v=19.0.0**.
+Uruchom: **https://piothepio.github.io/BoatSimulator/?v=20.0.0**.
 
 Model służy do poznawania zależności w manewrach; nie jest skalibrowany dla
 konkretnej łodzi. [Źródła, równania i ograniczenia](docs/PHYSICS.md).
+
+## Zmiany v20 — strugi, fale i kompaktowy kokpit
+
+- Chłodzenie wypływa z boku/rufy na jałowym. Krótka piana przy gwałtownym
+  gazie, hamowaniu wstecznym i wentylacji; struga na wstecznym rozchodzi się
+  przed śrubą i po bokach kadłuba. Znacznik osobnego steru tylko dla wału.
+- Większe zegary, węższy panel informacji i wyższe jezioro na telefonie.
+  P/N zachowuje poprzednie ustawienie kamery SUV-a.
+- Trzy fizyczne odbijacze na stronę, także przy rufie i w kontakcie z inną łodzią.
+- Zęza: procent, napływ, całkowite litry, wypompowywanie. Pompy 32/50/95/126 l/min
+  dobrane do jednostki; faktyczny pobór prądu, masa i zanurzenie.
+- Fale od kila docierają do zacumowanych łodzi z opóźnieniem, poruszając kadłubem
+  i cumami. Pierwsze, osłabione odbicia od pomostów i brzegów; most ponad wodą.
+- Geografia jeziora ma 70% poprzednich odległości i zachowane proporcje;
+  łodzie, pomosty, slip, domki, drzewa, prędkości i czas zachowują swoją skalę.
+- [Parametry i testy v20](docs/FIXES_V20.md).
 
 ## Zmiany v19 — poprawki zgłoszonych manewrów
 

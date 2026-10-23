@@ -4,7 +4,7 @@ export const BOTTOM_ZONES={bottomBow:'Dno · przód',bottomMid:'Dno · środek',
 export function damageColor(damage){return damage<=0?null:damage<10?'#d8c36c':damage<35?'#df9c54':damage<65?'#ce834d':'#bf6350';}
 export function bottomZone(b,arm){const x=(arm.x*Math.cos(b.a)+arm.y*Math.sin(b.a))/b.spec.length;return x>.15?'bottomBow':x<-.15?'bottomStern':'bottomMid';}
 // Normalised SI positions shared by collision detection, map and instrument.
-export const FENDERS=[{id:'portStern',x:-1.2/5.5,y:-1.02/2.1},{id:'starboardStern',x:-1.2/5.5,y:1.02/2.1},{id:'portBow',x:.9/5.5,y:-1.02/2.1},{id:'starboardBow',x:.9/5.5,y:1.02/2.1}];
+export const FENDERS=[-1,1].flatMap(side=>[{id:(side<0?'port':'starboard')+'Stern',x:-.42,y:side*1.02/2.1},{id:(side<0?'port':'starboard')+'Mid',x:-1.2/5.5,y:side*1.02/2.1},{id:(side<0?'port':'starboard')+'Bow',x:.9/5.5,y:side*1.02/2.1}]);
 export const HULL_SECTIONS={bow:[[2.23,-.43],[2.75,0],[2.23,.43]],portBow:[[.65,-.92],[1.6,-.72],[2.23,-.43]],portMid:[[-.65,-1.02],[.65,-.92]],portStern:[[-2.75,-.95],[-1.6,-1.02],[-.65,-1.02]],transom:[[-2.75,-.95],[-2.75,.95]],starboardStern:[[-2.75,.95],[-1.6,1.02],[-.65,1.02]],starboardMid:[[-.65,1.02],[.65,.92]],starboardBow:[[.65,.92],[1.6,.72],[2.23,.43]]};
 export function impactClass(speed,fender=false){return speed<=(fender?.30:.15)?'gentle':speed<(fender?1.8:1.5)?'damage':'destruction';}
 export function contactZone(b,arm){

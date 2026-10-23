@@ -1,4 +1,4 @@
-# Zegrze i poprawki v18
+# Zegrze — mapa v18, skrócone odległości v20
 
 ## Mapa i źródła
 
@@ -27,16 +27,21 @@ geodezyjnych ani z pobranej, dokładnej geometrii OSM.
 
 ## Skala i czas
 
-- Podziałka atlasu: **75 pikseli = 1000 m**. Współrzędne świata są w metrach,
-  x na wschód, y na południe. Obszar mapy: **17,07 × 13,89 km**.
-- Interpretowany wielokąt wody ma **30,47 km²**. To wynik obliczenia obrysu
-  w symulatorze, nie deklaracja pomiaru powierzchni rzeczywistego zbiornika.
-  Odnogi rzek kończą się na krawędziach dostarczonej mapy.
-- Odległość Serock–Nieporęt z punktów GeoNames wynosi **9,12 km**.
-  Sprawdzono też odwracalność lokalnej projekcji geograficznej.
-- Łódź 5,5 m nadal ma 5,5 jednostki świata. Nie powiększono kadłubów ani
-  prędkości, żeby sztucznie skrócić przeprawy. Przy stałych 36 km/h
-  pokonanie kilometra zajmuje 100 sekund czasu symulacji; pauza zatrzymuje czas.
+- Źródłowa podziałka atlasu: **75 pikseli = 1000 rzeczywistych metrów**.
+  Na życzenie użytkownika v20 skraca geograficzne odległości do **70%**:
+  75 pikseli atlasu daje teraz 700 m symulacji, a świat ma **11,95 × 9,73 km**
+  zamiast 17,07 × 13,89 km. Osie x/y mają ten sam współczynnik.
+- Interpretowany obrys wody ma około **14,93 km²** po kompresji, wcześniej
+  30,47 km². Nie są to pomiary rzeczywistego zbiornika. Odnogi kończą się
+  na krawędziach dostarczonej mapy.
+- Serock–Nieporęt: **9,12 km rzeczywiście**, około **6,38 km w symulacji**.
+  Projekcja współrzędnych geograficznych uwzględnia kompresję i pozostaje odwracalna.
+- Kompresja względem punktu (80 m, 4 m) przy głównej kei zachowuje jej położenie.
+  Główne pomosty, parking i slip zachowują geometrię; zdalne przystanie przesunięto
+  z brzegiem, bez skracania pomostów. Wyspy i obrys jeziora skalują się razem.
+- Łódź 5,5 m nadal ma 5,5 jednostki świata. Nie zmieniono mas, prędkości, czasu,
+  głębokości ani wymiarów obiektów. Przy 36 km/h kilometr symulacji nadal zajmuje
+  100 sekund, ale ta sama przeprawa geograficzna jest o 30% krótsza.
 - Zwykłe pomosty zdalnych przystani mają 20–40 m długości i 1,8 m szerokości;
   Y-bomy nadal 25 cm. Główny port zachowuje sprawdzoną geometrię manewrową.
 - Podgląd całego akwenu i minimapa mają identyczną skalę osi x/y.

@@ -1,12 +1,13 @@
-import {LAKE,REEDS,FUEL_STATION,FUEL_FENDERS,SERVICE_STATION,BUILDINGS,WORLD,ISLAND,ISLANDS,BRIDGES,REMOTE_HARBORS,MAP_LABELS,DOCKS,BOLLARDS,BEACHES,islandOutline,islandRadius,shoreAt,bottomAt,environment,waveHeight,clamp} from './world.js';
+import {LAKE,REEDS,FUEL_STATION,FUEL_FENDERS,SERVICE_STATION,BUILDINGS,WORLD,ISLAND,ISLANDS,BRIDGES,REMOTE_HARBORS,MAP_LABELS,DOCKS,BOLLARDS,BEACHES,islandOutline,islandRadius,shoreAt,bottomAt,environment,waveHeight,reflectionFacesNear,clamp} from './world.js';
 import {waterMotionSamples} from './boat-effects.js';
 import {drawParking,drawTowRig} from './render-towing.js';
-import {drawHullWake} from './wake.js';
+import {drawHullWake,drawReflectedWake} from './wake.js';
 import {mooringPoint} from './marina.js';
 import {FENDERS,HULL_SECTIONS,impactPaint} from './impacts.js';
 import {point,cleat,cleatLocal,CLEATS} from './rigging.js';
 import {towView,minimapProjection} from './camera.js';
 import {placeMapLabels} from './map-labels.js';
+import {mirrorVector} from './wave-reflections.js';
 export {vehicleLookAhead,minimapProjection} from './camera.js';
 function drawTerrain(ctx){
  ctx.fillStyle='#aec59b';ctx.fillRect(WORLD.left,WORLD.top,WORLD.right-WORLD.left,WORLD.bottom-WORLD.top);
@@ -35,9 +36,27 @@ export function propFoamIntensity(en){
  return foam>.10?foam:0;
 }
 export function propSurfaceIntensity(b,en){
- if(b.spec.air||en.key!=='running'||en.immersion<=.01||b.sunken)return 0;
- const power=en.gear?en.n**2:0,opposing=clamp((en.opposingFlow??0)/3,0,1);
- return clamp((.09+power*(.60+.40*opposing)+propFoamIntensity(en)*.8)*Math.min(1,en.immersion*2),0,1.5);
+ if(b.spec.air||en.key!=='running'||!en.gear||en.immersion<=.01||b.sunken)return 0;
+ return clamp(((en.burst??0)*.85+clamp((en.opposingFlow??0)/3,0,1)*en.n**2+propFoamIntensity(en)) * Math.min(1,en.immersion*2),0,1.5);
+}
+export function coolingWaterIntensity(b,en){
+ return b.spec.air||en.key!=='running'||b.sunken||en.immersion<=.01?0:clamp(en.cooling??0,0,1);
+}
+// Draw water before the hull: reverse wash passes beneath it, emerging alongside.
+function drawDriveWater(ctx,b){
+ if(b.spec.air)return;
+ ctx.save();ctx.translate(b.x,b.y);ctx.rotate(b.a);
+ for(const [index,en]of b.engines.entries()){
+  const cool=coolingWaterIntensity(b,en),side=index%2?-1:1;
+  if(cool){const x=-b.spec.length*.30,y=side*b.spec.beam*.46;ctx.strokeStyle='#dff6edbb';ctx.lineWidth=.035+.025*cool;ctx.beginPath();ctx.moveTo(x,y);ctx.quadraticCurveTo(x-.15,side*(b.spec.beam*.5+.20),x-.3,side*(b.spec.beam*.5+.30));ctx.stroke();const pulse=(b.time*2.3+index*.31)%1;ctx.strokeStyle='#eef9e580';ctx.lineWidth=.025;ctx.beginPath();ctx.ellipse(x-.3,side*(b.spec.beam*.5+.30),.05+pulse*.16,.025+pulse*.08,0,0,Math.PI*2);ctx.stroke();}
+  if(en.key!=='running'||!en.gear||en.immersion<=.01||b.sunken)continue;
+  ctx.save();ctx.translate(b.spec.engineLever,en.y);ctx.rotate(b.spec.propulsion==='inboard'?0:-b.actualSteer);
+  const direction=en.gear>0?-1:1,reverse=en.gear<0,power=clamp(Math.abs(en.thrust)/3500,0,1),foam=propSurfaceIntensity(b,en);
+  // Attached, ordinary prop wash is a smooth moving ribbon, not bubble circles.
+  if(Math.abs(en.thrust)>5){ctx.strokeStyle=`rgba(235,250,242,${.12+.35*power})`;ctx.lineWidth=.05+.07*power;for(const side of [-1,1]){ctx.beginPath();ctx.moveTo(0,side*.12);ctx.bezierCurveTo(direction*.5,side*(.13+.06*Math.sin(b.time*5)),direction*(.7+power),side*(reverse?b.spec.beam*.65:.22),direction*(1.1+2*power),side*(reverse?b.spec.beam*.68:.26+power*.18));ctx.stroke();}}
+  if(foam>.03){ctx.strokeStyle=`rgba(255,255,245,${Math.min(.85,.25+foam*.4)})`;ctx.lineWidth=.045+.025*foam;for(let i=0;i<Math.ceil(foam*15);i++){const age=(b.time*(1.2+power)+i*.137)%1,spread=.08+age*.45;ctx.beginPath();ctx.ellipse(direction*(.12+age*(.9+power*2)),reverse?(i%2?1:-1)*(.12+b.spec.beam*.62*(1-Math.exp(-age*6))):Math.sin(i*2.4)*spread,.03+age*.09,.025+age*.05,0,0,Math.PI*2);ctx.stroke();}}
+  ctx.restore();
+ }ctx.restore();
 }
 function drawDeckWater(ctx,b){
  const level=b.bilge?.level??0;if(level<.08)return;
@@ -71,6 +90,25 @@ function drawSurfaceFlow(ctx,b,e,bounds,scale){
   if(current>.03){const a=(b.time+Math.abs(seed)*14)%14,px=x+flow.current.x*a,py=y+flow.current.y*a;if(shoreAt(px,py).land)continue;ctx.strokeStyle='#cdebe7bb';ctx.lineWidth=.10;ctx.beginPath();ctx.moveTo(px,py);ctx.lineTo(px-flow.current.x*.6,py-flow.current.y*.6);ctx.stroke();ctx.beginPath();ctx.arc(px,py,.06+.08*current,0,Math.PI*2);ctx.stroke();}
  }
 }
+function drawReflectedWeather(ctx,b,e,faces){
+ const H=waveHeight(e,b.time);if(H<=0)return;
+ const a=(e.waveDirection??e.windDirection??90)*Math.PI/180,n={x:Math.sin(a),y:-Math.cos(a)},omega=2*Math.PI/2.8;
+ let k=omega*omega/9.81;for(let i=0;i<5;i++)k=omega*omega/(9.81*Math.tanh(k*3));
+ for(const f of faces){
+  const incident=n.x*f.nx+n.y*f.ny;if(incident>=-.08)continue;
+  const r=mirrorVector(n,f),dx=f.b.x-f.a.x,dy=f.b.y-f.a.y,length=Math.hypot(dx,dy);
+  for(let along=1;along<length;along+=3){
+   const x=f.a.x+dx*along/length,y=f.a.y+dy*along/length,phase=k*(x*n.x+y*n.y)-omega*b.time;
+   const first=Math.ceil(phase/(2*Math.PI));
+   for(let crest=first;crest<first+3;crest++){
+    const d=(crest*2*Math.PI-phase)/(-k*incident);if(d>18)continue;
+    const px=x+f.nx*d,py=y+f.ny*d;if(bottomAt(px,py).depth<=0)continue;
+    ctx.strokeStyle=`rgba(235,251,240,${Math.min(.45,H*f.coefficient*2)*Math.exp(-d/30)})`;ctx.lineWidth=.08;
+    ctx.beginPath();ctx.moveTo(px-r.y*.8,py+r.x*.8);ctx.quadraticCurveTo(px+.08*r.x,py+.08*r.y,px+r.y*.8,py-r.x*.8);ctx.stroke();
+   }
+  }
+ }
+}
 export function renderWorld(ctx,state){
  const {boat:b,env,width,height,zoom,follow,overview,manualCenter,selected}=state;
  const focus=state.focus??b,base=Math.min(width/140,height/80);
@@ -87,7 +125,7 @@ export function renderWorld(ctx,state){
  ctx.clearRect(0,0,width,height);ctx.fillStyle='#aec59b';ctx.fillRect(0,0,width,height);
  ctx.save();ctx.translate(width/2,height/2);ctx.scale(scale,scale);ctx.translate(-camera.x,-camera.y);
  const visible=(x,y,pad=4)=>x>bounds.left-pad&&x<bounds.right+pad&&y>bounds.top-pad&&y<bounds.bottom+pad;
- drawTerrain(ctx);drawBridges(ctx,scale);
+ drawTerrain(ctx);
  drawParking(ctx);
  // Small shore settlement and a concrete slip next to the service fingers.
  for(const house of BUILDINGS){
@@ -114,7 +152,9 @@ export function renderWorld(ctx,state){
   const curl=(.10+H*.22)*Math.sin(b.time*1.15+part*Math.PI*2),sway=.06*Math.sin(b.time*.8+part*11);
   ctx.strokeStyle=part>.55?'#eaf2e9':'#b3cecd';ctx.lineWidth=.07;ctx.beginPath();ctx.moveTo(px-.7,py+sway);ctx.bezierCurveTo(px-.28,py-.12+curl,px+.25,py+.12-curl,px+.7,py-sway);ctx.stroke();
  }
+ if(b.wake.length){drawHullWake(ctx,b.wake,b.time);drawReflectedWake(ctx,b.wake,b.time,reflectionFacesNear(camera.x,camera.y));}
  if(!overview)drawSurfaceFlow(ctx,b,env,bounds,scale);
+ if(!overview)drawReflectedWeather(ctx,b,env,reflectionFacesNear(camera.x,camera.y,40));
  // Trees remain on dry land; reeds are traversable water vegetation.
  for(let i=0;i<145;i++){const a=i*2.39996,r=8+Math.sqrt(i/145)*66,x=ISLAND.x+Math.cos(a)*r,y=ISLAND.y+Math.sin(a)*r*.78;if(!visible(x,y)||!shoreAt(x,y).land)continue;ctx.beginPath();ctx.arc(x,y,1.7+(i%3)*.4,0,Math.PI*2);ctx.fillStyle=i%2?'#9cb58c':'#91ab82';ctx.fill();}
  for(const r of REEDS){if(!visible(r.x,r.y,r.r))continue;ctx.strokeStyle='#6b9769';ctx.lineWidth=.13;for(let i=0;i<110;i++){const a=i*2.39996,rad=Math.sqrt(i/110)*r.r,x=r.x+Math.cos(a)*rad,y=r.y+Math.sin(a)*rad;if(shoreAt(x,y).land)continue;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+.2*Math.sin(b.time*.6+i),y-.65);ctx.stroke();}}
@@ -139,7 +179,6 @@ export function renderWorld(ctx,state){
  // Point velocities relative to local water drive every hull ripple.
  if(previousBoat!==b){wake=[];lastWake=b.time;previousBoat=b;}
  const samples=waterMotionSamples(b,env);
- if(samples.length)drawHullWake(ctx,b.wake,b.time);
  if(samples.length&&b.time-lastWake>.22){
   lastWake=b.time;
   for(const q of samples){const vx=q.relative.x,vy=q.relative.y,speed=Math.hypot(vx,vy);if(speed<.045)continue;
@@ -172,12 +211,14 @@ export function renderWorld(ctx,state){
   ctx.save();ctx.translate(q.x,q.y);ctx.scale(bob,bob);ctx.rotate(q.a);ctx.scale(1,Math.cos(q.roll));ctx.fillStyle=q.type==='pwc'?'#ddae62':'#e8e9dc';ctx.strokeStyle='#597d75';ctx.lineWidth=.09;ctx.beginPath();ctx.moveTo(q.length*.5,0);ctx.quadraticCurveTo(q.length*.2,-q.beam*.6,-q.length*.47,-q.beam*.45);ctx.lineTo(-q.length*.47,q.beam*.45);ctx.quadraticCurveTo(q.length*.2,q.beam*.6,q.length*.5,0);ctx.fill();ctx.stroke();ctx.fillStyle='#729697';ctx.fillRect(-q.length*.2,-q.beam*.3,q.length*.35,q.beam*.6);if(q.type==='sail'){ctx.strokeStyle='#635f4e';ctx.beginPath();ctx.moveTo(-q.length*.4,0);ctx.lineTo(q.length*.55,0);ctx.stroke();ctx.fillStyle='#f8f3df';ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(-q.length*.35,q.beam*.3);ctx.lineTo(-q.length*.35,-q.beam*.3);ctx.fill();}ctx.fillStyle='#d5a64f';for(const end of Object.keys(CLEATS)){const p=cleatLocal(q.spec,end);ctx.beginPath();ctx.arc(p.x,p.y,.09,0,Math.PI*2);ctx.fill();}ctx.restore();
  }
  drawTowRig(ctx,state.towRig,b);drawBoat(ctx,b);
+ drawBridges(ctx,scale);
  const bow=cleat(b,'bow');ctx.fillStyle='#cfb56d';ctx.beginPath();ctx.arc(bow.x,bow.y,.22,0,Math.PI*2);ctx.fill();
  ctx.restore();
  const metres=overview?1000:scale<1?100:5;ctx.strokeStyle='#4f756d';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(22,height-52);ctx.lineTo(22+metres*scale,height-52);ctx.moveTo(22,height-56);ctx.lineTo(22,height-49);ctx.moveTo(22+metres*scale,height-56);ctx.lineTo(22+metres*scale,height-49);ctx.stroke();ctx.fillStyle='#4f756d';ctx.font='10px system-ui';ctx.fillText(metres+' m',24,height-60);
  const result={scale,camera,bounds};drawMapNames(ctx,state,result);if(overview)drawPositionMarker(ctx,b,result,width,height);return result;
 }
 function drawBoat(ctx,b){
+ drawDriveWater(ctx,b);
  ctx.save();ctx.translate(b.x,b.y);ctx.rotate(b.a);ctx.scale(b.spec.length/5.5,b.spec.beam/2.1*Math.cos(b.roll));ctx.globalAlpha*=1-.7*(b.submersion??0);
  const visualHeave=b.towRig?.boatLoaded&&b.towRig.secured?0:Math.min(.7,b.heave);
  ctx.fillStyle=`rgba(23,63,61,${b.towRig?.boatLoaded&&b.towRig.secured?.05:.12+Math.abs(visualHeave)*.15})`;ctx.beginPath();ctx.ellipse(.2,.23+visualHeave*.8,3,1.18,0,0,Math.PI*2);ctx.fill();
@@ -193,11 +234,8 @@ function drawBoat(ctx,b){
  if(['cabin','cruiser'].includes(b.spec.profile)){ctx.fillStyle='#e8ece2';ctx.fillRect(-.1,-.77,1.6,1.54);ctx.fillStyle='#699393';ctx.fillRect(.9,-.65,.3,1.3);}}
  for(const engine of b.engines){
   if(b.spec.air){ctx.save();ctx.translate(-1.8,0);ctx.strokeStyle='#4b6255';ctx.lineWidth=.12;ctx.beginPath();ctx.ellipse(0,0,.36,.99,0,0,Math.PI*2);ctx.stroke();ctx.lineWidth=.045;for(const y of [-.75,-.4,0,.4,.75]){ctx.beginPath();ctx.moveTo(-.26,y);ctx.lineTo(.26,y);ctx.stroke();}const phase=engine.key==='running'?b.time*(9+engine.n*30):.5;ctx.strokeStyle='#6d7e63';ctx.lineWidth=.12;for(let i=0;i<3;i++){const a=phase+i*Math.PI*2/3;ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(Math.cos(a)*.2,Math.sin(a)*.88);ctx.stroke();}for(const side of [-1,1]){ctx.save();ctx.translate(-.8,side*.5);ctx.rotate(-b.actualSteer);ctx.fillStyle='#70856a';ctx.fillRect(-.35,-.06,.6,.12);ctx.restore();}ctx.restore();continue;}
-  ctx.save();ctx.translate(b.spec.propulsion==='inboard'?-1.9:-2.6,engine.y*2.1/b.spec.beam);ctx.rotate(b.spec.propulsion==='inboard'?0:-b.actualSteer);ctx.strokeStyle=engine.propDamage>=70?'#a96852':'#41675f';ctx.lineWidth=.14;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(.02,0);ctx.lineTo(-.52,0);ctx.moveTo(-.39,-.15);ctx.lineTo(-.39,.15);ctx.stroke();
-  const bars=b.enginesRaised?0:propWashCount(engine),dir=engine.gear>=0?-1:1;
-  if(bars){ctx.strokeStyle='#f7fff3';ctx.lineWidth=.13;for(let i=0;i<bars;i++){const pulse=(b.time*2)%1,dist=.85+(i+pulse)*.37;ctx.beginPath();ctx.moveTo(dir*dist,-.16-i*.045);ctx.lineTo(dir*dist,.16+i*.045);ctx.stroke();}}
-  const foam=propSurfaceIntensity(b,engine);if(foam){ctx.strokeStyle='#ffffffbb';ctx.lineWidth=.10+.10*foam;for(let i=0;i<8+Math.ceil(foam*16);i++){const age=(b.time*2+i*.13)%1.6,spread=.15+age*.4;ctx.beginPath();ctx.arc(-.7-age*(1.8+foam),Math.sin(i*2.4)*spread,.07+age*.09,0,Math.PI*2);ctx.stroke();}ctx.beginPath();ctx.moveTo(-.6,0);ctx.quadraticCurveTo(-1.5,-.5*foam,-2.8-foam,-.25);ctx.stroke();}
-  if(b.spec.propulsion==='inboard'){ctx.save();ctx.translate(-1.0,0);ctx.rotate(-b.actualSteer);ctx.fillStyle='#477e83';ctx.strokeStyle='#eff6dc';ctx.lineWidth=.055;ctx.beginPath();ctx.roundRect(-.40,-.12,.62,.24,.06);ctx.fill();ctx.stroke();ctx.restore();}if(b.enginesRaised){ctx.strokeStyle='#d2a44f';ctx.beginPath();ctx.moveTo(-.6,-.3);ctx.lineTo(.1,.3);ctx.stroke();}ctx.restore();
+  // The separate, visible rudder belongs only to a fixed shaft drive.
+  if(b.spec.propulsion==='inboard'){ctx.save();ctx.translate(-2.9,engine.y*2.1/b.spec.beam);ctx.rotate(-b.actualSteer);ctx.fillStyle='#477e83';ctx.strokeStyle='#eff6dc';ctx.lineWidth=.055;ctx.beginPath();ctx.roundRect(-.40,-.12,.62,.24,.06);ctx.fill();ctx.stroke();ctx.restore();}
  }
  for(const [end,x] of [['bow',2.05],['stern',-2.05]]){const power=b.thrusters[end+'Actual'];if(Math.abs(power)<.05)continue;ctx.strokeStyle='#f8fff0';ctx.lineWidth=.13;const dir=-Math.sign(power);for(let i=0;i<4;i++){const d=(i+(b.time*4)%1)*.28;ctx.beginPath();ctx.moveTo(x-.15,dir*(1.05+d));ctx.lineTo(x+.15,dir*(1.05+d));ctx.stroke();}}
  if(b.fenders)for(const f of FENDERS){const x=f.x*5.5,y=f.y*2.1,paint=impactPaint(b,f.id,true);ctx.fillStyle=paint.color??'#e8ae67';ctx.beginPath();ctx.roundRect(x-.2,y-.13,.4,.26,.12);ctx.fill();ctx.strokeStyle=paint.flash>0?paint.color:'#a4773f';ctx.lineWidth=paint.flash>0?.12:.045;ctx.stroke();}

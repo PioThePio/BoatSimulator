@@ -8,7 +8,7 @@ import {conditionMarkup,updateContactInstrument} from './contact-instrument.js';
 const $=s=>document.querySelector(s);
 export function installCockpit(api){
  $('#instruments').innerHTML=gauge('rpm','OBROTOMIERZ',0,6500,'obr/min')+gauge('rpm2','OBROTY · PRAWY',0,6500,'obr/min')+gauge('speed','PRĘDKOŚĆ',0,120,'km/h')+gauge('fuel','PALIWO',0,100,'L/h')+gauge('trim','TRYM',0,100,'%')+gauge('volt','AKUMULATOR',8,16,'V')+gauge('temp','TEMPERATURA',20,140,'°C')+attitudeMarkup();
- $('.pitch-gauge').insertAdjacentHTML('beforeend',conditionMarkup());$('#instruments').insertAdjacentHTML('beforeend','<div class="bilge-panel"><div><span>WODA W ZĘZIE</span><strong id="bilge-level">0%</strong><small id="bilge-state">Sucho</small></div><meter id="bilge-meter" min="0" max="100" high="50" optimum="0" value="0" aria-label="Poziom wody w zęzie"></meter><button id="bilge-pump" title="Ręczne włączenie pompy; AUTO działa niezależnie" aria-pressed="false">POMPA OFF</button><label><input id="bilge-auto" type="checkbox" checked> AUTO</label></div>');$('#bilge-pump').onclick=()=>{const q=api.boat().bilge;q.manual=!q.manual;};$('#bilge-auto').onchange=e=>api.boat().bilge.auto=e.target.checked;
+ $('.pitch-gauge').insertAdjacentHTML('beforeend',conditionMarkup());$('#instruments').insertAdjacentHTML('beforeend','<div class="bilge-panel"><div><span>WODA W ZĘZIE</span><strong id="bilge-level">0%</strong><span id="bilge-inflow">↘ 0,0 l/min</span><span id="bilge-litres">0 l</span><span id="bilge-outflow">↗ 0,0 l/min</span></div><meter id="bilge-meter" min="0" max="100" high="50" optimum="0" value="0" aria-label="Poziom wody w zęzie"></meter><button id="bilge-pump" title="Ręczne włączenie pompy; AUTO działa niezależnie" aria-pressed="false">POMPA OFF</button><label><input id="bilge-auto" type="checkbox" checked> AUTO</label></div>');$('#bilge-pump').onclick=()=>{const q=api.boat().bilge;q.manual=!q.manual;};$('#bilge-auto').onchange=e=>api.boat().bilge.auto=e.target.checked;
  for(let i=0;i<2;i++){
   $('#ignition-'+i).innerHTML=`<div class="ignition"><span class="key-positions">0 · I · START</span><div class="key-row"><button data-key-turn="-1" data-engine="${i}" aria-label="Silnik ${i+1}: przekręć stacyjkę w lewo">↶</button><button id="key-${i}" class="key-knob" data-engine="${i}" aria-label="Stacyjka silnika ${i+1}: lewa połowa wyłącza, prawa uruchamia"><svg viewBox="0 0 54 54" aria-hidden="true"><circle cx="27" cy="27" r="24"/><g class="key-pointer"><path d="M23 12h8v29h-8Z"/><circle cx="27" cy="14" r="3"/></g></svg></button><button data-key-turn="1" data-engine="${i}" aria-label="Silnik ${i+1}: przekręć stacyjkę w prawo">↷</button></div><small id="key-state-${i}" class="key-state">Wyłączony</small><small id="temperature-${i}" class="engine-temperature">18°C</small></div>`;
  }
@@ -56,10 +56,11 @@ export function installCockpit(api){
 }
 
 export function updateBilgePanel(b){
- const q=b.bilge,powerLost=(q.manual||q.auto)&&b.battery.soc<=.02;
- const state=q.running?(q.manual?'pompa ręczna':'pompa AUTO'):powerLost?'brak zasilania':q.manual?'ręczna czeka na wodę':q.auto?'AUTO czeka do '+q.autoOnLitres.toFixed(0)+' l':'pompa wyłączona';
+ const q=b.bilge;
  $('#bilge-level').textContent=Math.round(q.level*100)+'%';$('#bilge-meter').value=q.level*100;
- $('#bilge-state').textContent=`${q.litres.toFixed(1)} l · ${state}${q.inflow>.001?' · '+(q.inflow*60).toFixed(1)+' l/min':''}`;
+ $('#bilge-litres').textContent=Math.round(q.litres)+' l';
+ $('#bilge-inflow').textContent='↘ '+(q.inflow*60).toFixed(1)+' l/min';$('#bilge-inflow').title='Napływ wody';
+ $('#bilge-outflow').textContent='↗ '+(q.outflow*60).toFixed(1)+' l/min';$('#bilge-outflow').title='Wypompowywanie · pompa '+q.pumpRate+' l/min przy 12 V';
  $('#bilge-pump').textContent=q.running||q.manual?'POMPA ON':'POMPA OFF';$('#bilge-pump').setAttribute('aria-pressed',String(q.running||q.manual));
  $('#bilge-pump').dataset.mode=q.manual?'manual':q.running?'auto':'off';$('#bilge-auto').checked=q.auto;
  $('#bilge-auto').title=`Pływak: start ${q.autoOnLitres.toFixed(0)} l, stop ${q.autoOffLitres.toFixed(0)} l. Pompa działa również bez zapłonu.`;
