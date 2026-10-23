@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {createBoat,step,attachRope} from '../src/physics.js';
 import {CRAFTS,engineState,updateEngine} from '../src/craft.js';
 import {WORLD_DISTANCE_SCALE,fromAtlas,compressWorld,REMOTE_HARBORS} from '../src/zegrze.js';
-import {WORLD,DOCKS,BOLLARDS,BUILDINGS,BRIDGES,YBOOMS,MAP_STARTS,MAP_POIS,SERVICE_STATION,FUEL_STATION,FUEL_FENDERS,shoreAt,bottomAt,ISLANDS,reflectionFacesNear} from '../src/world.js';
+import {WORLD,DOCKS,BOLLARDS,BUILDINGS,BRIDGES,YBOOMS,MAP_STARTS,MAP_POIS,SERVICE_STATION,FUEL_STATION,FUEL_FENDERS,SHOALS,BEACHES,shoreAt,bottomAt,ISLANDS,reflectionFacesNear} from '../src/world.js';
 import {worldScale,operationalTimeScale,logicalDistance} from '../src/operations.js';
 import {createAtlas,atlasProjection,zoomAtlas,panAtlas} from '../src/map-controls.js';
 import {driveWaterState,engineSteering} from '../src/drive-effects.js';
@@ -42,7 +42,7 @@ test('main port access and service finger touch land; slip crosses the real wet/
  for(const f of FUEL_FENDERS)close(f.x,FUEL_STATION.x);
 });
 test('all fixed bollards are on their piers, floating fingers, trailer or anchored buoys; trees and all building corners stay on land',()=>{
- for(const q of BOLLARDS){if(q.kind==='tree'){assert.ok(shoreAt(q.x,q.y).distance<-1.3,q.id);continue;}if(q.kind==='buoy'||q.trailer||q.boom!==undefined)continue;
+ for(const q of BOLLARDS){if(q.kind==='tree'){assert.ok(shoreAt(q.x,q.y).distance<-1.3,q.id);continue;}if(q.kind==='buoy'){assert.ok(bottomAt(q.x,q.y).depth>.5,q.id);assert.ok(shoreAt(q.x,q.y).distance>.55,q.id);continue;}if(q.trailer||q.boom!==undefined)continue;
   assert.ok(DOCKS.some(d=>q.x>=d.x-.05&&q.x<=d.x+d.w+.05&&q.y>=d.y-.05&&q.y<=d.y+d.h+.05),q.id);}
  for(const d of BUILDINGS)for(const [dx,dy]of [[0,0],[d.w,0],[0,d.h],[d.w,d.h]])assert.ok(shoreAt(d.x+dx,d.y+dy).land,JSON.stringify(d));
  for(const q of YBOOMS)assert.ok(DOCKS.some(d=>q.x1>=d.x&&q.x1<=d.x+d.w&&q.y1>=d.y&&q.y1<=d.y+d.h));
@@ -54,6 +54,8 @@ test('bridge spans cross water, their piers stay in water and Zegrze bridge no l
 test('water starts clear structures; beach retains shallow sand/tree exercise and lake has no orphan pier',()=>{
  for(const [id,p]of Object.entries(MAP_STARTS)){assert.ok(bottomAt(p.x,p.y).depth>(id==='beach'?.3:1.5),id);for(const d of DOCKS)assert.ok(!(p.x>d.x&&p.x<d.x+d.w&&p.y>d.y&&p.y<d.y+d.h),id);}
  const b=createBoat('lake');assert.ok(bottomAt(b.x,b.y).depth>2);for(const d of DOCKS)if(d.site)assert.ok(Math.hypot(d.x-b.x,d.y-b.y)>500);
+ for(const shoal of SHOALS){assert.ok(shoreAt(shoal.x,shoal.y).distance>0);assert.ok(bottomAt(shoal.x,shoal.y).depth<5);}
+ for(const beach of BEACHES)assert.ok(Math.abs(shoreAt(beach.x,beach.y).distance)<1);
  assert.ok(MAP_POIS.every(p=>p.x>=WORLD.left&&p.x<=WORLD.right&&p.y>=WORLD.top&&p.y<=WORLD.bottom));
 });
 test('atlas pan uses screen metres, cursor zoom preserves the anchor, fit restores exact whole-water view',()=>{
