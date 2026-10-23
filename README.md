@@ -1,21 +1,36 @@
-# Przystań — symulator manewrów motorówką v21
+# Przystań — symulator manewrów motorówką v22
 
 Przeglądarkowy symulator z widokiem z góry, bez kont i backendu. Osiem rodzajów
 łodzi, w tym skuter, zmieniane wymiary i masa, jeden lub dwa silniki do 350 KM.
-Mapa wzorowana na Jeziorze Zegrzyńskim: obszar 11,95 × 9,73 km (odległości skrócone o 30%), ramiona Narwi
+Mapa wzorowana na Jeziorze Zegrzyńskim: obszar 8,53 × 6,95 km (50% pierwotnych odległości), ramiona Narwi
 i Bugu, zatoki, mosty, plaże i przystanie. Port ze slipem, serwisem,
 stanowiskami z bojami i ruchomymi Y-bomami szerokości 25 cm.
 
-Uruchom: **https://piothepio.github.io/BoatSimulator/?v=21.0.0**.
+Uruchom: **https://piothepio.github.io/BoatSimulator/?v=22.0.0**.
 
 Model służy do poznawania zależności w manewrach; nie jest skalibrowany dla
 konkretnej łodzi. [Źródła, równania i ograniczenia](docs/PHYSICS.md).
+
+## Zmiany v22 — mapa, strugi, kilwater i odbijacze
+
+- Dokładnie 50% pierwotnej geometrii, obiekty nadal w metrach; liczniki ×2.
+  Audyt naprawił cztery osamotnione pomosty, dojścia, domek, drzewa i oś mostu.
+- Duża mapa: pan myszą/dotykiem, kółko/pinch, przyciski całego akwenu i łodzi.
+  Kliknięcie nazwy POI otwiera lokalny widok, bez teleportu i kliknięć przez mapę.
+- Widoczne zaburtówki/Z-etki; każda struga zgodna z faktycznym ciągiem i kątem.
+  Większy poprawnie przypisany wypływ chłodzenia, chwilowa piana i regrip.
+- Niewielka woda od rozprysków oddzielona od przecieku; istniejąca pompa i masa.
+- Silniejszy physical wake z propagacją, reakcją cumowanych łodzi, Y-bomów
+  i boi; dwa szybko tłumione odbicia, generator przygotowany na inne źródła.
+- Trzy odbijacze na każdej burcie poza rzeczywistym obrysem kadłuba, fizyczna
+  sprężyna/tłumienie/kompresja, przesuwanie wzdłuż kei bez podwójnych szkód.
+- [Dokładny raport v22: pozycje, parametry, logika i regresje](docs/FIXES_V22.md).
 
 ## Zmiany v21 — czas eksploatacyjny i instalacja
 
 - Osobny licznik logiczny ×1,428571: 700 m mapy = 1000 m przebiegu.
   Czas podróży, motogodziny każdego silnika, zużycie paliwa i statystyki
-  kompensują mapę 70%; zegar fizyki nadal 1:1.
+  kompensowały mapę 70%; od v22 czynnik wynosi 2. Zegar fizyki nadal 1:1.
 - Aktualne L/h oznacza litry na godzinę logicznej pracy. Ubytek ze zbiornika
   jest rzeczywisty i nadal wpływa na dotychczasowy model masy.
 - HIGH TEMP / ALARM / OVERHEAT, odwracalne ograniczenie mocy i odzyskanie
@@ -39,7 +54,7 @@ konkretnej łodzi. [Źródła, równania i ograniczenia](docs/PHYSICS.md).
   dobrane do jednostki; faktyczny pobór prądu, masa i zanurzenie.
 - Fale od kila docierają do zacumowanych łodzi z opóźnieniem, poruszając kadłubem
   i cumami. Pierwsze, osłabione odbicia od pomostów i brzegów; most ponad wodą.
-- Geografia jeziora ma 70% poprzednich odległości i zachowane proporcje;
+- Geografia jeziora w v20 otrzymała 70% pierwotnych odległości (od v22: 50%) i zachowane proporcje;
   łodzie, pomosty, slip, domki, drzewa, prędkości i czas zachowują swoją skalę.
 - [Parametry i testy v20](docs/FIXES_V20.md).
 

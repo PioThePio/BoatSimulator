@@ -1,3 +1,4 @@
+import {sandPosition} from './shore-fixture.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createBoat,step} from '../src/physics.js';
@@ -65,7 +66,7 @@ test('both land service bays repair a secured boat without a shore line and refu
 });
 
 test('sand contact spreads load on broad flat and RIB hulls; the same hard-rock strike is not discounted',()=>{
- function hit(type,rock=false){const b=createBoat('beach');b.spec.hullType=type;b.spec.draft=.8;b.a=0;b.vx=rock?.5:2.5;if(rock){b.x=80;b.y=6;}groundContact(b,{eta:0},dt,()=>{});assert.equal(b.grounded,true);return b.damage;}
+ function hit(type,rock=false){const b=createBoat('beach');Object.assign(b,sandPosition(5));b.spec.hullType=type;b.spec.draft=.8;b.a=0;b.vx=rock?.5:2.5;if(rock){b.x=80;b.y=6;}groundContact(b,{eta:0},dt,()=>{});assert.equal(b.grounded,true);return b.damage;}
  const v=hit('v'),rib=hit('rib'),flat=hit('flat');assert.ok(v>rib&&rib>flat&&flat>=0);assert.equal(hit('v',true),hit('flat',true));
 });
 

@@ -4,7 +4,7 @@ export const BOTTOM_ZONES={bottomBow:'Dno · przód',bottomMid:'Dno · środek',
 export function damageColor(damage){return damage<=0?null:damage<10?'#d8c36c':damage<35?'#df9c54':damage<65?'#ce834d':'#bf6350';}
 export function bottomZone(b,arm){const x=(arm.x*Math.cos(b.a)+arm.y*Math.sin(b.a))/b.spec.length;return x>.15?'bottomBow':x<-.15?'bottomStern':'bottomMid';}
 // Normalised SI positions shared by collision detection, map and instrument.
-export const FENDERS=[-1,1].flatMap(side=>[{id:(side<0?'port':'starboard')+'Stern',x:-.42,y:side*1.02/2.1},{id:(side<0?'port':'starboard')+'Mid',x:-1.2/5.5,y:side*1.02/2.1},{id:(side<0?'port':'starboard')+'Bow',x:.9/5.5,y:side*1.02/2.1}]);
+export {FENDERS} from './fender-geometry.js';
 export const HULL_SECTIONS={bow:[[2.23,-.43],[2.75,0],[2.23,.43]],portBow:[[.65,-.92],[1.6,-.72],[2.23,-.43]],portMid:[[-.65,-1.02],[.65,-.92]],portStern:[[-2.75,-.95],[-1.6,-1.02],[-.65,-1.02]],transom:[[-2.75,-.95],[-2.75,.95]],starboardStern:[[-2.75,.95],[-1.6,1.02],[-.65,1.02]],starboardMid:[[-.65,1.02],[.65,.92]],starboardBow:[[.65,.92],[1.6,.72],[2.23,.43]]};
 export function impactClass(speed,fender=false){return speed<=(fender?.30:.15)?'gentle':speed<(fender?1.8:1.5)?'damage':'destruction';}
 export function contactZone(b,arm){
@@ -31,7 +31,7 @@ export function recordImpact(b,{arm,speed,effective,protectedContact=false,fende
  const report=b.time-(b.impactTimes[key]??-10)>=.45||damage>.1;
  b.damage=clamp(b.damage+damage,0,100);
  if(dock)b.dockDamage=clamp(b.dockDamage+dockLoss,0,100);
- const sections=bottom?(b.bottomDamage??={}):(b.sectionDamage??={});sections[zone]=clamp((sections[zone]??0)+damage,0,100);
+ if(damage>0){const sections=bottom?(b.bottomDamage??={}):(b.sectionDamage??={});sections[zone]=clamp((sections[zone]??0)+damage,0,100);}
  if(!report)return;b.impactTimes[key]=b.time;
  const impact={time:b.time,speed,energy,kind,protectedContact,fender,zone,target,damage};
  b.lastImpact=impact;b.impacts??=[];b.impacts.push(impact);if(b.impacts.length>24)b.impacts.shift();

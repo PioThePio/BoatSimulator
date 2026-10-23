@@ -1,0 +1,43 @@
+import {test,expect} from '@playwright/test';
+async function start(page){await page.addInitScript(()=>{const proto=CanvasRenderingContext2D.prototype,fill=proto.fillText,clear=proto.clearRect;window.mapLabels={};proto.clearRect=function(...args){if(this.canvas.id==='lake')window.mapLabels={};return clear.apply(this,args);};proto.fillText=function(text,x,y,...rest){if(this.canvas.id==='lake'&&this.font==='10px system-ui')window.mapLabels[String(text).replace("⛽ ","")]={x,y};return fill.call(this,text,x,y,...rest);};});await page.clock.install();await page.goto('/');await page.locator('#begin-session').click();await page.clock.runFor(100);}
+const labels=page=>page.evaluate(()=>window.mapLabels);
+const tick=page=>page.clock.runFor(100);
+async function point(page,name){const p=(await labels(page))[name],r=await page.locator('#lake').boundingBox();expect(p).toBeTruthy();return{x:r.x+p.x+4,y:r.y+p.y+4};}
+
+test('whole-map mouse pan, wheel zoom and fit do not activate world interactions or move the boat',async({page})=>{
+ const errors=[];page.on('pageerror',e=>errors.push(e.message));await start(page);await page.locator('#overview').click();await tick(page);await expect(page.locator('#atlas-tools')).toBeVisible();const original=await labels(page),r=await page.locator('#lake').boundingBox();
+ await page.mouse.move(r.x+r.width*.4,r.y+r.height*.6);await page.mouse.down();await page.mouse.move(r.x+r.width*.4+60,r.y+r.height*.6+35,{steps:6});await page.mouse.up();await tick(page);const panned=await labels(page);expect(Math.abs(panned.Paliwo.x-original.Paliwo.x)).toBeGreaterThan(40);await expect(page.locator('#mooring-picker')).toBeHidden();await expect(page.locator('#anchor-picker')).toBeHidden();
+ await page.mouse.wheel(0,-450);await tick(page);const zoomed=await labels(page);expect(zoomed.Paliwo.x).not.toBe(panned.Paliwo.x);await page.locator('#atlas-fit').click();await tick(page);expect((await labels(page)).Paliwo).toEqual(original.Paliwo);
+ await page.locator('#atlas-boat').click();await tick(page);await expect(page.locator('#atlas-tools')).toBeHidden();await expect(page.locator('#speed')).toContainText('0.0');expect(errors).toEqual([]);
+});
+test('named POI click centres a local view without clicking through to a bollard or teleporting; follow returns to unchanged boat',async({page})=>{
+ await start(page);const before=await labels(page);
+ for(const name of ['Paliwo','Most w Zegrzu','Serock','Wyspa 1','Pomost plażowy']){
+  await page.locator('#overview').click();await tick(page);const p=await point(page,name);await page.mouse.click(p.x,p.y);await tick(page);
+  await expect(page.locator('#atlas-tools')).toBeHidden();await expect(page.locator('#mooring-picker')).toBeHidden();await expect(page.locator('#anchor-picker')).toBeHidden();
+  const r=await page.locator('#lake').boundingBox(),q=(await labels(page))[name];expect(q.x).toBeCloseTo(r.width/2+12,0);expect(q.y).toBeCloseTo(r.height/2-15,0);
+  await page.locator('#follow').click();await tick(page);expect(await labels(page)).toEqual(before);
+ }
+});
+test('touch pinch and one-finger pan remain inside the atlas; releasing either finger cannot open world controls',async({page,browserName})=>{
+ await start(page);await page.locator('#overview').click();await tick(page);const before=await labels(page),r=await page.locator('#lake').boundingBox();
+ const cdp=await page.context().newCDPSession(page),send=(type,pts)=>cdp.send('Input.dispatchTouchEvent',{type,touchPoints:pts.map(([id,x,y])=>({id,x:r.x+x,y:r.y+y,radiusX:2,radiusY:2}))});
+ await send('touchStart',[[1,350,300],[2,550,300]]);await send('touchMove',[[1,250,300],[2,650,300]]);await send('touchEnd',[]);await tick(page);const pinched=await labels(page);expect(pinched.Paliwo?.x).not.toBe(before.Paliwo.x);
+ await send('touchStart',[[1,450,350]]);await send('touchMove',[[1,490,390]]);await send('touchEnd',[]);await tick(page);expect((await labels(page)).Paliwo?.x).not.toBe(pinched.Paliwo?.x);await expect(page.locator('#atlas-tools')).toBeVisible();await expect(page.locator('#mooring-picker')).toBeHidden();await expect(page.locator('#anchor-picker')).toBeHidden();await page.locator('#atlas-fit').click();await tick(page);expect((await labels(page)).Paliwo).toEqual(before.Paliwo);
+});
+test('visible outboards and sterndrives sit behind transom, turn independently, and do not acquire a shaft-rudder helper',async({page})=>{
+ await page.goto('/');const result=await page.evaluate(async()=>{const{createBoat}=await import('/src/physics.js'),{renderWorld}=await import('/src/render.js'),c=document.createElement('canvas');c.width=800;c.height=600;const ctx=c.getContext('2d'),round=ctx.roundRect;let seen;ctx.roundRect=function(x,y,w,h,...rest){if(['#3f5858','#6c8280'].includes(this.fillStyle)){const p=new DOMPoint(x,y).matrixTransform(this.getTransform());seen.legs.push({x:p.x,y:p.y,w,h,color:this.fillStyle});}if(Math.abs(w-.62)<1e-8&&Math.abs(h-.24)<1e-8)seen.rudders++;return round.call(this,x,y,w,h,...rest);};return['outboard','zdrive','inboard'].map(propulsion=>{const b=createBoat('lake',{profile:'cabin',propulsion,engineCount:2});b.a=0;b.engines[0].forceSteer=.4;b.engines[1].forceSteer=-.4;seen={propulsion,legs:[],rudders:0};const v=renderWorld(ctx,{boat:b,width:800,height:600,zoom:2,follow:true,env:{}});return{...seen,transom:400-b.spec.length*.5*v.scale};});});
+ for(const q of result){if(q.propulsion==='inboard'){expect(q.legs).toHaveLength(0);expect(q.rudders).toBe(2);}else{expect(q.legs).toHaveLength(2);expect(q.rudders).toBe(0);for(const leg of q.legs)expect(leg.x).toBeLessThan(q.transom);expect(q.legs[0].y).toBeLessThan(q.legs[1].y);}}
+});
+test('twin independent angle controls share the physical steering limits and leave normal linked steering as default',async({page})=>{
+ await page.goto('/');await page.locator('#craft').selectOption('cabin');await page.locator('#engine-count').selectOption('2');await page.locator('#begin-session').click();await page.locator('#steering-settings-open').click();await expect(page.locator('#twin-steering')).toBeVisible();await expect(page.locator('#link-steering')).toBeChecked();await expect(page.locator('#drive-steer-0')).toBeDisabled();await page.locator('#link-steering').uncheck();await page.locator('#drive-steer-0').fill('35');await page.locator('#drive-steer-1').fill('-20');await expect(page.locator('#drive-angle-0')).toHaveText('35°');await expect(page.locator('#drive-angle-1')).toHaveText('-20°');await page.locator('#link-steering').check();await expect(page.locator('#drive-steer-0')).toBeDisabled();
+});
+test('all six outside fenders draw at their physical positions and visibly flatten with compression, including the condition instrument',async({page})=>{
+ await page.goto('/');await page.locator('#begin-session').click();const sizes=await page.evaluate(async()=>{const{createBoat}=await import('/src/physics.js'),{drawFenders}=await import('/src/render-fenders.js'),{updateContactInstrument}=await import('/src/contact-instrument.js'),{fenderGeometry}=await import('/src/fender-geometry.js'),b=createBoat('lake'),c=document.createElement('canvas'),ctx=c.getContext('2d'),round=ctx.roundRect;let out=[];ctx.roundRect=function(x,y,w,h,...rest){out.push({w,h});return round.call(this,x,y,w,h,...rest);};drawFenders(ctx,b);const normal=out;const g=fenderGeometry(b.spec)[0];b.fenderContacts={[g.id]:{compression:.1,force:900}};out=[];drawFenders(ctx,b);updateContactInstrument(b);return{normal,compressed:out,state:document.querySelector('[data-contact-fender="'+g.id+'"]').dataset};});expect(sizes.normal).toHaveLength(6);expect(sizes.compressed[0].h).toBeCloseTo(sizes.normal[0].h-.1);expect(sizes.compressed[0].w).toBe(sizes.normal[0].w);expect(sizes.state.compression).toBe('0.1');expect(sizes.state.force).toBe('900');
+});
+
+
+test('atlas boat-centre really selects the boat even while operating the SUV, without changing driving camera behaviour',async({page})=>{
+ await page.addInitScript(()=>{const p=CanvasRenderingContext2D.prototype,clear=p.clearRect,translate=p.translate;let count=0;p.clearRect=function(...args){if(this.canvas.id==='lake')count=0;return clear.apply(this,args);};p.translate=function(x,y){if(this.canvas.id==='lake'&&++count===2)window.mapCamera={x:-x,y:-y};return translate.call(this,x,y);};});
+ await start(page);await page.locator('button[data-vehicle=suv]').click();await tick(page);await page.locator('#overview').click();await tick(page);await page.locator('#atlas-boat').click();await tick(page);const centre=await page.evaluate(()=>window.mapCamera);expect(centre.x).toBeCloseTo(80,6);expect(centre.y).toBeCloseTo(110,6);await expect(page.locator('button[data-vehicle=suv]')).toHaveAttribute('aria-pressed','true');
+});

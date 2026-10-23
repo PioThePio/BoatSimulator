@@ -74,7 +74,7 @@ export function updateEngine(en,command,inflow,dt,damage=0,context={}){
   en.startTime+=dt;en.rpm=260;en.thrust=0;en.gear=0;
   if(en.startTime>1.15)en.key='running';return 0;
  }
- if(en.key!=='running'||context.noFuel){en.n*=Math.exp(-dt/.35);en.rpm=0;en.thrust=0;en.gear=0;en.load=0;en.governorLoad=0;en.opposingFlow=0;en.waveLoad=0;en.ventilation=0;en.propGrip=0;en.burst=0;if(context.noFuel)en.key='ignition';return 0;}
+ if(en.key!=='running'||context.noFuel){en.n*=Math.exp(-dt/.35);en.rpm=0;en.thrust=0;en.gear=0;en.load=0;en.governorLoad=0;en.opposingFlow=0;en.waveLoad=0;en.ventilation=0;en.propGrip=0;en.burst=0;en.regrip=0;if(context.noFuel)en.key='ignition';return 0;}
  const desired=Math.abs(cmd)<.035?0:Math.sign(cmd);
  const airExposure=context.air?0:clamp((.70-(context.immersion??1))/.70,0,1);
  const highAngle=context.fixedDrive||context.air?0:clamp((trimAngle(en.trim)*180/Math.PI-10)/38,0,1);
@@ -113,8 +113,11 @@ export function updateEngine(en,command,inflow,dt,damage=0,context={}){
  const powerLimit=(context.jet?.63:.55)*en.hp*735.5*n**3/Math.max(context.air?5:1,Math.abs(inflow));
  // Loss of wet grip is immediate; refilling an aired propeller stream/intake
  // takes time. A returning wave cannot restore the whole thrust in one tick.
- const grip=(1-.90*en.ventilation)*(context.immersion??1);
+ const previousGrip=en.propGrip??1,grip=(1-.90*en.ventilation)*(context.immersion??1);
  en.propGrip=grip<(en.propGrip??1)?grip:(en.propGrip??1)+(grip-(en.propGrip??1))*(1-Math.exp(-dt/.30));
+ // Recovery of an aired propeller displaces the remaining air for a moment.
+ const recovery=previousGrip<.85?clamp((en.propGrip-previousGrip)/dt*.55,0,1):0;
+ en.regrip=Math.max(recovery,(en.regrip??0)*Math.exp(-dt/.45));
  en.thrust=desired===gear?gear*Math.min(bollard,powerLimit)*(1-damage/100)*(1-en.propDamage/100)**1.5*en.propGrip*en.thermalLimit:0;
  // Idle governor responds to clutch load; small combustion/governor ripple, independent per engine.
  const idle=750+(gear!==0?65*clamp(n/.22,0,1):0),shaft=4750*clamp((n-.23)/.77,0,1);

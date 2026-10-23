@@ -14,12 +14,12 @@ import {bottomAt} from '../src/world.js';
 const dt=1/120,close=(a,b,eps=1e-8)=>assert.ok(Math.abs(a-b)<eps,`${a} vs ${b}`);
 const run=(b,t,e={})=>{for(let i=0;i<t*120;i++)step(b,e,dt);};
 
-test('700 physical metres become 1000 logical metres and 840 physical seconds become 0.333 engine hours',()=>{
- const b=createBoat('lake'),s=createOperations();for(let i=0;i<840;i++)operationsStep(s,b.engines,{vx:700/840,vy:0},1);
- close(worldScale,.7);close(operationalTimeScale,10/7);close(s.physicalDistance,700);close(s.distance,1000);close(s.physicalSeconds,840);close(s.seconds,1200);close(b.engines[0].operatingHours,1/3);assert.equal(b.engines[0].clock,0);
+test('500 physical metres become 1000 logical metres and 600 physical seconds become 0.333 engine hours',()=>{
+ const b=createBoat('lake'),s=createOperations();for(let i=0;i<600;i++)operationsStep(s,b.engines,{vx:500/600,vy:0},1);
+ close(worldScale,.5);close(operationalTimeScale,2);close(s.physicalDistance,500);close(s.distance,1000);close(s.physicalSeconds,600);close(s.seconds,1200);close(b.engines[0].operatingHours,1/3);assert.equal(b.engines[0].clock,0);
 });
 test('real simulation keeps physics, engine spool, weather and animations at 1:1 while accounting advances separately',()=>{
- const b=createBoat('lake');b.throttle=.4;run(b,10,{windSpeed:2,waveHeight:.1});close(b.time,10);close(b.engines[0].clock,10);close(b.operations.seconds,100/7);close(b.engines[0].operatingHours,100/7/3600);close(b.operations.distance,b.operations.physicalDistance/.7);
+ const b=createBoat('lake');b.throttle=.4;run(b,10,{windSpeed:2,waveHeight:.1});close(b.time,10);close(b.engines[0].clock,10);close(b.operations.seconds,20);close(b.engines[0].operatingHours,20/3600);close(b.operations.distance,b.operations.physicalDistance/.5);
  const en=createBoat('lake').engines[0];for(let i=0;i<70;i++)updateEngine(en,.08,0,dt);assert.equal(en.gear,0);for(let i=0;i<10;i++)updateEngine(en,.08,0,dt);assert.equal(en.gear,1);
 });
 test('logical clock metadata cannot change forces, contacts, ropes, waves, heating, battery or pump progress',()=>{
@@ -33,8 +33,8 @@ test('logical clock metadata cannot change forces, contacts, ropes, waves, heati
 test('L/h remains a rate per logical hour, actual fuel and mass decrease once, and twin consumption is apportioned',()=>{
  const b=createBoat('lake',{engineCount:2});b.engines[0].fuelFlow=24;b.engines[1].fuelFlow=36;const initial=b.fuel.litres,mass=b.spec.mass;
  for(let i=0;i<600;i++)systemsStep(b,1);
- assert.equal(b.fuel.flow,60);close(initial-b.fuel.litres,100/7);close(b.operations.fuelUsed,100/7);close(b.engines[0].fuelUsed,40/7);close(b.engines[1].fuelUsed,60/7);close(b.spec.mass,mass-(100/7)*.745);
- close(b.engines[0].operatingHours,5/21);close(b.engines[1].operatingHours,5/21);
+ assert.equal(b.fuel.flow,60);close(initial-b.fuel.litres,20);close(b.operations.fuelUsed,20);close(b.engines[0].fuelUsed,8);close(b.engines[1].fuelUsed,12);close(b.spec.mass,mass-(20)*.745);
+ close(b.engines[0].operatingHours,1/3);close(b.engines[1].operatingHours,1/3);
 });
 test('only running engines accumulate hours and fuel; empty fuel cannot produce negative litres or fictitious fuel use',()=>{
  const b=createBoat('lake',{engineCount:2});b.engines[0].key='starting';b.engines[1].key='ignition';systemsStep(b,1);assert.equal(b.engines[0].operatingHours,0);assert.equal(b.engines[1].operatingHours,0);assert.equal(b.operations.fuelUsed,0);
@@ -78,5 +78,5 @@ test('protective heat shutdown clears after cooldown and permits normal restart 
 });
 test('GPS approach points are afloat; ETA is a logical estimate only while approaching with powered GPS',()=>{
  for(const q of DESTINATIONS)assert.ok(bottomAt(q.x,q.y).depth>1.5,q.name);
- const b=createBoat('lake'),target=DESTINATIONS[0],dx=target.x-b.x,dy=target.y-b.y,d=Math.hypot(dx,dy);assert.equal(destinationStatus(b,'main').eta,null);b.vx=5*dx/d;b.vy=5*dy/d;operationsStep(b.operations,b.engines,b,1);const q=destinationStatus(b,'main');close(q.distance,d/.7);close(q.eta,d/.7/5);b.vx*=-1;b.vy*=-1;assert.equal(destinationStatus(b,'main').eta,null);b.electrics.powered.gps=false;assert.equal(destinationStatus(b,'main').distance,null);assert.equal(destinationStatus(b,'main').eta,null);
+ const b=createBoat('lake'),target=DESTINATIONS[0],dx=target.x-b.x,dy=target.y-b.y,d=Math.hypot(dx,dy);assert.equal(destinationStatus(b,'main').eta,null);b.vx=5*dx/d;b.vy=5*dy/d;operationsStep(b.operations,b.engines,b,1);const q=destinationStatus(b,'main');close(q.distance,d/.5);close(q.eta,d/.5/5);b.vx*=-1;b.vy*=-1;assert.equal(destinationStatus(b,'main').eta,null);b.electrics.powered.gps=false;assert.equal(destinationStatus(b,'main').distance,null);assert.equal(destinationStatus(b,'main').eta,null);
 });

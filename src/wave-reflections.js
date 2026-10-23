@@ -1,5 +1,5 @@
-// First-order, finite-wall reflection. Normals point from the wall into water.
-// No repeated reflections or energy feedback; each returned wave loses energy.
+// Finite-wall reflection. Normals point into water. The wake caller bounds paths
+// to two lossy reflections; weather uses one. No energy feedback is stored.
 export function mirrorPoint(p,f){const d=(p.x-f.a.x)*f.nx+(p.y-f.a.y)*f.ny;return{x:p.x-2*d*f.nx,y:p.y-2*d*f.ny};}
 export function mirrorVector(p,f){const d=p.x*f.nx+p.y*f.ny;return{x:p.x-2*d*f.nx,y:p.y-2*d*f.ny};}
 export function wallDistance(p,f){return(p.x-f.a.x)*f.nx+(p.y-f.a.y)*f.ny;}

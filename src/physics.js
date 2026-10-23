@@ -1,10 +1,14 @@
+import {contacts,boomContacts} from './contacts.js';
+import {beginFenderStep} from './fenders.js';
+import {createBuoys} from './buoys.js';
 // SI, x east / y south. Heading clockwise from east. Physics reference: docs/PHYSICS.md.
 import {clamp,DOCKS,SOLIDS,BOLLARDS,SERVICE_STATION,MAP_STARTS,environment,bottomAt,waveAt,reflectionFacesNear,reedDensityAt} from './world.js';
 import {trimAngle} from './drive.js';
-import {recordHullWake,sampleWakeField} from './wake.js';
-import {FENDERS,recordImpact} from './impacts.js';
+import {engineSteering} from './drive-effects.js';
+import {sampleWorldWake,wakeHistories} from './wave-field.js';
+import {recordHullWake} from './wake.js';
 export {impactClass} from './impacts.js';
-import {createBooms,boomPoint,boomStep} from './marina.js';
+import {createBooms,boomStep} from './marina.js';
 import {hullLateralForces,windForces} from './hydrodynamics.js';
 import {groundContact,propellerContact} from './ground.js';
 import {createSystems,systemsStep} from './systems.js';
@@ -14,14 +18,14 @@ import {placeTrailerBoat} from './towing.js';
 import {launchVerticalStep} from './trailer-support.js';
 import {propWalkForce,bankInfluence,airRudderForce} from './maneuvering.js';
 import {floodingDepth,floodingStep} from './flooding.js';
-import {point,cleat,attachRope,solveRopes,createAnchor,updateAnchor,inverseMass,impulse} from './rigging.js';
+import {point,cleat,attachRope,solveRopes,createAnchor,updateAnchor} from './rigging.js';
 export {clamp,DOCKS,SOLIDS,BOLLARDS,environment,bottomAt,waveAt,point,cleat,attachRope};
 export const MODEL=specification();
 export function createBoat(scenario='approach',options={}){
  const spec=specification(options);
  const starts={approach:[43,37,-2.1],berth:[24.3,22,-Math.PI/2],open:[64,48,-Math.PI/2],beach:[8.2,147,Math.PI/2],island:[304,278,Math.PI],fuel:[54,20,Math.PI/2],service:[SERVICE_STATION.start.x,SERVICE_STATION.start.y,SERVICE_STATION.start.a],canal:[304,204,0],harbor:[61,40,-Math.PI/2],lake:[80,110,0]};
  const selected=MAP_STARTS[scenario];const [x,y,a]=selected?[selected.x,selected.y,selected.a]:starts[scenario]||starts.approach;
- return{...createSystems(spec,options.coldStart),booms:createBooms(),traffic:createTraffic(),x,y,a,vx:0,vy:0,w:0,steer:0,actualSteer:0,throttle:0,throttle2:0,linked:true,enginesRaised:false,groundLoad:0,groundMaterial:'sand',spec,
+ return{...createSystems(spec,options.coldStart),booms:createBooms(),buoys:createBuoys(),traffic:createTraffic(),x,y,a,vx:0,vy:0,w:0,steer:0,actualSteer:0,throttle:0,throttle2:0,linked:true,enginesRaised:false,groundLoad:0,groundMaterial:'sand',spec,
  engines:spec.powers.map((hp,i)=>engineState(hp,spec.engineCount===1?0:(i===0?-1:1)*spec.engineSpacing/2,options.coldStart)),
  fenders:true,damage:0,dockDamage:0,sectionDamage:{},bottomDamage:{},impacts:[],impactTimes:{},ropes:[],anchor:createAnchor(spec),time:0,lastImpact:null,events:[],maxTension:0,wake:[],
  cameraZoom:1,heave:0,heaveVelocity:0,roll:0,rollVelocity:0,pitch:0,pitchVelocity:0,planing:0,underKeel:bottomAt(x,y).depth-spec.draft,grounded:false,groundEvent:-10,
@@ -30,7 +34,7 @@ export function createBoat(scenario='approach',options={}){
 function event(b,message){b.events.unshift({time:b.time,message});b.events=b.events.slice(0,12);}
 function oscillator(state,vel,target,omega,zeta,dt,forcing=0){const acc=omega*omega*(target-state)-2*zeta*omega*vel+forcing;vel+=acc*dt;return[state+vel*dt,vel];}
 export function step(b,e,dt){
- b.time+=dt;const S=b.spec,c=Math.cos(b.a),s=Math.sin(b.a);
+ b.time+=dt;beginFenderStep(b);const S=b.spec,c=Math.cos(b.a),s=Math.sin(b.a);
  if(b.towRig?.boatLoaded&&b.towRig.secured){
   placeTrailerBoat(b.towRig,b);
   const rate=S.jet?1.6:.80;b.actualSteer+=clamp(b.steer-b.actualSteer,-rate*dt,rate*dt);
@@ -39,7 +43,8 @@ export function step(b,e,dt){
   for(const [i,en]of b.engines.entries()){
    propellerContact(b,en,dt,m=>event(b,m),e);
    updateEngine(en,i?b.throttle2:b.throttle,0,dt,b.damage,{noFuel:b.fuel.litres<=0,jet:S.jet,air:S.air,fixedDrive:S.propulsion==='inboard',moored:true,onTrailer:true,speed:0,immersion:en.immersion,intake:en.intake});
-   const delta=S.air||S.propulsion==='inboard'?0:b.actualSteer,T=en.thrust*(S.jet||S.air||S.propulsion==='inboard'?1:Math.cos(trimAngle(en.trim)));
+   const steering=engineSteering(b,en,dt);en.forceSteer=steering;
+   const delta=S.air||S.propulsion==='inboard'?0:steering,T=en.thrust*(S.jet||S.air||S.propulsion==='inboard'?1:Math.cos(trimAngle(en.trim)));en.effectiveThrust=T;
    const air=airRudderForce(S,T,b.actualSteer),X=S.air?air.x:T*Math.cos(delta),Y=S.air?air.y:-T*Math.sin(delta),fx=c*X-s*Y,fy=s*X+c*Y;
    b.towRig.ropeForce.x+=fx;b.towRig.ropeForce.y+=fy;
    const arm=point(b,S.engineLever,en.y);b.towRig.ropeForce.torque+=(arm.x-b.towRig.trailer.x)*fy-(arm.y-b.towRig.trailer.y)*fx;
@@ -47,13 +52,14 @@ export function step(b,e,dt){
   systemsStep(b,dt);trafficStep(b,e,dt);boomStep(b,e,dt);return;
  }
  const env=environment(b.time,e,b.x,b.y),wave=waveAt(b.x,b.y,b.time,e);
- const reflections=b.wake.length>1?reflectionFacesNear(b.x,b.y):[];
- const ownWave=sampleWakeField(b.wake,b.x,b.y,b.time,reflections);
+ const reflections=wakeHistories(b).some(h=>h.length>1)?reflectionFacesNear(b.x,b.y):[];
+ const ownWave=sampleWorldWake(b,b.x,b.y,b.time,reflections);
  for(const key of ['eta','sx','sy','vx','vy','ax','ay'])wave[key]+=ownWave[key];
+ b.encounter={eta:wave.eta,crossSlope:Math.abs(-wave.sx*s+wave.sy*c)};
  // Bow/stern encounter slopes capture pitching over one's own curved wake even
  // when the centre happens to lie between its two crests.
  const bow=point(b,S.length*.4,0),stern=point(b,-S.length*.4,0);
- const foreWake=sampleWakeField(b.wake,bow.x,bow.y,b.time,reflections),aftWake=sampleWakeField(b.wake,stern.x,stern.y,b.time,reflections);
+ const foreWake=sampleWorldWake(b,bow.x,bow.y,b.time,reflections),aftWake=sampleWorldWake(b,stern.x,stern.y,b.time,reflections);
  const encounterSlope=(foreWake.eta-aftWake.eta)/(S.length*.8),centreSlope=ownWave.sx*c+ownWave.sy*s;
  wave.sx+=(encounterSlope-centreSlope)*c;wave.sy+=(encounterSlope-centreSlope)*s;
  b.wakeEncounter=Math.max(Math.abs(ownWave.eta),Math.abs(foreWake.eta),Math.abs(aftWake.eta));
@@ -110,7 +116,7 @@ export function step(b,e,dt){
  if(b.engines.length===2)b.engines[1].trimTarget=b.engines[0].trimTarget;
  let totalThrust=0;
  b.engines.forEach((engine,i)=>{
-  const x=S.engineLever,y=engine.y,delta=b.actualSteer*bankSteering,driveDelta=S.propulsion==='inboard'||S.air?0:delta;
+  const x=S.engineLever,y=engine.y,delta=engineSteering(b,engine,dt,bankSteering),driveDelta=S.propulsion==='inboard'||S.air?0:delta;engine.forceSteer=delta;
   const inflow=(u-b.w*y)*Math.cos(driveDelta)-(v+b.w*x)*Math.sin(driveDelta);
   const lateral=(u-b.w*y)*Math.sin(delta)+(v+b.w*x)*Math.cos(delta);
   propellerContact(b,engine,dt,m=>event(b,m),e);
@@ -123,6 +129,7 @@ export function step(b,e,dt){
   let thrust=updateEngine(engine,i===0?b.throttle:b.throttle2,inflow,dt,b.damage,{noFuel:b.fuel.litres<=0,jet:S.jet,air:S.air,fixedDrive:S.propulsion==='inboard',onTrailer:onSupports,grounded:b.grounded,moored:b.ropes.length>0,raised:b.enginesRaised,speed:Math.hypot(ur,vr),immersion:engine.immersion,intake:engine.intake,crossflow:lateral,waveLoad});
   if(b.enginesRaised){thrust=0;engine.thrust=0;}
   thrust*=S.jet||S.air||S.propulsion==='inboard'?1:Math.cos(trimAngle(engine.trim));
+  engine.effectiveThrust=thrust;
   // Vectored thrust is the outboard's prop wash: it works before the hull moves.
   // An inboard keeps axial thrust and feeds a separate, stalling rudder.
   const air=airRudderForce(S,thrust,delta);
@@ -165,48 +172,4 @@ export function step(b,e,dt){
  contacts(b,dt);boomContacts(b,dt);trafficStep(b,e,dt);if(e.traffic)for(const q of b.traffic)boomContacts(q,dt,b);boomStep(b,e,dt);
  if(b.damage>=100){b.throttle=0;b.throttle2=0;}
  b.telemetry={surge:ur,sway:vr,thrust:totalThrust,drag:Math.abs(drag),acceleration:udot,shaftPower:b.engines.reduce((sum,en)=>sum+en.hp*735.5*en.n**3,0)};
-}
-const CONTACTS=SOLIDS;
-function contactSamples(b){
- const S=b.spec,radius=S.beam*.48,offset=S.length*.5-radius,count=Math.max(3,Math.ceil(2*offset/(radius*1.4))+1);
- return[...(b.fenders?FENDERS.map(f=>({x:f.x*S.length,y:f.y*S.beam,radius:S.beam*.065,fender:f.id})):[]),...Array.from({length:count},(_,i)=>({x:-offset+2*offset*i/(count-1),y:0,radius}))];
-}
-function contacts(b,dt){
- for(let iteration=0;iteration<3;iteration++)for(const sample of contactSamples(b)){
-  const {radius,fender}=sample,p=point(b,sample.x,sample.y);
-  for(let k=0;k<CONTACTS.length;k++){
-   const rect=CONTACTS[k],near={x:clamp(p.x,rect.x,rect.x+rect.w),y:clamp(p.y,rect.y,rect.y+rect.h)};
-   const dx=p.x-near.x,dy=p.y-near.y,d=Math.hypot(dx,dy);let depth=radius-d;
-   if(depth<=0)continue;let nx,ny;
-   if(d<1e-8){const sides=[{v:p.x-rect.x,x:-1,y:0},{v:rect.x+rect.w-p.x,x:1,y:0},{v:p.y-rect.y,x:0,y:-1},{v:rect.y+rect.h-p.y,x:0,y:1}].sort((a,b)=>a.v-b.v);nx=sides[0].x;ny=sides[0].y;depth=radius+sides[0].v;}else{nx=dx/d;ny=dy/d;}
-   const arm={x:p.x-b.x-nx*radius,y:p.y-b.y-ny*radius},n={x:nx,y:ny};
-   const vn=(b.vx-b.w*arm.y)*nx+(b.vy+b.w*arm.x)*ny,effective=1/inverseMass(b,n,arm);
-   const dockContact=k<DOCKS.length||!!rect.fender;
-   const protectedContact=(!!fender||!!rect.fender)&&dockContact;
-   if(vn<0){
-    const speed=-vn;impulse(b,n,-1.015*vn*effective,arm);
-    recordImpact(b,{arm,speed,effective,protectedContact,fender,target:rect.id??'solid-'+k,dock:dockContact},m=>event(b,m));
-   }
-   b.x+=nx*depth*.8;b.y+=ny*depth*.8;
-  }
- }
-}
-
-function boomContacts(b,dt,world=b){
- for(const q of world.booms){
-  const end=boomPoint(q),dx=end.x-q.x1,dy=end.y-q.y1;
-  for(const sample of contactSamples(b)){
-   const {radius,fender}=sample,p=point(b,sample.x,sample.y),t=clamp(((p.x-q.x1)*dx+(p.y-q.y1)*dy)/(q.length*q.length),0,1);
-   const near=boomPoint(q,t),rx=p.x-near.x,ry=p.y-near.y,d=Math.hypot(rx,ry),depth=radius+q.width/2-d;
-   if(depth<=0||d<1e-6)continue;
-   const n={x:rx/d,y:ry/d},arm={x:p.x-b.x-n.x*radius,y:p.y-b.y-n.y*radius};
-   const lever=(near.x-q.x1)*n.y-(near.y-q.y1)*n.x;
-   const vn=(b.vx-b.w*arm.y-near.vx)*n.x+(b.vy+b.w*arm.x-near.vy)*n.y;
-   if(vn<0){const effective=1/(inverseMass(b,n,arm)+lever*lever/q.inertia),j=-vn*effective;
-    impulse(b,n,j,arm);q.w-=lever*j/q.inertia;
-    if(b===world)recordImpact(b,{arm,speed:-vn,effective,protectedContact:!!fender,fender,target:q.id??'Y-bom'},m=>event(b,m));
-   }
-   b.x+=n.x*depth*.65;b.y+=n.y*depth*.65;
-  }
- }
 }

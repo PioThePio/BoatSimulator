@@ -10,7 +10,7 @@ import {throttleStep,angleDelta,rimPosition} from '../src/controls.js';
 import {propWashCount} from '../src/render.js';
 function run(b,t){for(let i=0;i<t*120;i++)step(b,{},1/120);}
 test('Zegrze has metre-scale arms, Bug islands and progressively shallow beaches',()=>{
- assert.ok(WORLD.right-WORLD.left>11200);assert.ok(WORLD.bottom-WORLD.top>9100);
+ assert.ok(WORLD.right-WORLD.left>8500);assert.ok(WORLD.bottom-WORLD.top>6900);
  assert.ok(bottomAt(ISLAND.x,ISLAND.y+ISLAND.ry*.6).depth<0);assert.ok(shoreAt(ISLAND.x,ISLAND.y+ISLAND.ry*.6).land);
  assert.ok(bottomAt(MAP_STARTS.canal.x,MAP_STARTS.canal.y).depth>2);assert.ok(!shoreAt(MAP_STARTS.canal.x,MAP_STARTS.canal.y).land);
  assert.ok(islandOutline().length>50);assert.ok(!shoreAt(400,210).land);
@@ -18,9 +18,9 @@ test('Zegrze has metre-scale arms, Bug islands and progressively shallow beaches
  assert.equal(bottomAt(MAP_STARTS.beach.x,MAP_STARTS.beach.y).material,'sand');assert.equal(bottomAt(80,6).material,'rock');
 });
 test('small tender can moor to shore tree while deeper cruiser grounds there',()=>{
- const tender=createBoat('beach',{profile:'tender'});tender.enginesRaised=true;
- const tree=BOLLARDS.findIndex(q=>q.kind==='tree');assert.equal(attachRope(tender,'bow',tree).ok,true);run(tender,1);assert.equal(tender.grounded,false);assert.ok(tender.underKeel>0);
- const large=createBoat('beach',{profile:'cruiser'});large.enginesRaised=true;run(large,.2);assert.ok(large.grounded);assert.ok(large.groundLoad>0);assert.ok(large.heave>0);
+ const tender=faceSand(createBoat('beach',{profile:'tender'}),0,6);tender.enginesRaised=true;
+ const tree=BOLLARDS.findIndex(q=>q.kind==='tree');const target=BOLLARDS[tree];Object.assign(tender,{x:target.x+3,y:target.y-5,a:Math.PI/2});assert.equal(attachRope(tender,'bow',tree).ok,true);run(tender,1);assert.equal(tender.grounded,false);assert.ok(tender.underKeel>0);
+ const large=createBoat('beach',{profile:'cruiser'});Object.assign(large,{x:tender.x,y:tender.y,a:tender.a});large.enginesRaised=true;run(large,.2);assert.ok(large.grounded);assert.ok(large.groundLoad>0);assert.ok(large.heave>0);
 });
 test('hull progressively rides up on the beach and loses speed without teleporting',()=>{
  const b=faceSand(createBoat('open'),1.5,17.5);b.enginesRaised=true;
@@ -28,7 +28,7 @@ test('hull progressively rides up on the beach and loses speed without teleporti
  assert.ok(firstGroundX>3&&firstGroundX<8);assert.ok(b.groundLoad>500);assert.ok(Math.hypot(b.vx,b.vy)<.08);assert.ok(shoreAt(b.x,b.y).distance>0);assert.ok(b.heave>.05);assert.ok(maxStep<.02);
 });
 test('island shore uses the same gradual grounding physics as the mainland',()=>{
- const b=createBoat('island');b.a=-Math.PI/2;b.vy=-1.3;b.enginesRaised=true;run(b,50);assert.ok(b.grounded);assert.ok(b.y>ISLAND.y+20);assert.ok(Math.hypot(b.vx,b.vy)<.1);
+ const b=createBoat('island');b.x=ISLAND.x+20;b.a=-Math.PI/2;b.vy=-1.3;b.enginesRaised=true;run(b,50);assert.ok(b.grounded);assert.ok(b.y>ISLAND.y+20);assert.ok(Math.hypot(b.vx,b.vy)<.1);
 });
 function abrasion(x,y,raised=false){const b=createBoat('open');b.x=x;b.y=y;b.a=0;b.vx=.2;b.enginesRaised=raised;const en=b.engines[0];en.gear=1;en.n=.6;for(let i=0;i<120;i++){b.time+=1/120;propellerContact(b,en,1/120,()=>{});}return en;}
 test('rock strikes harm the propeller much more than sand abrasion',()=>{

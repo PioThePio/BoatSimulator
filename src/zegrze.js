@@ -1,9 +1,9 @@
 // Interpreted shoreline from the user's Zegrze maps, not a navigation chart.
-// Atlas: 75 pixels = 1 real km. v20 compresses geographic distances to 70%;
+// Atlas: 75 pixels = 1 real km. v22 compresses ORIGINAL geographic distances to 50%;
 // physical boat, pier, slip and tree dimensions / SI speed and time stay unchanged.
 // Independent checks: GeoNames Serock/Nieporęt and the BDOT10k/OSM geoportal.
 // See docs/ZEGRZE.md for provenance, scale checks and bathymetry limitations.
-export const WORLD_DISTANCE_SCALE=.70;
+export const WORLD_DISTANCE_SCALE=.50;
 export const METRES_PER_MAP_PIXEL=1000/75*WORLD_DISTANCE_SCALE;
 // Compress geography about the main quay; all manufactured objects retain SI dimensions.
 export const compressWorld=p=>({x:80+(p.x-80)*WORLD_DISTANCE_SCALE,y:4+(p.y-4)*WORLD_DISTANCE_SCALE});
@@ -48,7 +48,7 @@ export const REMOTE_HARBORS=[
 export const FUEL_LOCATION={...fromAtlas(834,741)};
 // Bridge decks are overhead; only piers/abutments collide with the hull.
 export const BRIDGES=[
- {id:'zegrze',name:'Most w Zegrzu',a:fromAtlas(555,714),b:fromAtlas(541,766),width:17,clearance:7.5,piers:[.30,.66]},
+ {id:'zegrze',name:'Most w Zegrzu',a:fromAtlas(589,737),b:fromAtlas(556,748),width:17,clearance:7.5,piers:[.30,.66]},
  {id:'wierzbica',name:'Most w Wierzbicy',a:fromAtlas(862,63),b:fromAtlas(931,67),width:12,clearance:6.5,piers:[.24,.5,.76]},
  {id:'debe',name:'Zapora Dębe',a:fromAtlas(58,449),b:fromAtlas(58,480),width:12,clearance:0,dam:true,piers:[]},
  {id:'nieporet',name:'Most · Kanał Żerański',a:fromAtlas(647.5,1026),b:fromAtlas(652.5,1026),width:11,clearance:3.5,piers:[]}

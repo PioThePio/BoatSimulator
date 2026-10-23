@@ -112,14 +112,14 @@ test('hull water effects follow current and wave-relative point velocity, includ
  const waves={waveHeight:.3,waveDirection:90},q=waterMotionSamples(b,waves)[1],w=waveAt(q.p.x,q.p.y,b.time,waves);assert.ok(Math.abs(q.relative.x+.65*w.vx)<1e-8);
 });
 test('sand gives RIB and flat hulls less low-speed damage, but high-speed entry remains damaging',()=>{
- function damage(type,speed){const b=createBoat('beach');b.spec.hullType=type;b.spec.draft=.8;b.a=0;b.vx=speed;groundContact(b,{eta:0},dt,()=>{});return b.damage;}
+ function damage(type,speed){const b=createBoat('beach');Object.assign(b,sandPosition(5));b.spec.hullType=type;b.spec.draft=.8;b.a=0;b.vx=speed;groundContact(b,{eta:0},dt,()=>{});return b.damage;}
  for(const type of ['rib','flat']){assert.ok(damage(type,2.5)<damage('v',2.5));assert.ok(damage(type,.3)<.001);assert.ok(damage(type,12)>damage(type,2.5)+5);}
 });
 test('swamp fan/air rudders generate broad sideslip and carry world momentum after throttle release instead of acting as an outboard',()=>{
  const s=a.swamp;assert.ok(Math.abs(s.powered.sway)>.7&&s.powered.yaw>.8);assert.ok(s.halfSecond.speed>s.powered.speed*.8);assert.ok(Math.abs(s.directionChangeHalfSecond)<.15);assert.ok(s.afterFive.speed>.5&&s.afterFive.speed<s.halfSecond.speed*.6);assert.equal(s.halfSecond.thrust,0);assert.ok(s.draft<.17);
 });
 test('swamp boat traverses water shallower than a submerged propeller and never incurs propeller-bottom damage',()=>{
- const b=createBoat('beach',{profile:'swamp'});Object.assign(b,sandPosition(2.5));b.a=Math.atan2(sandNormal.x,-sandNormal.y);b.throttle=1;const initial={x:b.x,y:b.y};assert.ok(bottomAt(b.x,b.y).depth<.23);
+ const b=createBoat('beach',{profile:'swamp'});Object.assign(b,sandPosition(2.5));b.a=Math.atan2(-sandNormal.x,sandNormal.y);b.throttle=1;const initial={x:b.x,y:b.y};assert.ok(bottomAt(b.x,b.y).depth<.23);
  for(let i=0;i<1200;i++)step(b,{},dt);
- assert.ok((b.x-initial.x)*(-sandNormal.y)+(b.y-initial.y)*sandNormal.x>1);assert.equal(b.engines[0].propDamage,0);assert.equal(b.engines[0].propContact,false);assert.ok(b.damage<1);
+ assert.ok((b.x-initial.x)*sandNormal.y-(b.y-initial.y)*sandNormal.x>1);assert.equal(b.engines[0].propDamage,0);assert.equal(b.engines[0].propContact,false);assert.ok(b.damage<1);
 });

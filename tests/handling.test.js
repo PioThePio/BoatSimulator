@@ -49,7 +49,7 @@ test('stiff mooring limits extension and external load does not become unlimited
  const b=createBoat('berth');attachRope(b,'bow');const r=b.ropes[0],p=cleat(b,'bow'),q=BOLLARDS[r.bollard];r.length=Math.hypot(p.x-q.x,p.y-q.y)-.02;r.targetLength=r.length;step(b,calm,1/120);assert.ok(r.tension>200);const initial=r.length;requestHaul(r,-.5);step(b,calm,1/120);assert.ok(initial-r.length<.0001);
 });
 test('bathymetry varies spatially and grounding slows boat',()=>{
- assert.ok(Math.abs(bottomAt(6,6).depth-bottomAt(64,48).depth)>3);assert.equal(bottomAt(500,200).material,'mud');const b=createBoat('open',{profile:'cruiser',hullMass:8000});b.x=8;b.y=6;b.a=0;b.vx=1;step(b,calm,1/120);assert.ok(b.grounded);run(b,1);assert.ok(Math.abs(b.vx)<.5);
+ assert.ok(Math.abs(bottomAt(6,6).depth-bottomAt(64,48).depth)>3);assert.equal(bottomAt(500,200).material,'mud');const b=createBoat('open',{profile:'cruiser',hullMass:8000});b.x=8;b.y=4;b.a=0;b.vx=1;step(b,calm,1/120);assert.ok(b.grounded);run(b,1);assert.ok(Math.abs(b.vx)<.5);
 });
 test('wave-free rest is stable; waves physically drive bobbing and lateral motion',()=>{
  const rest=createBoat('berth'),waves=createBoat('berth');run(rest,10);let maxRoll=0,maxHeave=0,maxMotion=0;

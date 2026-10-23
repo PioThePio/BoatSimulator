@@ -48,9 +48,9 @@ test('wake surface follows the visible crest, decays and cannot be created by ro
 test('returning across an actual curved wake produces bounded heave on otherwise flat water',()=>{
  const b=createBoat('open',{powers:[350]});b.a=0;b.throttle=1;run(b,45);b.wake=[];b.x=120;b.y=110;b.steer=b.spec.maxSteer;
  let encounter=0,heave=0;for(let i=0;i<3600;i++){step(b,{},1/120);encounter=Math.max(encounter,b.wakeEncounter);heave=Math.max(heave,Math.abs(b.heave));}
- assert.ok(encounter>.04);assert.ok(heave>.01&&heave<.3);assert.ok(b.wake.length>50&&b.wake.length<=155);assert.equal(b.damage,0);
+ assert.ok(encounter>.04);assert.ok(heave>.01&&heave<.3);assert.ok(b.wake.length>50&&b.wake.length<=185);assert.equal(b.damage,0);
 });
-function collide(speed,fenders=true,bow=false){const b=createBoat('berth');b.x=bow?22.7:20.9;b.y=22;b.a=bow?Math.PI:-Math.PI/2;b.vx=-speed;b.fenders=fenders;return run(b,.6,false);}
+function collide(speed,fenders=true,bow=false){const b=createBoat('berth');b.x=bow?22.7:21.2;b.y=22;b.a=bow?Math.PI:-Math.PI/2;b.vx=-speed;b.fenders=fenders;return run(b,1.6,false);}
 test('gentle fender contact flashes its real fender without marking undamaged hull',()=>{
  const b=collide(.2);assert.equal(b.damage,0);assert.ok(b.lastImpact.protectedContact);assert.ok(b.lastImpact.fender);assert.ok(impactPaint(b,b.lastImpact.fender,true).flash>0);assert.equal(impactPaint(b,b.lastImpact.zone).color,null);
  b.time+=2;assert.equal(impactPaint(b,b.lastImpact.fender,true).color,null);

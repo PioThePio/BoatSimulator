@@ -106,7 +106,7 @@ test('map bollard allows hauling, loosening and detaching the existing rope',asy
 test('real lake run keeps a gentle heading with slight steering during 350 HP acceleration',async({page})=>{
  // Keep the physical steering command fixed while the live keyboard rate is configurable.
  await page.addInitScript(()=>localStorage.setItem('przystan-steering',JSON.stringify({boat:1,suv:1})));
- await page.clock.install();await page.goto('/');await page.locator('#power-left').fill('350');await page.locator('#begin-session').click();await page.locator('#ignition-0 [data-key-turn="1"]').click();await page.locator('#ignition-0 [data-key-turn="1"]').click();await page.clock.runFor(1500);await expect(page.locator('#key-state-0')).toHaveText('Pracuje');
+ await page.clock.install();await page.goto('/');await page.clock.pauseAt((await page.evaluate(()=>Date.now()))+1000);await page.locator('#power-left').fill('350');await page.locator('#begin-session').click();await page.locator('#ignition-0 [data-key-turn="1"]').click();await page.locator('#ignition-0 [data-key-turn="1"]').click();await page.clock.runFor(1500);await expect(page.locator('#key-state-0')).toHaveText('Pracuje');
  await page.locator('#throttle').fill('80');await page.locator('.wheel-section>.section-heading h2').click();await page.keyboard.down('ArrowRight');await page.clock.runFor(90);await page.keyboard.up('ArrowRight');await page.clock.runFor(15000);
  expect(parseFloat(await page.locator('#speed').innerText())).toBeGreaterThan(4);const heading=parseFloat(await page.locator('#heading').innerText());expect(heading).toBeGreaterThan(90);expect(heading).toBeLessThan(120);expect(Math.abs(parseFloat(await page.locator('#yaw').innerText()))).toBeLessThan(3);await expect(page.locator('#condition-tag')).toHaveText('BEZ USZKODZEŃ');
 });
@@ -179,7 +179,7 @@ test('contact diagram shows the real fender and damaged bow, then fades while ke
  await page.goto('/');await page.locator('#begin-session').click();await page.locator('#pause').click();
  const states=await page.evaluate(async()=>{
   const {createBoat,step}=await import('/src/physics.js'),{updateContactInstrument}=await import('/src/contact-instrument.js');
-  function hit(bow){const b=createBoat('berth');b.x=bow?22.7:20.9;b.y=22;b.a=bow?Math.PI:-Math.PI/2;b.vx=bow?-.5:-.2;for(let i=0;i<72;i++)step(b,{},1/120);return b;}
+  function hit(bow){const b=createBoat('berth');b.x=bow?22.7:21.15;b.y=22;b.a=bow?Math.PI:-Math.PI/2;b.vx=bow?-.5:-.2;for(let i=0;i<72;i++)step(b,{},1/120);return b;}
   const fender=hit(false);updateContactInstrument(fender);const f=document.querySelector(`[data-contact-fender="${fender.lastImpact.fender}"]`);
   const safe={color:f.getAttribute('fill'),flash:f.dataset.contact,damage:fender.damage};
   const bow=hit(true);updateContactInstrument(bow);const el=document.querySelector('[data-contact-zone="bow"]');

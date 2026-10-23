@@ -28,20 +28,20 @@ geodezyjnych ani z pobranej, dokładnej geometrii OSM.
 ## Skala i czas
 
 - Źródłowa podziałka atlasu: **75 pikseli = 1000 rzeczywistych metrów**.
-  Na życzenie użytkownika v20 skraca geograficzne odległości do **70%**:
-  75 pikseli atlasu daje teraz 700 m symulacji, a świat ma **11,95 × 9,73 km**
+  Na życzenie użytkownika v22 skraca geograficzne odległości do **50%**:
+  75 pikseli atlasu daje teraz 500 m symulacji, a świat ma **8,53 × 6,95 km**
   zamiast 17,07 × 13,89 km. Osie x/y mają ten sam współczynnik.
-- Interpretowany obrys wody ma około **14,93 km²** po kompresji, wcześniej
+- Interpretowany obrys wody ma około **7,62 km²** po kompresji, wcześniej
   30,47 km². Nie są to pomiary rzeczywistego zbiornika. Odnogi kończą się
   na krawędziach dostarczonej mapy.
-- Serock–Nieporęt: **9,12 km rzeczywiście**, około **6,38 km w symulacji**.
+- Serock–Nieporęt: **9,12 km rzeczywiście**, około **4,56 km w symulacji**.
   Projekcja współrzędnych geograficznych uwzględnia kompresję i pozostaje odwracalna.
 - Kompresja względem punktu (80 m, 4 m) przy głównej kei zachowuje jej położenie.
   Główne pomosty, parking i slip zachowują geometrię; zdalne przystanie przesunięto
   z brzegiem, bez skracania pomostów. Wyspy i obrys jeziora skalują się razem.
 - Łódź 5,5 m nadal ma 5,5 jednostki świata. Nie zmieniono mas, prędkości, czasu,
   głębokości ani wymiarów obiektów. Przy 36 km/h kilometr symulacji nadal zajmuje
-  100 sekund, ale ta sama przeprawa geograficzna jest o 30% krótsza.
+  100 sekund, ale ta sama przeprawa geograficzna jest o 50% krótsza.
 - Zwykłe pomosty zdalnych przystani mają 20–40 m długości i 1,8 m szerokości;
   Y-bomy nadal 25 cm. Główny port zachowuje sprawdzoną geometrię manewrową.
 - Podgląd całego akwenu i minimapa mają identyczną skalę osi x/y.
@@ -59,10 +59,10 @@ Dokładne zapytania o najbliższy brzeg wykonuje indeks BVH odcinków, zamiast
 rasteryzacji wielokilometrowego jeziora. Nie traci to rozdzielczości kontaktu
 małego kadłuba z brzegiem. Rysowanie wektorowe nie tworzy ogromnej tekstury.
 
-Od v21 osobny czas eksploatacyjny ma współczynnik 1 / 0,70 = 1,428571.
+Od v22 osobny czas eksploatacyjny ma współczynnik 1 / 0,50 = 2.
 Liczniki, motogodziny i paliwo zależne od czasu uwzględniają skrócone odległości;
-700 m mapy daje 1000 m przebiegu logicznego. Czas i prędkości fizyki pozostają
-bez zmian. [Dokładny rozdział zegarów](OPERATIONS_V21.md).
+500 m mapy daje 1000 m przebiegu logicznego. Czas i prędkości fizyki pozostają
+bez zmian. [Rozdział zegarów](OPERATIONS_V21.md) i [aktualny audyt mapy v22](FIXES_V22.md).
 
 ## Porty, paliwo i naprawa
 

@@ -1,5 +1,6 @@
 import './style.css';
 import './helm.css';
+import {createAtlas,atlasProjection,zoomAtlas,installMapGestures} from './map-controls.js';
 import {installOperationsUI} from './operations-ui.js';
 import {installControlSettings} from './control-settings.js';
 import {ropeLoadState} from './rope-load.js';
@@ -30,10 +31,14 @@ window.addEventListener('blur',()=>sound.setActive(false));document.addEventList
 $('#sound-toggle').onchange=()=>{soundSettings();sound.unlock();};$('#sound-volume').oninput=$('#engine-volume').oninput=soundSettings;
 let start='lake',boatOptions={profile:'runabout',engineCount:1,powers:[90,90],coldStart:true},boat=createBoat(start,boatOptions);
 let vehicle='boat',towRig=createTowRig(boat);
+$('#steering-settings').insertAdjacentHTML('beforeend',`<fieldset id="twin-steering" hidden><legend>Kąty dwóch napędów</legend><label><input id="link-steering" type="checkbox" checked> Wspólna kierownica</label>${['Lewy','Prawy'].map((name,i)=>`<label>${name} <output id="drive-angle-${i}">0°</output><input id="drive-steer-${i}" aria-label="Kąt napędu ${name.toLowerCase()}" type="range" min="-45" max="45" step="1" value="0" disabled></label>`).join('')}</fieldset>`);
+$('#link-steering').onchange=e=>{for(const en of boat.engines)en.steerTarget=e.target.checked?null:boat.actualSteer;syncControls();};
+for(const i of [0,1])$('#drive-steer-'+i).oninput=e=>{if(boat.engines[i])boat.engines[i].steerTarget=+e.target.value*Math.PI/180;syncControls();};
 let speedUnit='km/h';const flowUnits={wind:'m/s',current:'m/s'};
 try{speedUnit=localStorage.getItem('przystan-speed-unit')==='kn'?'kn':'km/h';for(const key of ['wind','current'])flowUnits[key]=localStorage.getItem('przystan-'+key+'-unit')==='km/h'?'km/h':'m/s';}catch{}
 $('.telemetry').onclick=e=>{if(e.target.closest('button'))return;speedUnit=speedUnit==='km/h'?'kn':'km/h';try{localStorage.setItem('przystan-speed-unit',speedUnit);}catch{}telemetry();};$('.telemetry').onkeydown=e=>{if(e.target===$('.telemetry')&&['Enter',' '].includes(e.key)){e.preventDefault();e.stopPropagation();$('.telemetry').click();}};
 document.addEventListener('click',e=>{const button=e.target.closest('[data-flow-unit]');if(!button)return;const key=button.dataset.flowUnit;flowUnits[key]=flowUnits[key]==='m/s'?'km/h':'m/s';try{localStorage.setItem('przystan-'+key+'-unit',flowUnits[key]);}catch{}telemetry();});
+let atlas=createAtlas();
 let paused=false,zoom=1,follow=true,overview=false,manualCenter=null,centerReference={x:boat.x,y:boat.y},selectedEngine=0,selectedTarget=null;
 let trail=[],view=null,sonarHistory=[],sonarTime=0,lastEvent=null,last=performance.now(),accumulator=0,telemetryAt=0;
 const env={windSpeed:0,windDirection:90,currentSpeed:0,currentDirection:90,gusts:false,waveHeight:0,waveDirection:90,autoWaves:true,spatialEffects:true,traffic:true};
@@ -43,6 +48,8 @@ function toast(t){$('#toast').textContent=t;$('#toast').classList.add('visible')
 const wheelRatio=()=>{const s=vehicle==='suv'?SUV:boat.spec;return s.wheelTurns*Math.PI/s.maxSteer;};
 function gearLabel(v){return Math.abs(v)<.035?'N · LUZ':Math.abs(v)<=CREEP+.005?`${v>0?'F':'R'} · PEŁZAJĄCY`:`${v>0?'F · NAPRZÓD':'R · WSTECZ'} ${Math.abs(Math.round(v*100))}%`;}
 function syncControls(){
+ const independent=Number.isFinite(boat.engines[0].steerTarget);$('#twin-steering').hidden=vehicle!=='boat'||boat.spec.engineCount!==2||!['outboard','zdrive'].includes(boat.spec.propulsion);$('#link-steering').checked=!independent;
+ for(const [i,en]of boat.engines.entries()){const input=$('#drive-steer-'+i);input.disabled=!independent;input.value=Math.round((en.steerTarget??boat.steer)*180/Math.PI);$('#drive-angle-'+i).textContent=input.value+'°';}
  const S=boat.spec,R=vehicle==='suv'?towRig:boat,limit=vehicle==='suv'?SUV.maxSteer:S.maxSteer,deg=Math.round(R.steer*180/Math.PI);$('#steer-label').textContent=deg+'°';const actual=R.actualSteer*180/Math.PI;$('#rudder-angle').textContent=(actual>1?'P ':actual< -1?'L ':'')+Math.abs(actual).toFixed(0)+'°';$('#rudder-command').style.left=(50+R.steer/limit*46)+'%';$('#rudder-actual').style.left=(50+R.actualSteer/limit*46)+'%';$('#wheel svg').style.transform=`rotate(${R.steer*180/Math.PI*wheelRatio()}deg)`;$('#wheel').setAttribute('aria-valuenow',deg);$('#wheel').setAttribute('aria-valuemax',Math.round(limit*180/Math.PI));$('#wheel').setAttribute('aria-valuemin',-Math.round(limit*180/Math.PI));
  $('#throttle').min=boat.spec.air?'0':'-100';$('#throttle2').min=boat.spec.air?'0':'-100';$('#throttle').value=Math.round(boat.throttle*100);$('#throttle2').value=Math.round(boat.throttle2*100);$('#gear').textContent=gearLabel(boat.throttle);$('#gear2').textContent=gearLabel(boat.throttle2);
  $('#second-engine').hidden=S.engineCount!==2;$('.engine-link-controls').hidden=S.engineCount!==2;$('#link-engines').checked=boat.linked;$('#fenders').checked=boat.fenders;
@@ -163,13 +170,18 @@ $('#show-anchor').onclick=showAnchor;
 for(const id of ['anchor-suggest','map-anchor-suggest'])$('#'+id).onclick=()=>{const advice=anchorAdvice(boat,env);$('#anchor-target').value=$('#map-anchor-target').value=advice.length;};
 for(const id of ['anchor-target','map-anchor-target'])$('#'+id).oninput=e=>$('#'+(id==='anchor-target'?'map-anchor-target':'anchor-target')).value=e.target.value;
 for(const btn of document.querySelectorAll('[data-anchor]'))btn.onclick=()=>{const input=$('#anchor-target');if(!input.reportValidity())return;toast(anchorCommand(boat,btn.dataset.anchor,+input.value).message);};
-$('#zoom-in').onclick=()=>{overview=false;zoom=clamp(zoom*1.25,.16,3);};$('#zoom-out').onclick=()=>{overview=false;zoom=clamp(zoom/1.25,.16,3);};$('#follow').onclick=centerBoat;$('#overview').onclick=()=>overview=!overview;
+function mapZoom(factor){if(overview)zoomAtlas(atlas,factor,width/2,height/2,width,height);else zoom=clamp(zoom*factor,.16,3);}
+$('#zoom-in').onclick=()=>mapZoom(1.25);$('#zoom-out').onclick=()=>mapZoom(1/1.25);$('#follow').onclick=centerBoat;
+$('#overview').onclick=()=>{overview=true;atlas=createAtlas();$('#mooring-picker').hidden=$('#anchor-picker').hidden=true;closeWeather();};
+$('.water-wrap').insertAdjacentHTML('beforeend','<div id="atlas-tools" hidden><button id="atlas-fit">Cały akwen</button><button id="atlas-boat">◎ Do łodzi</button><small>Przesuń · kółko / dwa palce: zoom · kliknij nazwę</small></div>');
+$('#atlas-fit').onclick=()=>atlas=createAtlas();$('#atlas-boat').onclick=()=>{if(vehicle==='boat')centerBoat();else{overview=false;follow=false;manualCenter={x:boat.x,y:boat.y};}};
 $('#trail-toggle').onclick=()=>{showTrail=!showTrail;$('#trail-toggle').setAttribute('aria-pressed',showTrail);};let showTrail=true;
 const canvas=$('#lake'),ctx=canvas.getContext('2d');let width=1,height=1,minimapView=null;
+installMapGestures(canvas,{active:()=>overview,size:()=>({width,height}),atlas:()=>atlas,labels:()=>view?.labels??[],focus:q=>{overview=false;follow=false;manualCenter={x:q.worldX,y:q.worldY};zoom=1/(boat.cameraZoom||1);}});
 new ResizeObserver(()=>{const r=canvas.getBoundingClientRect();width=r.width;height=r.height;const dpr=Math.min(devicePixelRatio,2);canvas.width=width*dpr;canvas.height=height*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);}).observe(canvas);
-function draw(){$('.sonar').hidden=overview||!$('#sonar-toggle').checked||!boat.electrics.powered.sonar;$('#minimap').hidden=overview;const screenShift=!$('#mooring-picker').hidden&&width<650&&!overview?Math.max(0,width/2-(width<360?24:48)):0;view=renderWorld(ctx,{boat,env,width,height,zoom,follow,overview,manualCenter,centerReference,screenShift,selected:selectedTarget,trail,showTrail,focus:vehicle==='suv'?towRig.car:null,towRig});minimapView=renderMinimap($('#minimap'),boat,view);const q=boat.towRig?.boatLoaded?boat:{x:125,y:20},px=width/2+(q.x-view.camera.x)*view.scale,py=height/2+(q.y-view.camera.y)*view.scale;serviceMap.hidden=overview||!nearService(boat)||px<0||px>width||py<0||py>height;if(!serviceMap.hidden){serviceMap.style.left=clamp(px+15,8,width-165)+'px';serviceMap.style.top=clamp(py+20,145,height-55)+'px';}}
+function draw(){canvas.classList.toggle('atlas-mode',overview);$('#atlas-tools').hidden=!overview;$('#overview').setAttribute('aria-pressed',String(overview));$('.sonar').hidden=overview||!$('#sonar-toggle').checked||!boat.electrics.powered.sonar;$('#minimap').hidden=overview;const screenShift=!$('#mooring-picker').hidden&&width<650&&!overview?Math.max(0,width/2-(width<360?24:48)):0;view=renderWorld(ctx,{boat,env,width,height,zoom,follow,overview,atlasView:overview?atlasProjection(atlas,width,height):null,manualCenter,centerReference,screenShift,selected:selectedTarget,trail,showTrail,focus:vehicle==='suv'?towRig.car:null,towRig});minimapView=renderMinimap($('#minimap'),boat,view);const q=boat.towRig?.boatLoaded?boat:{x:125,y:20},px=width/2+(q.x-view.camera.x)*view.scale,py=height/2+(q.y-view.camera.y)*view.scale;serviceMap.hidden=overview||!nearService(boat)||px<0||px>width||py<0||py>height;if(!serviceMap.hidden){serviceMap.style.left=clamp(px+15,8,width-165)+'px';serviceMap.style.top=clamp(py+20,145,height-55)+'px';}}
 canvas.onclick=e=>{
- if(!view)return;const rect=canvas.getBoundingClientRect(),p={x:(e.clientX-rect.left-width/2)/view.scale+view.camera.x,y:(e.clientY-rect.top-height/2)/view.scale+view.camera.y};
+ if(!view||overview)return;const rect=canvas.getBoundingClientRect(),p={x:(e.clientX-rect.left-width/2)/view.scale+view.camera.x,y:(e.clientY-rect.top-height/2)/view.scale+view.camera.y};
  let best=-1,d=Math.max(.8,12/view.scale);BOLLARDS.forEach((_,i)=>{const q=mooringPoint(boat,i),dist=Math.hypot(p.x-q.x,p.y-q.y);if(dist<d){best=i;d=dist;}});
  const bow=cleat(boat,'bow'),bowDistance=Math.hypot(p.x-bow.x,p.y-bow.y);
  if(bowDistance<Math.max(boat.spec.length*.15,13/view.scale)&&(best<0||bowDistance<d)){showAnchor();return;}

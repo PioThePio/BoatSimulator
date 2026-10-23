@@ -52,5 +52,5 @@ test('V wake spreads out from the travelled path, advects with current and fades
  b.vx=8;for(let i=0;i<20;i++){b.time+=.15;b.x+=1.2;recordHullWake(history,b,{x:.5,y:0});}
  assert.ok(history.length>8);const old=history[0],young=history[history.length-1],edges=wakeEdges(old,b.time),fresh=wakeEdges(young,b.time);
  assert.ok(edges[1].y-edges[0].y>fresh[1].y-fresh[0].y+5);assert.ok(edges[0].x>old.x);assert.ok(fresh[0].x>edges[0].x);
- b.vx=.5;b.time+=7;recordHullWake(history,b,{x:.5,y:0});assert.ok(history.length>0);b.time+=28;recordHullWake(history,b,{x:.5,y:0});assert.equal(history.length,0);
+ b.vx=.5;b.time+=7;recordHullWake(history,b,{x:.5,y:0});assert.ok(history.length>0);b.time+=38;recordHullWake(history,b,{x:.5,y:0});assert.equal(history.length,0);
 });
