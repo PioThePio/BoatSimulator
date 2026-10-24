@@ -2,7 +2,7 @@ import {contacts} from './contacts.js';
 import {beginFenderStep,fenderGeometry,fenderContact} from './fenders.js';
 import {hullContactSamples} from './hull-geometry.js';
 import {sampleWater,wakeHistories} from './wave-field.js';
-import {TRAFFIC,BOLLARDS,environment,reflectionFacesNear,clamp} from './world.js';
+import {TRAFFIC,BOLLARDS,SOLIDS,environment,reflectionFacesNear,clamp} from './world.js';
 import {point,cleat,inverseMass,impulse} from './rigging.js';
 import {hullLateralForces,windForces} from './hydrodynamics.js';
 import {mooringPoint,boomInverse,boomLoad} from './marina.js';
@@ -28,9 +28,14 @@ export function trafficStep(b,e,dt,{integrate=true}={}){
  for(const q of b.traffic){
   if(integrate){
   q.time=b.time;beginFenderStep(q);
-  const faces=wakeHistories(b).some(h=>h.length>1)?reflectionFacesNear(q.x,q.y):[];
-  const sample=(x,y)=>sampleWater(b,x,y,e,faces);
-  const flow=environment(b.time,e,q.x,q.y),wave=sample(q.x,q.y),m=q.mass;
+  // Only new marina boats sample external fields at 20 Hz. Integration of
+  // inertia, damping, contact and individual rope tension remains at 120 Hz.
+  const cached=q.site==='pilawa';
+  if(!cached||!q.fieldCache||b.time>=q.fieldAt){
+   const faces=wakeHistories(b).some(h=>h.length>1)?reflectionFacesNear(q.x,q.y):[],sample=(x,y)=>sampleWater(b,x,y,e,faces),fore=point(q,.35*q.length,0),aft=point(q,-.35*q.length,0);
+   q.fieldCache={flow:environment(b.time,e,q.x,q.y),wave:sample(q.x,q.y),ends:[sample(aft.x,aft.y),sample(fore.x,fore.y)]};q.fieldAt=b.time+.05;
+  }
+  const {flow,wave,ends}=q.fieldCache,m=q.mass;
   const windSide=-flow.wind.x*Math.sin(q.a)+flow.wind.y*Math.cos(q.a),rollTarget=Math.atan(-wave.sx*Math.sin(q.a)+wave.sy*Math.cos(q.a))*1.3+windSide*Math.abs(windSide)*q.spec.freeboard/(m*2);
   for(const [key,target,omega,damping]of [['heave',wave.eta,3.8,.34],['roll',clamp(rollTarget,-.25,.25),Math.sqrt(9.81/(q.beam*.35)),.24],['pitch',Math.atan(wave.sx*Math.cos(q.a)+wave.sy*Math.sin(q.a)),3.5,.4]]){const velocity=key+'Velocity';q[velocity]+=(omega*omega*(target-q[key])-2*damping*omega*q[velocity])*dt;q[key]+=q[velocity]*dt;}
   const c0=Math.cos(q.a),s0=Math.sin(q.a),u=(q.vx-flow.current.x)*c0+(q.vy-flow.current.y)*s0,v=-(q.vx-flow.current.x)*s0+(q.vy-flow.current.y)*c0;
@@ -38,13 +43,16 @@ export function trafficStep(b,e,dt,{integrate=true}={}){
   hullLateralForces(q.spec,u,v,q.w,0,force);
   force(-.5*1000*q.beam*q.spec.draft*.20*u*Math.abs(u)-m*.035*u,0);
   const ax=flow.wind.x-q.vx,ay=flow.wind.y-q.vy;windForces(q.spec,ax*c0+ay*s0,-ax*s0+ay*c0,q.w,force);
-  for(const x of [-.35*q.length,.35*q.length]){const p=point(q,x,0),w=sample(p.x,p.y);const ax=w.ax+w.wake.ax*.7,ay=w.ay+w.wake.ay*.7;force(m*.08*(ax*c0+ay*s0),m*.20*(-ax*s0+ay*c0),x);}
+  for(const [i,x]of [-.35*q.length,.35*q.length].entries()){const w=ends[i];const ax=w.ax+w.wake.ax*.7,ay=w.ay+w.wake.ay*.7;force(m*.08*(ax*c0+ay*s0),m*.20*(-ax*s0+ay*c0),x);}
   const du=(X+m*v*q.w)/q.spec.mx-q.w*v,dv=(Y-m*u*q.w)/q.spec.my+q.w*u;
   q.vx+=(c0*du-s0*dv)*dt;q.vy+=(s0*du+c0*dv)*dt;
   q.w+=(N/q.spec.iz-q.w*.18-500*q.beam*q.length**4*.006*q.w*Math.abs(q.w)/q.spec.iz)*dt;
   moorTraffic(b,q,dt);
-  q.x+=q.vx*dt;q.y+=q.vy*dt;q.a+=q.w*dt;contacts(q,dt);
+  q.x+=q.vx*dt;q.y+=q.vy*dt;q.a+=q.w*dt;
+  const candidates=cached?SOLIDS.flatMap((d,i)=>Math.hypot(Math.max(d.x-q.x,0,q.x-d.x-d.w),Math.max(d.y-q.y,0,q.y-d.y-d.h))<q.spec.length*.65+1?[i]:[]):null;
+  contacts(q,dt,candidates);
   }
+  if(Math.hypot(b.x-q.x,b.y-q.y)>(b.spec.length+q.spec.length)*.6+1)continue;
   const otherRadius=q.beam*.45,offset=q.length*.5-otherRadius;
   if(b.fenders)for(const g of fenderGeometry(b.spec)){
    const p=point(b,g.x,g.y),dx=p.x-q.x,dy=p.y-q.y,c=Math.cos(q.a),s=Math.sin(q.a),along=clamp(dx*c+dy*s,-offset,offset),near={x:q.x+c*along,y:q.y+s*along};

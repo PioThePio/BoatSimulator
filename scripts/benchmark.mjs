@@ -1,5 +1,5 @@
 // CPU workload only; this does not measure the user's GPU or promise a frame rate.
-// Optional argument: source directory of a v24 checkout for the same comparison.
+// Optional argument: source directory of another checkout for the same comparison.
 import {performance} from 'node:perf_hooks';
 import {pathToFileURL} from 'node:url';
 import {resolve} from 'node:path';

@@ -1,6 +1,7 @@
 import {clamp} from './world.js';
 import {cleat,inverseMass,impulse} from './rigging.js';
 import {attachmentNames} from './attachment-points.js';
+import {towHeelAngle,whipState} from './towable-water.js';
 
 export const TOW_LIMITS={minLength:.6,maxLength:60,throwDistance:25,haulSpeed:.28,paySpeed:.75,handForce:450,handPower:65};
 const velocity=(b,p)=>({x:b.vx-b.w*(p.y-b.y),y:b.vy+b.w*(p.x-b.x)});
@@ -47,6 +48,8 @@ export function marineTowStep(fleet,dt){
   r.tension=extension>0||crossing>0?Math.max(0,(k*extension+(damping+k*dt)*closing)/den)*(extension>0?1:crossing):0;r.peak=Math.max(r.peak,r.tension);
   if(r.tension>r.strength){r.broken=true;r.breakTension=r.tension;r.tension=0;r.control=0;for(const q of [a,b]){q.events.unshift({time:q.time,message:`Zerwany hol · ${(r.breakTension/1000).toFixed(1)} kN > ${(r.strength/1000).toFixed(1)} kN.`});q.events.splice(12);}continue;}
   impulse(a,n,r.tension*dt,armA);impulse(b,n,-r.tension*dt,armB);
+  if(b.spec.inflatable){b.towHeel=(b.towHeel??0)+towHeelAngle(b.spec,-r.tension,n,b.a);b.whip=whipState(a,b);b.whipPeak=Math.max(b.whipPeak??0,b.whip.speed);}
+  if(a.spec.inflatable)a.towHeel=(a.towHeel??0)+towHeelAngle(a.spec,r.tension,n,a.a);
   a.maxTowTension=Math.max(a.maxTowTension??0,r.tension);b.maxTowTension=Math.max(b.maxTowTension??0,r.tension);
  }
 }

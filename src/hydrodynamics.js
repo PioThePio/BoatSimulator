@@ -1,4 +1,5 @@
 // Distributed cross-flow (Fossen strip theory). Each force uses velocity at its own arm.
+export {bankSuctionForce,passingInteraction} from './hydro-interactions.js';
 // Coefficients are approximate for these recreational hulls; no sea-trial calibration.
 export function hullLateralForces(S,u,v,r,planing,force,poweredTurn=0){
  const count=13,dx=S.length/count;

@@ -3,7 +3,9 @@ import {sampleWater} from './wave-field.js';
 export function createBuoys(){return BOLLARDS.map((q,index)=>q.kind==='buoy'?{...q,index,homeX:q.x,homeY:q.y,vx:0,vy:0,heave:0,heaveVelocity:0,roll:0,mass:140,loadX:0,loadY:0}:null);}
 export function buoyStep(world,e,dt){
  for(const q of world.buoys??[]){
-  if(!q)continue;const flow=environment(world.time,e,q.x,q.y),wave=sampleWater(world,q.x,q.y,e);
+  if(!q)continue;
+  if(q.site!=='pilawa'||!q.fieldCache||world.time>=q.fieldAt){q.fieldCache={flow:environment(world.time,e,q.x,q.y),wave:sampleWater(world,q.x,q.y,e)};q.fieldAt=world.time+.05;}
+  const {flow,wave}=q.fieldCache;
   const dx=q.x-q.homeX,dy=q.y-q.homeY,ux=flow.current.x-q.vx,uy=flow.current.y-q.vy;
   q.vx+=(q.loadX+75*ux*Math.abs(ux)+q.mass*.55*wave.ax-2500*dx-1000*q.vx)/q.mass*dt;
   q.vy+=(q.loadY+75*uy*Math.abs(uy)+q.mass*.55*wave.ay-2500*dy-1000*q.vy)/q.mass*dt;

@@ -5,7 +5,7 @@ test('SUV pedals have real-car order and progressive pressure, Space toggles par
  const brake=await page.locator('#car-brake').boundingBox(),gas=await page.locator('#car-gas').boundingBox();expect(brake.x).toBeLessThan(gas.x);
  await page.keyboard.press('Space');await expect(page.locator('#car-handbrake')).toHaveAttribute('aria-pressed','true');await page.clock.runFor(300);await expect(page.locator('#car-handbrake')).toHaveAttribute('aria-pressed','true');await page.keyboard.press('Space');await expect(page.locator('#car-handbrake')).toHaveAttribute('aria-pressed','false');
  for(const gear of ['R','N','D']){await page.keyboard.press('e');await page.clock.runFor(120);await expect(page.locator('[data-car-gear='+gear+']')).toHaveAttribute('aria-pressed','true');}await page.keyboard.press('q');await expect(page.locator('[data-car-gear=N]')).toHaveAttribute('aria-pressed','true');
- await page.keyboard.down('w');await page.clock.runFor(100);expect(+(await page.locator('#car-gas').inputValue())).toBeGreaterThan(0);expect(+(await page.locator('#car-gas').inputValue())).toBeLessThan(30);await page.keyboard.up('w');await page.clock.runFor(150);await expect(page.locator('#car-gas')).toHaveValue('0');expect(errors).toEqual([]);
+ await page.clock.pauseAt(await page.evaluate(()=>Date.now()+100));await page.keyboard.down('w');await page.clock.runFor(150);const pressure=+(await page.locator('#car-gas').inputValue());expect(pressure).toBeGreaterThan(0);expect(pressure).toBeLessThan(30);await page.keyboard.up('w');await page.clock.runFor(150);await expect(page.locator('#car-gas')).toHaveValue('0');expect(errors).toEqual([]);
 });
 
 test('trailer can be unhitched in the UI and SUV switches to its solo mass/profile; 4x4 has an explicit toggle',async({page})=>{

@@ -1,4 +1,4 @@
-import {clamp,FUEL_STATION} from './world.js';
+import {clamp,FUEL_STATIONS} from './world.js';
 import {updateMass} from './craft.js';
 import {cleat} from './rigging.js';
 import {mooringPoint} from './marina.js';
@@ -13,13 +13,14 @@ export function fuelBerthStatus(b){
  // A real hull side must lie alongside the marked east face of the fuel pier.
  const S=b.spec,angle=Math.abs(Math.cos(b.a));
  const face=b.x-Math.abs(Math.sin(b.a))*S.beam*.5-Math.abs(Math.cos(b.a))*S.length*.5;
- const positioned=angle<.40&&b.y>=FUEL_STATION.alongMin&&b.y<=FUEL_STATION.alongMax&&face>=FUEL_STATION.x-.25&&face<=FUEL_STATION.x+FUEL_STATION.maxGap;
+ const station=FUEL_STATIONS.find(q=>angle<.40&&b.y>=q.alongMin&&b.y<=q.alongMax&&face>=q.x-.25&&face<=q.x+q.maxGap);
+ const positioned=!!station;
  if(!positioned)return{ok:false,message:'Podejdź burtą do oznaczonego stanowiska paliwowego z odbijaczami.'};
- const tied=b.ropes.some(r=>{const q=mooringPoint(b,r.bollard),p=cleat(b,r.end);return q&&q.kind==='bollard'&&Math.abs(q.x-FUEL_STATION.x)<.3&&q.y>=FUEL_STATION.alongMin-2&&q.y<=FUEL_STATION.alongMax+2&&Math.hypot(p.x-q.x,p.y-q.y)<=r.length+.3;});
+ const tied=b.ropes.some(r=>{const q=mooringPoint(b,r.bollard),p=cleat(b,r.end);return q&&q.kind==='bollard'&&Math.abs(q.x-station.x)<.3&&q.y>=station.alongMin-2&&q.y<=station.alongMax+2&&Math.hypot(p.x-q.x,p.y-q.y)<=r.length+.3;});
  if(!tied)return{ok:false,message:'Przywiąż co najmniej jedną cumę do stanowiska paliwowego.'};
  if(Math.hypot(b.vx,b.vy)>.15)return{ok:false,message:'Zatrzymaj łódź przed tankowaniem.'};
  if(b.engines.some(e=>e.key!=='off'))return{ok:false,message:'Wyłącz silniki i zapłon przed tankowaniem.'};
- return{ok:true,message:'Stanowisko gotowe do tankowania.'};
+ return{ok:true,station:station.id??'rynia',message:'Stanowisko gotowe do tankowania.'};
 }
 export function requestRefuel(b){
  if(b.fuel.refueling){b.fuel.refueling=false;b.fuel.status='Tankowanie zatrzymane';return{ok:true,message:'Tankowanie zatrzymane.'};}

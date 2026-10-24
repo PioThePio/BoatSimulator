@@ -2,7 +2,7 @@
 // Atlas: 75 pixels = 1 real km. v22 compresses ORIGINAL geographic distances to 50%;
 // physical boat, pier, slip and tree dimensions / SI speed and time stay unchanged.
 // Independent checks: GeoNames Serock/Nieporęt and the BDOT10k/OSM geoportal.
-// See docs/ZEGRZE.md for provenance, scale checks and bathymetry limitations.
+// See docs/MODEL.md#mapa-i-wiarygodność-geografii for provenance, scale checks and bathymetry limitations.
 export const WORLD_DISTANCE_SCALE=.50;
 export const METRES_PER_MAP_PIXEL=1000/75*WORLD_DISTANCE_SCALE;
 // Compress geography about the main quay; all manufactured objects retain SI dimensions.

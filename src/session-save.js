@@ -2,6 +2,7 @@ import {createFleetCraft} from './fleet-craft.js';
 import {syncFleetWorld,MAX_FLEET} from './fleet.js';
 import {BOLLARDS} from './world.js';
 import {WORLD_DISTANCE_SCALE} from './zegrze.js';
+import {createRescue,validRescueState} from './rescue.js';
 
 export const SAVE_KEY='przystan-session-v1',BACKUP_KEY=SAVE_KEY+'-backup',SAVE_VERSION=1,AUTOSAVE_SECONDS=30;
 const omitted=new Set(['booms','buoys','traffic','towRig','worldRig','wakeSources']);
@@ -22,6 +23,7 @@ export function restoreSession(value){
   const data=typeof value==='string'?JSON.parse(value):JSON.parse(JSON.stringify(value));
   if(data?.version!==SAVE_VERSION||data.worldScale!==WORLD_DISTANCE_SCALE||!finite(data.savedAt,0,1e15))throw Error('Nieobsługiwana wersja zapisu.');
   validateTree(data);const f=data.fleet;if(!Array.isArray(f?.boats)||!f.boats.length||f.boats.length>MAX_FLEET||!Array.isArray(f.tows)||f.tows.length>64)throw Error('Błędna flota.');
+  f.rescue??=createRescue();if(!validRescueState(f.rescue))throw Error('Błędny stan ratownictwa.');
   const ids=new Set();for(const b of f.boats){
    if(typeof b.id!=='string'||!/^boat-\d+$/.test(b.id)||ids.has(b.id))throw Error('Błędny identyfikator.');ids.add(b.id);
    if(!finite(b.x)||!finite(b.y)||!finite(b.a)||!finite(b.vx,-150,150)||!finite(b.vy,-150,150)||!finite(b.w,-30,30)||!finite(b.time,0)||!finite(b.spec?.mass,5,30000)||!finite(b.spec.length,1,15)||!finite(b.spec.beam,.4,5)||!finite(b.battery?.soc,0,1))throw Error('Błędny stan jednostki.');
@@ -32,6 +34,9 @@ export function restoreSession(value){
   if(f.tows.some(r=>!ids.has(r.from)||!ids.has(r.to)||r.from===r.to||!finite(r.length,.6,60)||!finite(r.strength,1000,40000)||!finite(r.EA,1000,1e7)||!['bow','stern','portBow','starboardBow','portStern','starboardStern','portMid','starboardMid','towCenter'].includes(r.fromEnd)||!['bow','stern','portBow','starboardBow','portStern','starboardStern','portMid','starboardMid','towCenter'].includes(r.toEnd)))throw Error('Błędny hol.');
   const base=createFleetCraft('runabout');if(!Array.isArray(data.world?.booms)||data.world.booms.length!==base.booms.length||!data.world.buoys||!Array.isArray(data.world.traffic))throw Error('Błędny stan akwenu.');
   f.boats=f.boats.map(saved=>{const b=createFleetCraft(saved.fleetKind??saved.spec.profile);Object.assign(b,saved);if(b.fleetKind==='banana'||b.fleetKind==='mat')b.spec.inflatable=true;for(const r of b.ropes){r.control=0;r.rate=0;r.effortTime=0;}b.thrusters.bow=b.thrusters.stern=0;return b;});
+  const trafficById=new Map(data.world.traffic.map(q=>[q.id,q]));
+  data.world.traffic=base.traffic.map(q=>trafficById.get(q.id)??q);
+  data.world.buoys=base.buoys.map((q,i)=>data.world.buoys[i]??q);
   Object.assign(f.boats[0],data.world);
   if(data.rig){if(!finite(data.rig.car?.x)||!finite(data.rig.car?.y)||!finite(data.rig.trailer?.x)||!finite(data.rig.trailer?.y)||!data.rig.winch)throw Error('Błędny stan SUV-a.');const r=data.rig;r.gas=r.brake=0;r.winch.control=0;f.boats.find(b=>b.id===f.rigBoatId).towRig=r;}
   for(const r of f.tows)r.control=r.rate=0;syncFleetWorld(f);

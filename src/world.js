@@ -2,13 +2,15 @@ import {ZEGRZE_BOUNDS,ZEGRZE_SHORE,ZEGRZE_ISLANDS,BRIDGES,REMOTE_HARBORS,FUEL_LO
 import {createShoreQuery} from './shore-geometry.js';
 import {weatherAt} from './weather.js';
 import {mirrorPoint,mirrorVector,wallDistance} from './wave-reflections.js';
+import {EUZEBIA,createPilawaSite} from './lake-sites.js';
 export {weatherAt} from './weather.js';
 export const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 export {BRIDGES,REMOTE_HARBORS,MAP_LABELS,fromGeo,toGeo,METRES_PER_MAP_PIXEL} from './zegrze.js';
-export const WORLD=ZEGRZE_BOUNDS,LAKE=ZEGRZE_SHORE,ISLAND=ZEGRZE_ISLANDS[0],ISLANDS=ZEGRZE_ISLANDS;
+export const WORLD=ZEGRZE_BOUNDS,LAKE=ZEGRZE_SHORE,ISLAND=ZEGRZE_ISLANDS[0],ISLANDS=[...ZEGRZE_ISLANDS];
+const islandQueries=new Map();
 const lakeQuery=createShoreQuery(LAKE);
 export function islandRadius(a,q=ISLAND){return(1+.075*Math.sin(3*a)+.035*Math.cos(5*a))/Math.hypot(Math.cos(a)/q.rx,Math.sin(a)/q.ry);}
-export function islandOutline(padding=0,q=ISLAND){return Array.from({length:80},(_,i)=>{const a=i*Math.PI/40,r=islandRadius(a,q)+padding;return{x:q.x+Math.cos(a)*r,y:q.y+Math.sin(a)*r};});}
+export function islandOutline(padding=0,q=ISLAND){if(q.outline)return q.outline.map(p=>{const dx=p.x-q.x,dy=p.y-q.y,d=Math.hypot(dx,dy);return{x:p.x+padding*dx/d,y:p.y+padding*dy/d};});return Array.from({length:80},(_,i)=>{const a=i*Math.PI/40,r=islandRadius(a,q)+padding;return{x:q.x+Math.cos(a)*r,y:q.y+Math.sin(a)*r};});}
 const rz=fromAtlas(951,576);
 export function canalAt(x){return{y:rz.y-(x-rz.x)*.08,slope:-.08,halfWidth:28*WORLD_DISTANCE_SCALE};}
 // Original small marina, extended along the same shore with two extra piers.
@@ -68,10 +70,15 @@ export const TRAFFIC=[{id:0,type:'motor',x:35.5,y:18.8,a:Math.PI/2,length:5.2,be
 export const polygonShore=lakeQuery;
 export function shoreAt(x,y){
  const lake=lakeQuery(x,y);let best={distance:lake.distance,nx:lake.nx,ny:lake.ny,qx:lake.qx,qy:lake.qy,edge:'lake',along:0};
- for(const q of ISLANDS){const a=Math.atan2(y-q.y,x-q.x),d=Math.hypot(x-q.x,y-q.y)-islandRadius(a,q);if(d<best.distance)best={distance:d,nx:Math.cos(a),ny:Math.sin(a),edge:'island',along:a};}
+ for(const q of ISLANDS){
+  if(q.outline){const box=q.bounds,dx=Math.max(box.left-x,0,x-box.right),dy=Math.max(box.top-y,0,y-box.bottom);if((dx||dy)&&(best.distance<=0||Math.hypot(dx,dy)>=best.distance))continue;
+   const hit=islandQueries.get(q.id)(x,y);if(-hit.distance<best.distance)best={distance:-hit.distance,nx:-hit.nx,ny:-hit.ny,qx:hit.qx,qy:hit.qy,edge:'island',along:Math.atan2(y-q.y,x-q.x),island:q.id};
+  }else{const a=Math.atan2(y-q.y,x-q.x),d=Math.hypot(x-q.x,y-q.y)-islandRadius(a,q);if(d<best.distance)best={distance:d,nx:Math.cos(a),ny:Math.sin(a),edge:'island',along:a};}
+ }
  const canal=canalAt(x),inRzadza=x>rz.x-500&&x<rz.x+2600&&Math.abs(y-canal.y)<100;
  if(inRzadza&&best.edge==='lake')best.edge='canal';
- const beach=best.edge==='island'&&best.along>.3&&best.along<2.8||BEACHES.some(q=>Math.hypot(x-q.x,y-q.y)<q.r);
+ const sector=best.along<0?best.along+Math.PI*2:best.along;
+ const beach=best.island==='euzebia'?EUZEBIA.beachSectors.some(([a,b])=>sector>=a&&sector<=b):best.edge==='island'&&best.along>.3&&best.along<2.8||BEACHES.some(q=>Math.hypot(x-q.x,y-q.y)<q.r);
  return{...best,beach,land:best.distance<1e-7};
 }
 // Additional faces are moorable wherever water is accessible. No map labels
@@ -87,11 +94,27 @@ for(const [index,d]of DOCKS.entries()){
 for(const y of [16,22,28,34,38])BOLLARDS.push({x:132,y,kind:'bollard',id:'SER'+y,label:'Serwis przy slipie · '+y,service:true});
 const beachTree=BOLLARDS.find(q=>q.id==='D1'),beachNormal=shoreAt(beachTree.x,beachTree.y);
 export const MAP_STARTS={retrieve:{x:125,y:22,a:-Math.PI/2},beach:{x:beachTree.x+beachNormal.nx*7.45,y:beachTree.y+beachNormal.ny*7.45,a:Math.atan2(-beachNormal.ny,-beachNormal.nx)},island:{x:ISLAND.x,y:ISLAND.y+ISLAND.ry+30,a:Math.PI},canal:{x:rz.x,y:rz.y,a:0},fuel:{x:FUEL_STATION.x+2,y:FUEL_STATION.y,a:Math.PI/2}};
+// Append-only additions: never shift legacy bollard indices stored in sessions.
+ISLANDS.push(EUZEBIA);islandQueries.set(EUZEBIA.id,createShoreQuery(EUZEBIA.outline));
+export {EUZEBIA};
+export const PILAWA=createPilawaSite(lakeQuery);
+DOCKS.push(...PILAWA.docks);SOLIDS.push(...PILAWA.docks,...PILAWA.fenders);BOLLARDS.push(...PILAWA.bollards);TRAFFIC.push(...PILAWA.traffic);
+export const FUEL_STATIONS=[FUEL_STATION,PILAWA.fuel];
+export const ALL_FUEL_FENDERS=[...FUEL_FENDERS,...PILAWA.fenders];
+for(const [i,a]of [.55,1.05,1.55,2.85,3.08].entries()){
+ let p={x:EUZEBIA.x+Math.cos(a)*EUZEBIA.rx*2,y:EUZEBIA.y+Math.sin(a)*EUZEBIA.ry*2};
+ const hit=islandQueries.get(EUZEBIA.id)(p.x,p.y);p={x:hit.qx+hit.nx*1.5,y:hit.qy+hit.ny*1.5};
+ for(let j=0;j<4;j++){const q=islandQueries.get(EUZEBIA.id)(p.x,p.y);if(q.distance>1.45)break;p.x+=q.nx*(1.6-q.distance);p.y+=q.ny*(1.6-q.distance);}
+ BOLLARDS.push({...p,id:'EUZ-D'+(i+1),kind:'tree',label:'Euzebia · drzewo '+(i+1),site:'euzebia'});
+}
+MAP_STARTS.pilawa=PILAWA.start;MAP_STARTS.euzebia={x:EUZEBIA.x-EUZEBIA.rx-35,y:EUZEBIA.y,a:Math.PI/2};
 export function bottomAt(x,y){
  const shore=shoreAt(x,y),dist=shore.distance,slope=shore.beach?.085:shore.edge==='canal'?.65:.21*(1+.28*Math.sin(x*.027)+.16*Math.cos(y*.041));
  const basin=shore.edge==='canal'?3.2:8.5;
  let depth=dist>=0?basin*(1-Math.exp(-dist*slope/basin)):dist*(shore.beach?.07:.32);
  if(dist>=0){for(const s of SHOALS)depth-=s.drop*Math.exp(-((x-s.x)**2/s.rx**2+(y-s.y)**2/s.ry**2));depth=Math.max(.015,depth+.10*Math.sin(x*.13)*Math.sin(y*.16)*clamp(dist/12,0,1));}
+ // Pilawa's maintained basin is dredged, with a short blend at the bank.
+ const pb=PILAWA.bounds;if(dist>0&&x>pb.left&&x<pb.right&&y>pb.top&&y<pb.bottom){const blend=clamp(dist/5,0,1)*clamp(Math.min(x-pb.left,pb.right-x,y-pb.top,pb.bottom-y)/4,0,1);depth+=Math.max(0,2.7-depth)*blend;}
  const ramp=SERVICE_STATION.slip;
  // A level yard and its approach meet the dry end of the slip. Shore-distance
  // elevation used to put the parked trailer on an unintended slope.
@@ -186,5 +209,7 @@ export const MAP_POIS=[
  {id:'fuel',name:'⛽ Paliwo',x:FUEL_STATION.x,y:FUEL_STATION.y,priority:5},
  ...DOCKS.filter(d=>d.name).map((d,i)=>({id:'pier-'+i,name:d.name,x:d.x+d.w/2,y:d.y+d.h/2,priority:3})),
  ...REMOTE_HARBORS.map(q=>({id:'harbor-'+q.id,name:'Port · '+q.name,x:q.x,y:q.y,priority:3})),
- ...ISLANDS.map((q,i)=>({id:'island-'+i,name:'Wyspa '+(i+1),x:q.x,y:q.y,priority:2})),
+ ...ISLANDS.map((q,i)=>({id:q.id??'island-'+i,name:q.name??'Wyspa '+(i+1),x:q.x,y:q.y,priority:q.id?4:2})),
+ {id:'pilawa',name:'Port Pilawa',x:PILAWA.x+35,y:PILAWA.y,priority:5},
+ {id:'pilawa-fuel',name:'⛽ ORLEN · Pilawa',x:PILAWA.fuel.x,y:PILAWA.fuel.y,priority:5},
  ...MAP_LABELS.map((q,i)=>({id:'town-'+i,...q,priority:1}))];

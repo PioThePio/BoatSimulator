@@ -1,9 +1,10 @@
 import {enforceMainPower} from './electrical.js';
 import {contacts,boomContacts} from './contacts.js';
 import {beginFenderStep} from './fenders.js';
-import {inflatableDrag,inflatableLateral} from './towable-water.js';
+import {inflatableDrag,inflatableLateral,crossWaveDrag} from './towable-water.js';
+import {sampleBankGeometry,bankForce} from './interaction-scene.js';
 import {createBuoys} from './buoys.js';
-// SI, x east / y south. Heading clockwise from east. Physics reference: docs/PHYSICS.md.
+// SI, x east / y south. Heading clockwise from east. Physics reference: docs/MODEL.md.
 import {clamp,DOCKS,SOLIDS,BOLLARDS,SERVICE_STATION,MAP_STARTS,environment,bottomAt,waveAt,reflectionFacesNear,reedDensityAt} from './world.js';
 import {trimAngle} from './drive.js';
 import {engineSteering} from './drive-effects.js';
@@ -71,7 +72,7 @@ export function step(b,e,dt,{sharedStep=true}={}){
  if(!onSupports)[b.heave,b.heaveVelocity]=oscillator(b.heave,b.heaveVelocity,wave.eta*(1+(S.waveResponse-1)*b.planing)-floodingDepth(b)-(b.anchor.shape?.V??0)/(1000*9.81*S.length*S.beam*.65),4.2+3*b.planing,.65,dt);
  floodingStep(b,dt,wave.eta);
  const windSide=-env.wind.x*s+env.wind.y*c;
- const rollTarget=clamp(Math.atan(-wave.sx*s+wave.sy*c)*S.waveResponse+windSide*Math.abs(windSide)*S.freeboard/(S.mass*.9)-b.planing*Math.atan((b.telemetry.surge??0)*b.w/9.81)*.6,-.3,.3);
+ const rollTarget=clamp(Math.atan(-wave.sx*s+wave.sy*c)*S.waveResponse+windSide*Math.abs(windSide)*S.freeboard/(S.mass*.9)-b.planing*Math.atan((b.telemetry.surge??0)*b.w/9.81)*.6+(S.inflatable&&e.towEffects!==false?(b.towHeel??0):0),-.3,.3);
  if(!onSupports)[b.roll,b.rollVelocity]=oscillator(b.roll,b.rollVelocity,rollTarget,Math.sqrt(9.81/(S.beam*.32)),.28,dt);
  const ur=(b.vx-env.current.x)*c+(b.vy-env.current.y)*s;
  const vr=-(b.vx-env.current.x)*s+(b.vy-env.current.y)*c;
@@ -107,6 +108,7 @@ export function step(b,e,dt,{sharedStep=true}={}){
  const induced=S.mass*9.81*.10*(turnLoad*turnLoad-1)*b.planing;
  const drag=S.inflatable?inflatableDrag(S,u,b.planing):friction+Math.sign(u)*(turnDrag+induced+waveDrag+support+displacementLimit+transom);
  force((-drag-S.mass*.009*u)*wetFraction*(S.towDragFactor??1),0);
+ if(S.inflatable&&e.towEffects!==false)force(-crossWaveDrag(S,u,b.encounter.crossSlope)*wetFraction,0);
  const poweredTurn=clamp(Math.abs(b.actualSteer)/S.maxSteer,0,1)*clamp(b.engines.reduce((sum,en)=>sum+Math.abs(en.thrust),0)/(S.mass*2),0,1)*clamp(1-Math.abs(u)/5,0,1);
  if(S.inflatable)inflatableLateral(S,v,b.w,b.planing,force);else hullLateralForces(S,u,v,b.w,b.planing,(x,y,px,py)=>force(x*wetFraction,y*wetFraction,px,py),poweredTurn);
  if(!b.bank||b.time>=(b.bankAt??0)){b.bank=bankInfluence(b);b.bankAt=b.time+.25;}
@@ -159,6 +161,8 @@ export function step(b,e,dt,{sharedStep=true}={}){
  windForces(S,au,av,b.w,force);
  const bank=b.bank,suction=S.mass*.012*bank.strength*Math.min(9,u*u)*wetFraction;
  force(suction*(bank.nx*c+bank.ny*s),suction*(-bank.nx*s+bank.ny*c),-.18*S.length,0);
+ b.bankSuction=0;
+ if(e.hydroInteractions===true&&wetFraction>.1){if(!b.bankGeometry||b.time>=(b.bankGeometryAt??0)){b.bankGeometry=sampleBankGeometry(b);b.bankGeometryAt=b.time+.2;}const f=bankForce(b,ur,b.bankGeometry);force((f.x*c+f.y*s)*wetFraction,(-f.x*s+f.y*c)*wetFraction,f.arm,0);b.bankSuction=f.magnitude*wetFraction;}
  force(S.mass*.12*(wave.ax*c+wave.ay*s),S.mass*(S.inflatable?.45:.25)*(-wave.ax*s+wave.ay*c));
  if(S.inflatable)for(const [q,x]of [[foreWake,S.length*.35],[aftWake,-S.length*.35]])force(S.mass*.07*(q.ax*c+q.ay*s),S.mass*.25*(-q.ax*s+q.ay*c),x,0);
  // Body-axis added-mass model with an empirical correction of the yaw moment.

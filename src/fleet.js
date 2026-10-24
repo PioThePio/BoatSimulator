@@ -7,12 +7,15 @@ import {towStep,trailerContact} from './towing.js';
 import {marineTowStep} from './marine-tow.js';
 import {fleetContacts} from './fleet-contacts.js';
 import {recordTrail} from './trail.js';
+import {vesselInteractions} from './interaction-scene.js';
+import {createRescue} from './rescue.js';
+import {rescueStep} from './rescue-scene.js';
 export const MAX_FLEET=8;
 export const rigBoat=fleet=>fleet.boats.find(b=>b.id===fleet.rigBoatId)??fleet.boats[0];
 export const activeBoat=fleet=>fleet.boats.find(b=>b.id===fleet.activeId)??fleet.boats[0];
 export function createFleet(boat){
  boat.id='boat-1';boat.name=fleetName(boat);boat.trail??=[];boat.occupied=true;
- const fleet={boats:[boat],activeId:boat.id,rigBoatId:boat.id,nextId:2,nextTowId:1,tows:[],time:boat.time};syncFleetWorld(fleet);return fleet;
+ const fleet={boats:[boat],activeId:boat.id,rigBoatId:boat.id,nextId:2,nextTowId:1,tows:[],time:boat.time,rescue:createRescue()};syncFleetWorld(fleet);return fleet;
 }
 export function syncFleetWorld(fleet){
  const owner=rigBoat(fleet),world=fleet.boats[0];
@@ -50,10 +53,12 @@ export function selectFleetBoat(fleet,id){
 }
 export function fleetStep(fleet,env,dt){
  syncFleetWorld(fleet);const owner=rigBoat(fleet),rig=owner.towRig;if(rig)towStep(rig,owner,dt);
- for(const b of fleet.boats)b.maxTowTension=0;
+ for(const b of fleet.boats){b.maxTowTension=0;b.towHeel=0;}
+ vesselInteractions(fleet,env,dt);
  marineTowStep(fleet,dt);
  for(const [i,b]of fleet.boats.entries()){step(b,env,dt,{sharedStep:i===0});if(b===owner&&rig)trailerContact(rig,b,dt);}
  for(let i=0;i<fleet.boats.length;i++)for(let j=i+1;j<fleet.boats.length;j++)fleetContacts(fleet.boats[i],fleet.boats[j],dt);
  fleet.time=fleet.boats[0].time;
+ rescueStep(fleet,env,dt);
 }
 export function recordFleetTrails(fleet){for(const b of fleet.boats)if(!b.towRig?.boatLoaded)recordTrail(b.trail,b);}

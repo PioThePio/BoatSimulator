@@ -1,7 +1,7 @@
-import {REMOTE_HARBORS,FUEL_STATION} from './world.js';
+import {REMOTE_HARBORS,FUEL_STATION,PILAWA,MAP_STARTS} from './world.js';
 import {logicalDistance,operationalSeconds} from './operations.js';
 const wetApproach=q=>{const [nx,ny]={east:[1,0],west:[-1,0],south:[0,1],north:[0,-1]}[q.direction];return{x:q.x+nx*(q.length+14),y:q.y+ny*(q.length+14)};};
-export const DESTINATIONS=[{id:'main',name:'Port główny',x:90,y:55},
+export const DESTINATIONS=[{id:'main',name:'Port główny',x:90,y:55},{id:'pilawa',name:'Port Pilawa',...PILAWA.start},{id:'euzebia',name:'Wyspa Euzebia',...MAP_STARTS.euzebia},
  ...REMOTE_HARBORS.map(q=>({id:q.id,name:q.name,...wetApproach(q)})),
  {id:'fuel',name:'Stacja paliw · Rynia',x:FUEL_STATION.x+15,y:FUEL_STATION.y}];
 export function destinationStatus(b,id){
