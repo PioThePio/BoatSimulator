@@ -34,7 +34,7 @@ export function createBoat(scenario='approach',options={}){
 }
 function event(b,message){b.events.unshift({time:b.time,message});b.events=b.events.slice(0,12);}
 function oscillator(state,vel,target,omega,zeta,dt,forcing=0){const acc=omega*omega*(target-state)-2*zeta*omega*vel+forcing;vel+=acc*dt;return[state+vel*dt,vel];}
-export function step(b,e,dt){
+export function step(b,e,dt,{sharedStep=true}={}){
  b.time+=dt;enforceMainPower(b);beginFenderStep(b);const S=b.spec,c=Math.cos(b.a),s=Math.sin(b.a);
  if(b.towRig?.boatLoaded&&b.towRig.secured){
   placeTrailerBoat(b.towRig,b);
@@ -50,7 +50,7 @@ export function step(b,e,dt){
    b.towRig.ropeForce.x+=fx;b.towRig.ropeForce.y+=fy;
    const arm=point(b,S.engineLever,en.y);b.towRig.ropeForce.torque+=(arm.x-b.towRig.trailer.x)*fy-(arm.y-b.towRig.trailer.y)*fx;
   }
-  systemsStep(b,dt);trafficStep(b,e,dt);boomStep(b,e,dt);return;
+  systemsStep(b,dt);trafficStep(b,e,dt,{integrate:sharedStep});if(sharedStep)boomStep(b,e,dt);return;
  }
  const env=environment(b.time,e,b.x,b.y),wave=waveAt(b.x,b.y,b.time,e);
  const reflections=wakeHistories(b).some(h=>h.length>1)?reflectionFacesNear(b.x,b.y):[];
@@ -105,7 +105,7 @@ export function step(b,e,dt){
  // acceleration, rather than a brake keyed to the steering-wheel angle.
  const induced=S.mass*9.81*.10*(turnLoad*turnLoad-1)*b.planing;
  const drag=friction+Math.sign(u)*(turnDrag+induced+waveDrag+support+displacementLimit+transom);
- force((-drag-S.mass*.009*u)*wetFraction,0);
+ force((-drag-S.mass*.009*u)*wetFraction*(S.towDragFactor??1),0);
  const poweredTurn=clamp(Math.abs(b.actualSteer)/S.maxSteer,0,1)*clamp(b.engines.reduce((sum,en)=>sum+Math.abs(en.thrust),0)/(S.mass*2),0,1)*clamp(1-Math.abs(u)/5,0,1);
  hullLateralForces(S,u,v,b.w,b.planing,(x,y,px,py)=>force(x*wetFraction,y*wetFraction,px,py),poweredTurn);
  if(!b.bank||b.time>=(b.bankAt??0)){b.bank=bankInfluence(b);b.bankAt=b.time+.25;}
@@ -117,6 +117,7 @@ export function step(b,e,dt){
  if(b.engines.length===2)b.engines[1].trimTarget=b.engines[0].trimTarget;
  let totalThrust=0;
  b.engines.forEach((engine,i)=>{
+  if(S.passive){engine.thrust=engine.rpm=engine.n=engine.gear=engine.fuelFlow=0;return;}
   const x=S.engineLever,y=engine.y,delta=engineSteering(b,engine,dt,bankSteering),driveDelta=S.propulsion==='inboard'||S.air?0:delta;engine.forceSteer=delta;
   const inflow=(u-b.w*y)*Math.cos(driveDelta)-(v+b.w*x)*Math.sin(driveDelta);
   const lateral=(u-b.w*y)*Math.sin(delta)+(v+b.w*x)*Math.cos(delta);
@@ -147,6 +148,8 @@ export function step(b,e,dt){
   const skeg=(b.enginesRaised||S.jet||S.air||S.propulsion==='inboard'?0:engine.immersion)*-.5*1000*(.022+engine.hp*.00012)*1.1*Math.hypot(axial,lateral)*lateral;
   force(skeg*Math.sin(delta),skeg*Math.cos(delta),x,y);
  });
+ // Oars/paddle, when occupied, supply human power rather than an invisible engine.
+ if(S.manual&&b.occupied){const thrust=Math.sign(b.throttle)*Math.min(90,85/Math.max(.8,Math.abs(u)))*Math.abs(b.throttle);force(thrust,0);force(0,-Math.abs(thrust)*.65*Math.sin(b.actualSteer),-.35*S.length,0);}
  systemsStep(b,dt);
  force(0,b.thrusters.bowForce,S.length*.38,0);force(0,b.thrusters.sternForce,-S.length*.38,0);
  const reeds=reedDensityAt(b.x,b.y);b.reeds=reeds;
@@ -170,7 +173,7 @@ export function step(b,e,dt){
  groundContact(b,wave,dt,m=>event(b,m));
  b.x+=b.vx*dt;b.y+=b.vy*dt;b.a+=b.w*dt;
  if(wetFraction>.1&&bottomAt(b.x,b.y).depth>0)recordHullWake(b.wake,b,env.current);else b.wake=[];
- contacts(b,dt);boomContacts(b,dt);trafficStep(b,e,dt);if(e.traffic)for(const q of b.traffic)boomContacts(q,dt,b);boomStep(b,e,dt);
+ contacts(b,dt);boomContacts(b,dt);trafficStep(b,e,dt,{integrate:sharedStep});if(sharedStep&&e.traffic)for(const q of b.traffic)boomContacts(q,dt,b);if(sharedStep)boomStep(b,e,dt);
  if(b.damage>=100){b.throttle=0;b.throttle2=0;}
  b.telemetry={surge:ur,sway:vr,thrust:totalThrust,drag:Math.abs(drag),acceleration:udot,shaftPower:b.engines.reduce((sum,en)=>sum+en.hp*735.5*en.n**3,0)};
 }

@@ -23,9 +23,10 @@ function moorTraffic(world,q,dt){
  }
 }
 
-export function trafficStep(b,e,dt){
+export function trafficStep(b,e,dt,{integrate=true}={}){
  if(!e.traffic)return;
  for(const q of b.traffic){
+  if(integrate){
   q.time=b.time;beginFenderStep(q);
   const faces=wakeHistories(b).some(h=>h.length>1)?reflectionFacesNear(q.x,q.y):[];
   const sample=(x,y)=>sampleWater(b,x,y,e,faces);
@@ -43,6 +44,7 @@ export function trafficStep(b,e,dt){
   q.w+=(N/q.spec.iz-q.w*.18-500*q.beam*q.length**4*.006*q.w*Math.abs(q.w)/q.spec.iz)*dt;
   moorTraffic(b,q,dt);
   q.x+=q.vx*dt;q.y+=q.vy*dt;q.a+=q.w*dt;contacts(q,dt);
+  }
   const otherRadius=q.beam*.45,offset=q.length*.5-otherRadius;
   if(b.fenders)for(const g of fenderGeometry(b.spec)){
    const p=point(b,g.x,g.y),dx=p.x-q.x,dy=p.y-q.y,c=Math.cos(q.a),s=Math.sin(q.a),along=clamp(dx*c+dy*s,-offset,offset),near={x:q.x+c*along,y:q.y+s*along};

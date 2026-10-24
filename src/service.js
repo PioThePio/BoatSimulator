@@ -29,7 +29,7 @@ export function requestRepair(b){
  const service=b.service;
  if(service.active){service.active=false;service.status='Naprawa zatrzymana';return{ok:true,message:service.status};}
  const allowed=serviceStatus(b);if(!allowed.ok)return allowed;
- const damage=b.damage+b.engines.reduce((sum,en)=>sum+en.propDamage+(en.flooded?20:0),0);
+ const damage=b.damage+b.engines.reduce((sum,en)=>sum+en.propDamage+(en.flooded?20:0),0)+(b.disabledEngine?20:0);
  if(damage<=0)return{ok:false,message:'Łódź i napęd nie wymagają naprawy.'};
  service.active=true;service.initial=damage;service.progress=0;service.status='Naprawa przy slipie';b.throttle=b.throttle2=0;
  for(const en of b.engines)en.floodRepair=en.flooded?20:0;
@@ -43,7 +43,7 @@ export function serviceStep(b,dt){
  for(const en of b.engines){en.propDamage=Math.max(0,en.propDamage-4*dt);en.floodRepair=Math.max(0,(en.floodRepair??0)-4*dt);if(en.flooded&&en.floodRepair===0){en.flooded=false;en.floodTime=0;}}
  const remaining=b.damage+b.engines.reduce((sum,en)=>sum+en.propDamage+en.floodRepair,0);service.progress=clamp(1-remaining/service.initial,0,1);
  if(remaining<1e-8){
-  b.damage=0;b.sectionDamage={};b.bottomDamage={};b.impacts=[];b.impactTimes={};b.lastImpact=null;
+  b.damage=0;b.disabledEngine=false;b.sectionDamage={};b.bottomDamage={};b.impacts=[];b.impactTimes={};b.lastImpact=null;
   for(const en of b.engines){en.propDamage=0;en.thermalTrip=false;en.flooded=false;en.floodTime=0;}
   if(b.bilge)b.bilge.driveLeak=0;
   service.active=false;service.progress=1;service.status='Naprawa zakończona · kadłub i napęd sprawne';

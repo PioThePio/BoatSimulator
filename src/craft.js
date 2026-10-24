@@ -49,6 +49,8 @@ export function updateMass(spec,fuelLitres,bilgeLitres=0){
 }
 export function engineState(hp,y=0,coldStart=false){return{hp,y,clock:0,operatingHours:0,fuelUsed:0,thermalStage:'normal',command:0,gear:0,n:0,shift:0,thrust:0,rpm:coldStart?0:750,propDamage:0,propContact:false,propClearance:10,lastStrike:-10,key:coldStart?'off':'running',startTime:0,trim:.10,trimTarget:.10,trimRate:0,immersion:1,intake:1,propDepth:.4,ventilation:0,load:0,governorLoad:0,inflow:0,opposingFlow:0,waveLoad:0,fuelFlow:0,temperature:18,cooling:0,overheated:false,thermalLimit:1,thermalTrip:false};}
 export function engineKey(b,index,action){
+ if(b.spec.passive)return{ok:false,message:'Ta jednostka nie ma silnika.'};
+ if(b.disabledEngine&&action!=='off')return{ok:false,message:'Awaria napędu · odholuj jednostkę do serwisu.'};
  const en=b.engines[index];if(!en)return{ok:false,message:'Brak silnika.'};
  if(action==='off'){en.key='off';en.startTime=0;en.gear=0;en.thrust=0;en.ventilation=0;return{ok:true,message:'Silnik wyłączony.'};}
  if(action==='ignition'&&b.electrics?.master===false)return{ok:false,message:'Włącz główne zasilanie łodzi.'};

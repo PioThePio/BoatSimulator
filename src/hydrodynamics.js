@@ -15,7 +15,7 @@ export function hullLateralForces(S,u,v,r,planing,force,poweredTurn=0){
   const stall=1/Math.sqrt(1+(local/(.45+Math.abs(u)*.12))**2);
   const slow=Math.max(0,Math.min(1,(Math.abs(u)-1)/2));
   const lift=(S.air?.25:1)*.5*1000*S.draft*dx*(.24+.26*slow+1.10*planing)*grip*stall*Math.abs(u)*local;
-  force(0,-cross-lift-S.mass*.022/count*local,x,0);
+  force(0,(-cross-lift-S.mass*.022/count*local)*(S.lateralFactor??1),x,0);
  }
 }
 export function windForces(S,au,av,r,force){

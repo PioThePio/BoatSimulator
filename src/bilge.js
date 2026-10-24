@@ -14,6 +14,7 @@ export function deckIngressRate(b){
 export function createBilge(spec){const capacity=Math.max(100,spec.length*spec.beam*55),pumpRate=BILGE_PUMPS[spec.profile]??32;return{litres:0,capacity,pumpRate,pumpAmps:4.5*Math.sqrt(pumpRate/32),autoOnLitres:Math.min(15,capacity*.05),autoOffLitres:Math.min(3,capacity*.01),level:0,manual:false,auto:true,autoRunning:false,running:false,inflow:0,outflow:0,driveLeak:0,alarm:false};}
 export function bilgeStep(b,dt){
  const q=b.bilge;if(!q)return;
+ if(b.spec.sealed){q.running=false;q.inflow=q.outflow=q.litres=q.level=0;return;}
  // Derive level from the physical water amount before checking the float.
  // AUTO is a real float switch, starting early enough to catch a small leak.
  q.level=clamp(q.litres/q.capacity,0,1);
