@@ -12,16 +12,18 @@ export function contactZone(b,arm){
  if(x>.39)return'bow';if(x<-.43&&Math.abs(y)<.35)return'transom';
  return(y<0?'port':'starboard')+(x>.10?'Bow':x<-.10?'Stern':'Mid');
 }
-export function recordImpact(b,{arm,speed,effective,protectedContact=false,fender=null,target='dock',dock=true,damage:contactDamage},notify=()=>{}){
+export function recordImpact(b,{arm,speed,effective,protectedContact=false,fender=null,target='dock',dock=true,damage:contactDamage,energy:contactEnergy,resistance=1,cushionEnergy=0},notify=()=>{}){
  if(speed<.025)return;
  const bottom=target==='bottom',zone=bottom?bottomZone(b,arm):contactZone(b,arm),key=target+':'+(fender||zone);
- const energy=.5*effective*speed*speed,kind=contactDamage===undefined?impactClass(speed,protectedContact):contactDamage>=100?'destruction':contactDamage>0?'damage':'gentle';
+ const energy=contactEnergy??.5*effective*speed*speed;let kind=contactDamage===undefined?impactClass(speed,protectedContact):contactDamage>=100?'destruction':contactDamage>0?'damage':'gentle';
  // Use absorbed energy, not a speed threshold that instantly writes off a hull.
  // A continuous squeeze is one impact: only an increase of its peak severity
  // adds damage. Oscillating contact solvers cannot charge the same energy again.
- const threshold=protectedContact?.30:.15,excess=Math.max(0,energy-.5*effective*threshold**2);
- const capacity=Math.max(4500,(b.spec.structureMass??b.spec.mass)*8)*(protectedContact?2.5:1);
+ const ribSide=b.spec.hullType==='rib'&&!bottom&&!protectedContact&&(zone.startsWith('port')||zone.startsWith('starboard'));
+ const threshold=protectedContact?.30:.15,excess=Math.max(0,energy-.5*effective*threshold**2-cushionEnergy-(ribSide?180:0));
+ const capacity=Math.max(4500,(b.spec.structureMass??b.spec.mass)*8)*(protectedContact?2.5:1)*resistance*(ribSide?2.8:1);
  const raw=contactDamage??(kind==='gentle'?0:100*excess/capacity);
+ if(raw===0)kind='gentle';
  b.contactEpisodes??={};let episode=b.contactEpisodes[key];
  if(!episode||b.time-episode.seen>.35)episode=b.contactEpisodes[key]={seen:b.time,peak:0,dockPeak:0};
  episode.seen=b.time;

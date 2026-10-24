@@ -1,3 +1,4 @@
+import {attachmentNames} from './attachment-points.js';
 import {cleat,cleatLocal,CLEATS} from './rigging.js';
 import {mooringPoint} from './marina.js';
 import {hullOutline} from './hull-geometry.js';
@@ -12,7 +13,7 @@ export function drawUnpowered(ctx,b){
   if(kind==='barge'){ctx.strokeStyle='#c0c3a8';for(let x=-3;x<3.5;x+=1){ctx.beginPath();ctx.moveTo(x,-1);ctx.lineTo(x,1);ctx.stroke();}}
   else{ctx.fillStyle='#ded8bb';for(const x of [-.2,.7])ctx.fillRect(x,-S.beam*.35,.12,S.beam*.7);if(S.manual&&b.occupied){const phase=b.time*3,reach=.7+.3*Math.sin(phase)*Math.abs(b.throttle);ctx.strokeStyle='#9b7947';ctx.lineWidth=.065;for(const side of [-1,1]){ctx.beginPath();ctx.moveTo(0,side*S.beam*.25);ctx.lineTo(-.5+Math.sin(phase)*.15,side*(S.beam*.5+reach));ctx.stroke();}}}
  }
- ctx.fillStyle='#d5a64f';for(const end of Object.keys(CLEATS)){const p=cleatLocal(S,end);ctx.beginPath();ctx.arc(p.x,p.y,.075,0,Math.PI*2);ctx.fill();}drawFenders(ctx,b);ctx.restore();
+ for(const end of Object.keys(attachmentNames(b))){const p=cleatLocal(S,end);ctx.fillStyle=end==='stern'||end==='towCenter'?'#152f2b':'#d5a64f';ctx.beginPath();ctx.arc(p.x,p.y,end==='stern'||end==='towCenter'?.19:.12,0,Math.PI*2);ctx.fill();}drawFenders(ctx,b);ctx.restore();
 }
 export function drawFleet(ctx,fleet,active,drawBoat,visible,scale,overview){
  if(!fleet)return;
@@ -20,7 +21,7 @@ export function drawFleet(ctx,fleet,active,drawBoat,visible,scale,overview){
  for(const b of fleet.boats){if(b===active||!visible(b.x,b.y,b.spec.length))continue;
   for(const r of b.ropes){const p=cleat(b,r.end),q=mooringPoint(b,r.bollard);if(!q)continue;ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(q.x,q.y);ctx.strokeStyle=r.tension>b.spec.lineBreak*.85?'#b66340':'#b9955b';ctx.lineWidth=.1;ctx.stroke();}
   const a=b.anchor;if(a.mode!=='stowed'&&!a.broken){const p=cleat(b,'bow');ctx.strokeStyle='#7d8e7f';ctx.setLineDash([.2,.18]);ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(a.x,a.y);ctx.stroke();ctx.setLineDash([]);}
-  drawBoat(ctx,b);ctx.fillStyle='#a46d33';ctx.beginPath();ctx.arc(b.x,b.y,overview?3.2/scale:.13,0,Math.PI*2);ctx.fill();
+  drawBoat(ctx,b);if(overview){ctx.fillStyle='#a46d33';ctx.beginPath();ctx.arc(b.x,b.y,3.2/scale,0,Math.PI*2);ctx.fill();}
   if(!overview&&scale>3){ctx.font=`${10/scale}px system-ui`;ctx.fillStyle='#355f50';ctx.textAlign='center';ctx.fillText(b.name,b.x,b.y-b.spec.beam*.7-10/scale);ctx.textAlign='start';}
  }
 }

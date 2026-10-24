@@ -1,8 +1,19 @@
 import {clamp} from './world.js';
 import {cleat,inverseMass,impulse} from './rigging.js';
+import {attachmentNames} from './attachment-points.js';
 
 export const TOW_LIMITS={minLength:.6,maxLength:60,throwDistance:25,haulSpeed:.28,paySpeed:.75,handForce:450,handPower:65};
 const velocity=(b,p)=>({x:b.vx-b.w*(p.y-b.y),y:b.vy+b.w*(p.x-b.x)});
+export function connectBoatPoints(fleet,fromId,fromEnd,toId,toEnd,{strength=18000}={}){
+ const a=fleet.boats.find(b=>b.id===fromId),b=fleet.boats.find(b=>b.id===toId);
+ if(!a||!b||a===b||!attachmentNames(a)[fromEnd]||!attachmentNames(b)[toEnd])return{ok:false,message:'Wybierz dostępne punkty dwóch różnych jednostek.'};
+ const occupied=(body,end)=>body.ropes.some(r=>r.end===end)||fleet.tows.some(r=>!r.broken&&(r.from===body.id&&r.fromEnd===end||r.to===body.id&&r.toEnd===end));
+ if(occupied(a,fromEnd)||occupied(b,toEnd))return{ok:false,message:'Ten punkt ma już linę. Najpierw ją odłącz.'};
+ if([a,b].some(q=>q.towRig?.secured&&q.towRig.boatLoaded))return{ok:false,message:'Najpierw zwoduj i odbezpiecz łódź.'};
+ const p=cleat(a,fromEnd),q=cleat(b,toEnd),d=Math.hypot(q.x-p.x,q.y-p.y);if(d>25)return{ok:false,message:'Podejdź bliżej wybranego punktu: maksymalnie 25 m.'};
+ fleet.tows=[...fleet.tows.filter(r=>!r.broken),...fleet.tows.filter(r=>r.broken).slice(-16)];const group='hol-'+fleet.nextTowId++;fleet.tows.push({id:group+'-0',group,from:fromId,to:toId,fromEnd,toEnd,mode:'points',length:Math.max(.6,d+.35),strength:Math.min(strength,a.spec.lineBreak,b.spec.lineBreak),EA:Math.min(a.spec.lineEA,b.spec.lineEA),tension:0,peak:0,control:0,rate:0,broken:false});
+ return{ok:true,message:'Założono linę między wybranymi punktami · bez przyciągania.'};
+}
 export function connectMarineTow(fleet,fromId,toId,{mode='astern',strength=18000,length}={}){
  const a=fleet.boats.find(b=>b.id===fromId),b=fleet.boats.find(b=>b.id===toId);
  if(!a||!b||a===b)return{ok:false,message:'Wybierz inną jednostkę do holowania.'};

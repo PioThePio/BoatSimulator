@@ -1,12 +1,9 @@
 import {mooringPoint,boomInverse,boomLoad} from './marina.js';
 import {BOLLARDS,bottomAt,clamp} from './world.js';
+import {BASE_CLEATS,localAttachment} from './attachment-points.js';
 export function point(b,x,y){const c=Math.cos(b.a),s=Math.sin(b.a);return{x:b.x+c*x-s*y,y:b.y+s*x+c*y};}
-export const CLEATS={bow:'Dziób',portBow:'Lewy przód',starboardBow:'Prawy przód',portStern:'Lewa rufa',starboardStern:'Prawa rufa'};
-export function cleatLocal(spec,end){
- const side=end.startsWith('port')?-1:end.startsWith('starboard')?1:0;
- const stern=end==='stern'||end.endsWith('Stern'),x=(stern?-.39:end==='bow'?.39:.19)*spec.length;
- return{x,y:side*spec.beam*(stern?.43:.32)};
-}
+export const CLEATS=BASE_CLEATS;
+export const cleatLocal=localAttachment;
 export function cleat(b,end){const p=cleatLocal(b.spec,end);return point(b,p.x,p.y);}
 export function inverseMass(b,n,arm){
  const c=Math.cos(b.a),s=Math.sin(b.a),u=n.x*c+n.y*s,v=-n.x*s+n.y*c;

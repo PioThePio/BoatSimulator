@@ -1,3 +1,4 @@
+import {pumpMode,setPumpMode} from './bilge.js';
 import {throttleStep} from './controls.js';
 import {engineKey} from './craft.js';
 import {trimStep} from './drive.js';
@@ -9,7 +10,7 @@ import {conditionMarkup,updateContactInstrument} from './contact-instrument.js';
 const $=s=>document.querySelector(s);
 export function installCockpit(api){
  $('#instruments').innerHTML=gauge('rpm','OBROTOMIERZ',0,6500,'obr/min')+gauge('rpm2','OBROTY · PRAWY',0,6500,'obr/min')+gauge('speed','PRĘDKOŚĆ',0,120,'km/h')+gauge('fuel','PALIWO',0,100,'L/h')+gauge('trim','TRYM',0,100,'%')+gauge('volt','AKUMULATOR',8,16,'V')+gauge('temp','TEMPERATURA',20,140,'°C')+attitudeMarkup();
- $('.pitch-gauge').insertAdjacentHTML('beforeend',conditionMarkup());$('#instruments').insertAdjacentHTML('beforeend','<div class="bilge-panel"><div><span>WODA W ZĘZIE</span><strong id="bilge-level">0%</strong><span id="bilge-inflow">↘ 0,0 l/min</span><span id="bilge-litres">0 l</span><span id="bilge-outflow">↗ 0,0 l/min</span></div><meter id="bilge-meter" min="0" max="100" high="50" optimum="0" value="0" aria-label="Poziom wody w zęzie"></meter><button id="bilge-pump" title="Ręczne włączenie pompy; AUTO działa niezależnie" aria-pressed="false">POMPA OFF</button><label><input id="bilge-auto" type="checkbox" checked> AUTO</label></div>');$('#bilge-pump').onclick=()=>{const q=api.boat().bilge;if(q.manual||q.running){q.manual=false;q.auto=false;}else q.manual=true;};$('#bilge-auto').onchange=e=>api.boat().bilge.auto=e.target.checked;
+ $('.pitch-gauge').insertAdjacentHTML('beforeend',conditionMarkup());$('#instruments').insertAdjacentHTML('beforeend','<div class="bilge-panel"><div><span>WODA W ZĘZIE</span><strong id="bilge-level">0%</strong><span id="bilge-inflow">↘ 0,0 l/min</span><span id="bilge-litres">0 l</span><span id="bilge-outflow">↗ 0,0 l/min</span></div><meter id="bilge-meter" min="0" max="100" high="50" optimum="0" value="0" aria-label="Poziom wody w zęzie"></meter><button id="bilge-pump" title="Ręczne włączenie pompy; AUTO działa niezależnie" aria-pressed="false">POMPA OFF</button><label hidden><input id="bilge-auto" type="checkbox" checked> AUTO</label></div>');$('#bilge-pump').onclick=()=>{const q=api.boat().bilge;setPumpMode(q,({off:'auto',auto:'on',on:'off'})[pumpMode(q)]);};$('#bilge-auto').onchange=e=>api.boat().bilge.auto=e.target.checked;
  for(let i=0;i<2;i++){
   $('#ignition-'+i).innerHTML=`<div class="ignition"><span class="key-positions">0 · I · START</span><div class="key-row"><button data-key-turn="-1" data-engine="${i}" aria-label="Silnik ${i+1}: przekręć stacyjkę w lewo">↶</button><button id="key-${i}" class="key-knob" data-engine="${i}" aria-label="Stacyjka silnika ${i+1}: lewa połowa wyłącza, prawa uruchamia"><svg viewBox="0 0 54 54" aria-hidden="true"><circle cx="27" cy="27" r="24"/><g class="key-pointer"><path d="M23 12h8v29h-8Z"/><circle cx="27" cy="14" r="3"/></g></svg></button><button data-key-turn="1" data-engine="${i}" aria-label="Silnik ${i+1}: przekręć stacyjkę w prawo">↷</button></div><small id="key-state-${i}" class="key-state">Wyłączony</small><small id="temperature-${i}" class="engine-temperature">18°C</small></div>`;
  }
@@ -64,8 +65,10 @@ export function updateBilgePanel(b){
  $('#bilge-litres').textContent=Math.round(q.litres)+' l';
  $('#bilge-inflow').textContent='↘ '+(q.inflow*60).toFixed(1)+' l/min';$('#bilge-inflow').title='Napływ wody';
  $('#bilge-outflow').textContent='↗ '+(q.outflow*60).toFixed(1)+' l/min';$('#bilge-outflow').title='Wypompowywanie · pompa '+q.pumpRate+' l/min przy 12 V';
- const on=b.electrics?.master!==false&&(q.running||q.manual);$('#bilge-pump').innerHTML='<span class="rocker-face" aria-hidden="true"><i></i></span><span class="rocker-caption">POMPA '+(on?'ON':'OFF')+'</span>';$('#bilge-pump').setAttribute('aria-pressed',String(on));
- $('#bilge-pump').dataset.mode=q.manual?'manual':q.running?'auto':'off';$('#bilge-auto').checked=q.auto;
- $('#bilge-auto').title=`Pływak: start ${q.autoOnLitres.toFixed(0)} l, stop ${q.autoOffLitres.toFixed(0)} l. Pompa działa bez zapłonu, przy głównym zasilaniu ON.`;
+ const live=b.electrics?.master!==false,mode=pumpMode(q),on=live&&q.running;
+ $('#bilge-pump').innerHTML='<span class="rocker-face pump-face" aria-hidden="true"><i class="pump-auto-led '+(live&&mode==='auto'?'lit':'')+'"></i><i class="pump-on-led '+(on?'lit':'')+'"></i></span><span class="rocker-caption">POMPA '+mode.toUpperCase()+'</span>';
+ $('#bilge-pump').setAttribute('aria-pressed',String(on));$('#bilge-pump').setAttribute('aria-label','Pompa '+mode.toUpperCase()+'. Kliknij: OFF, AUTO, ON.');
+ $('#bilge-pump').dataset.mode=mode;$('#bilge-auto').checked=q.auto;
+ $('#bilge-pump').title=`OFF → AUTO → ON. Pływak: ${q.autoOnLitres.toFixed(0)} / ${q.autoOffLitres.toFixed(0)} l. Diody: AUTO i rzeczywista praca pompy.`;
  $('.bilge-panel').classList.toggle('danger',q.alarm);
 }

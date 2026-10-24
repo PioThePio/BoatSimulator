@@ -1,6 +1,7 @@
 import {CRAFTS,updateMass} from './craft.js';
 import {createBilge} from './bilge.js';
 import {createAnchor} from './rigging.js';
+import {clamp} from './world.js';
 import {createBoat} from './physics.js';
 
 // SI hulls; the inflatable loads include seated riders. They have no hidden motor.
@@ -14,9 +15,9 @@ export const TOWABLES={
 export const fleetName=b=>b.name??TOWABLES[b.fleetKind]?.name??b.spec.name;
 export function createFleetCraft(kind,options={}){
  if(!TOWABLES[kind])return createBoat('lake',{...options,profile:kind,coldStart:true});
- const p=TOWABLES[kind],b=createBoat('lake',{profile:'flat',coldStart:true,crewCount:0,equipmentMass:0});
- Object.assign(b.spec,{name:p.name,length:p.length,beam:p.beam,hullMass:p.mass,structureMass:p.mass,dryMass:p.mass,referenceMass:p.mass,referenceDraft:p.draft,draft:p.draft,freeboard:p.freeboard,hullType:p.hullType,color:p.color,
-  propulsion:'none',passive:true,manual:!!p.manual,sealed:!!p.sealed,powers:[0],fuelCapacity:0,crewCount:kind==='barge'?0:kind==='banana'?3:1,planing:!!p.planing,planingThreshold:.65,waveResponse:p.wave,windageFactor:p.windage,propWalkStrength:0,bowThruster:false,sternThruster:false,
+ const p=TOWABLES[kind],defaultCrew=kind==='banana'?3:kind==='barge'?0:1,crewCount=clamp(options.crewCount??defaultCrew,0,12),hullMass=clamp(options.hullMass??p.mass-defaultCrew*75,5,8000),equipmentMass=clamp(options.equipmentMass??0,0,1500),mass=hullMass+crewCount*75+equipmentMass,length=clamp(options.length??p.length,1,15),beam=clamp(options.beam??p.beam,.5,5),b=createBoat('lake',{profile:'flat',coldStart:true,crewCount:0,equipmentMass:0});
+ Object.assign(b.spec,{name:p.name,length,beam,hullMass,structureMass:hullMass,dryMass:mass,referenceMass:p.mass,referenceDraft:p.draft*p.length*p.beam/(length*beam),draft:p.draft,freeboard:p.freeboard,hullType:p.hullType,color:p.color,
+  propulsion:'none',passive:true,manual:!!p.manual,sealed:!!p.sealed,inflatable:kind==='banana'||kind==='mat',powers:[0],fuelCapacity:0,crewCount,crewMass:crewCount*75,equipmentMass,planing:!!p.planing,planingThreshold:.65,waveResponse:p.wave,windageFactor:p.windage,propWalkStrength:0,bowThruster:false,sternThruster:false,
   towDragFactor:p.drag,lateralFactor:p.lateral,lineBreak:p.breakForce,lineEA:p.breakForce*9,wheelTurns:.5,steeringLockTime:.6});
  b.fleetKind=kind;b.fenders=kind==='barge'||kind==='rowboat';b.engines[0].hp=0;
  b.fuel.capacity=b.fuel.litres=b.fuel.flow=0;b.fuel.tanks=[];b.electrics.master=false;

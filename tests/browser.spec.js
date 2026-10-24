@@ -128,7 +128,7 @@ test('mooring boat diagram drags, retains its position on another bollard and op
  await page.goto('/');await page.locator('#begin-session').click();await chooseStart(page,'berth');await page.locator('#lake').scrollIntoViewIfNeeded();
  const lake=await page.locator('#lake').boundingBox(),scale=Math.min(lake.width/140,lake.height/80);
  const select=async(x,y)=>page.locator('#lake').click({position:{x:lake.width/2+(x-24.3)*scale,y:lake.height/2+(y-22)*scale}});
- await select(29,17);await expect(page.locator('.mooring-hull')).toBeVisible();await expect(page.locator('#map-ropes [data-cleat]')).toHaveCount(5);
+ await select(29,17);await expect(page.locator('.mooring-hull')).toBeVisible();await expect(page.locator('#map-ropes [data-cleat]')).toHaveCount(6);
  await page.locator('[data-cleat=starboardBow]').click();await expect(page.locator('#map-rope-starboardBow')).toContainText('P5');
  const before=await page.locator('#mooring-picker').boundingBox(),handle=await page.locator('#mooring-handle').boundingBox();
  await page.mouse.move(handle.x+30,handle.y+15);await page.mouse.down();await page.mouse.move(handle.x+30+230,handle.y+15-90,{steps:8});await page.mouse.up();

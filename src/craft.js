@@ -44,7 +44,7 @@ export function updateMass(spec,fuelLitres,bilgeLitres=0){
  spec.draft=Math.max(.08,spec.referenceDraft+(spec.mass-spec.referenceMass)/(1000*spec.length*spec.beam*.7));
  spec.cgX=-spec.length*(.16*fuelLitres*.745+.30*bilgeLitres)/spec.mass;
  spec.inertia=spec.mass*((.27*spec.length)**2+(.22*spec.beam)**2)+fuelLitres*.745*(spec.length*.16)**2+bilgeLitres*(spec.length*.30)**2;
- spec.mx=spec.mass*1.08;spec.my=spec.mass*1.65;spec.iz=spec.inertia*1.55;
+ spec.mx=spec.mass*1.08;spec.my=spec.mass*(spec.inflatable?1.15:1.65);spec.iz=spec.inertia*(spec.inflatable?1.2:1.55);
  return spec;
 }
 export function engineState(hp,y=0,coldStart=false){return{hp,y,clock:0,operatingHours:0,fuelUsed:0,thermalStage:'normal',command:0,gear:0,n:0,shift:0,thrust:0,rpm:coldStart?0:750,propDamage:0,propContact:false,propClearance:10,lastStrike:-10,key:coldStart?'off':'running',startTime:0,trim:.10,trimTarget:.10,trimRate:0,immersion:1,intake:1,propDepth:.4,ventilation:0,load:0,governorLoad:0,inflow:0,opposingFlow:0,waveLoad:0,fuelFlow:0,temperature:18,cooling:0,overheated:false,thermalLimit:1,thermalTrip:false};}

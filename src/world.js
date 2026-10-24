@@ -137,13 +137,19 @@ export function environment(t,e={},x=null,y=null){
  return{wind,current,shelter,waveScale:dry?0:.4+.6*shelter};
 }
 export function waveHeight(e,t=0){return e.autoWaves?Math.min(.55,.004*weatherAt(t,e).windSpeed**2):(e.waveHeight??0);}
+let dockReflectionFaces;
+function staticReflectionFaces(){
+ if(dockReflectionFaces)return dockReflectionFaces;
+ dockReflectionFaces=DOCKS.flatMap((d,i)=>[
+  ['L',{x:d.x,y:d.y},{x:d.x,y:d.y+d.h},-1,0],['R',{x:d.x+d.w,y:d.y},{x:d.x+d.w,y:d.y+d.h},1,0],
+  ['T',{x:d.x,y:d.y},{x:d.x+d.w,y:d.y},0,-1],['B',{x:d.x,y:d.y+d.h},{x:d.x+d.w,y:d.y+d.h},0,1]
+ ].map(([side,a,b,nx,ny])=>({id:'dock'+i+side,a,b,nx,ny,coefficient:d.service?.64:.56,dx:b.x-a.x,dy:b.y-a.y,length2:(b.x-a.x)**2+(b.y-a.y)**2})));
+ return dockReflectionFaces;
+}
 export function reflectionFacesNear(x,y,radius=70){
  const p={x,y},faces=[];
- for(const [i,d]of DOCKS.entries())for(const [side,a,b,nx,ny]of [
-  ['L',{x:d.x,y:d.y},{x:d.x,y:d.y+d.h},-1,0],['R',{x:d.x+d.w,y:d.y},{x:d.x+d.w,y:d.y+d.h},1,0],
-  ['T',{x:d.x,y:d.y},{x:d.x+d.w,y:d.y},0,-1],['B',{x:d.x,y:d.y+d.h},{x:d.x+d.w,y:d.y+d.h},0,1]]){
-  const f={id:'dock'+i+side,a,b,nx,ny,coefficient:d.service?.64:.56},dx=b.x-a.x,dy=b.y-a.y;
-  const u=clamp(((x-a.x)*dx+(y-a.y)*dy)/(dx*dx+dy*dy),0,1),distance=Math.hypot(x-a.x-u*dx,y-a.y-u*dy);
+ for(const f of staticReflectionFaces()){
+  const {a,dx,dy,length2}=f,u=clamp(((x-a.x)*dx+(y-a.y)*dy)/length2,0,1),distance=Math.hypot(x-a.x-u*dx,y-a.y-u*dy);
   if(distance<radius&&wallDistance(p,f)>.001)faces.push({...f,distance});
  }
  faces.sort((a,b)=>a.distance-b.distance);faces.splice(4);

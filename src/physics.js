@@ -1,6 +1,7 @@
 import {enforceMainPower} from './electrical.js';
 import {contacts,boomContacts} from './contacts.js';
 import {beginFenderStep} from './fenders.js';
+import {inflatableDrag,inflatableLateral} from './towable-water.js';
 import {createBuoys} from './buoys.js';
 // SI, x east / y south. Heading clockwise from east. Physics reference: docs/PHYSICS.md.
 import {clamp,DOCKS,SOLIDS,BOLLARDS,SERVICE_STATION,MAP_STARTS,environment,bottomAt,waveAt,reflectionFacesNear,reedDensityAt} from './world.js';
@@ -104,10 +105,10 @@ export function step(b,e,dt,{sharedStep=true}={}){
  // Turning costs power through sideslip and the extra lift needed for centripetal
  // acceleration, rather than a brake keyed to the steering-wheel angle.
  const induced=S.mass*9.81*.10*(turnLoad*turnLoad-1)*b.planing;
- const drag=friction+Math.sign(u)*(turnDrag+induced+waveDrag+support+displacementLimit+transom);
+ const drag=S.inflatable?inflatableDrag(S,u,b.planing):friction+Math.sign(u)*(turnDrag+induced+waveDrag+support+displacementLimit+transom);
  force((-drag-S.mass*.009*u)*wetFraction*(S.towDragFactor??1),0);
  const poweredTurn=clamp(Math.abs(b.actualSteer)/S.maxSteer,0,1)*clamp(b.engines.reduce((sum,en)=>sum+Math.abs(en.thrust),0)/(S.mass*2),0,1)*clamp(1-Math.abs(u)/5,0,1);
- hullLateralForces(S,u,v,b.w,b.planing,(x,y,px,py)=>force(x*wetFraction,y*wetFraction,px,py),poweredTurn);
+ if(S.inflatable)inflatableLateral(S,v,b.w,b.planing,force);else hullLateralForces(S,u,v,b.w,b.planing,(x,y,px,py)=>force(x*wetFraction,y*wetFraction,px,py),poweredTurn);
  if(!b.bank||b.time>=(b.bankAt??0)){b.bank=bankInfluence(b);b.bankAt=b.time+.25;}
  const bankSteering=1-.06*b.bank.strength*clamp(Math.abs(u)/2,0,1);
  // Outboards rotate at a finite rate; linked controls copy commands, not engine states.
@@ -158,13 +159,14 @@ export function step(b,e,dt,{sharedStep=true}={}){
  windForces(S,au,av,b.w,force);
  const bank=b.bank,suction=S.mass*.012*bank.strength*Math.min(9,u*u)*wetFraction;
  force(suction*(bank.nx*c+bank.ny*s),suction*(-bank.nx*s+bank.ny*c),-.18*S.length,0);
- force(S.mass*.12*(wave.ax*c+wave.ay*s),S.mass*.25*(-wave.ax*s+wave.ay*c));
+ force(S.mass*.12*(wave.ax*c+wave.ay*s),S.mass*(S.inflatable?.45:.25)*(-wave.ax*s+wave.ay*c));
+ if(S.inflatable)for(const [q,x]of [[foreWake,S.length*.35],[aftWake,-S.length*.35]])force(S.mass*.07*(q.ax*c+q.ay*s),S.mass*.25*(-q.ax*s+q.ay*c),x,0);
  // Body-axis added-mass model with an empirical correction of the yaw moment.
  const udot=(X+S.mass*vr*b.w)/(S.mass+(S.mx-S.mass)*wetFraction);
  const vdot=(Y-S.mass*ur*b.w)/(S.mass+(S.my-S.mass)*wetFraction);
  // Empirical hull stability cancels the bare potential-flow Munk moment.
  // Leaving it uncalibrated amplifies sideslip into a spin at planing speed.
- const rotationalDrag=(S.air?.35:1)*.5*1000*S.beam*S.length**4*(.004+.003*b.planing)*b.w*Math.abs(b.w);
+ const rotationalDrag=(S.inflatable?.12:S.air?.35:1)*.5*1000*S.beam*S.length**4*(.004+.003*b.planing)*b.w*Math.abs(b.w);
  const rdot=(N-rotationalDrag)/S.iz-(.10+.04*Math.abs(u)/S.length)*b.w;
  // Convert body acceleration to world acceleration without double-counting frame rotation.
  const du=udot-b.w*vr,dv=vdot+b.w*ur;

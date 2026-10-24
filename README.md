@@ -1,4 +1,4 @@
-# Przystań — symulator manewrów motorówką v24
+# Przystań — symulator manewrów motorówką v25
 
 Przeglądarkowy symulator z widokiem z góry, bez kont i backendu. Osiem rodzajów
 łodzi, w tym skuter, zmieniane wymiary i masa, jeden lub dwa silniki do 350 KM.
@@ -6,10 +6,22 @@ Mapa wzorowana na Jeziorze Zegrzyńskim: obszar 8,53 × 6,95 km (50% pierwotnych
 i Bugu, zatoki, mosty, plaże i przystanie. Port ze slipem, serwisem,
 stanowiskami z bojami i ruchomymi Y-bomami szerokości 25 cm.
 
-Uruchom: **https://piothepio.github.io/BoatSimulator/?v=24.0.0**.
+Uruchom: **https://piothepio.github.io/BoatSimulator/?v=25.0.0**.
 
 Model służy do poznawania zależności w manewrach; nie jest skalibrowany dla
 konkretnej łodzi. [Źródła, równania i ograniczenia](docs/PHYSICS.md).
+
+## Zmiany v25 — flota, punkty zaczepienia i wydajność
+
+- Flota obok Pogody: pełna konfiguracja jednostki bez pogody, miejsca z menu
+  startu lub wskazanie na mapie, rzeczywiste cumy przy wyborze „zacumowana”.
+- Dodatkowe stanowiska pod sterowaniem. Łączenie z punktu obcej jednostki
+  do wybranej własnej knagi, również nowego czarnego punktu przy rufie.
+- Banan i materac: poślizg, ślizg i reakcja na wake. Uszkodzenia zależą
+  od masy i materiału; miękki obiekt przy wolnym uderzeniu jest odpychany.
+- Pompa OFF / AUTO / ON, dwie diody. Zoptymalizowane obliczenia fal bez
+  zmiany kroku fizyki ani propagacji; minimapa odświeżana 10 razy na sekundę.
+- [Parametry, wyniki pomiarów i testy v25](docs/REFINEMENTS_V25.md).
 
 ## Zmiany v24 — lokalna kontynuacja, flota i holowanie
 

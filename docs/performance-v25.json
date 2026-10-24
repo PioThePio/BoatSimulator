@@ -1,0 +1,18 @@
+{
+  "baselineCommit": "10d5059",
+  "baseline": {
+    "fleetMS": 2.864477105,
+    "fieldMS": 577.1644580000002,
+    "queries": 8000,
+    "checksum": 0.6842715283806695
+  },
+  "v25": {
+    "fleetMS": 1.1655143733333333,
+    "fieldMS": 19.15151700000024,
+    "queries": 8000,
+    "checksum": 0.6842715283806695
+  },
+  "fleetCostReductionPercent": 59.3114439176733,
+  "fieldSpeedup": 30.13674885388938,
+  "method": "Node 24; same environment; 1200 warmup + 600 measured steps at 1/120 s, two hulls plus marina; 8000 field queries with 180 samples and one hard reflection; sequential, no concurrent test run"
+}
