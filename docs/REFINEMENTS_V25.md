@@ -126,13 +126,13 @@ Powtórzenie: `node scripts/benchmark-v25.mjs`, opcjonalnie ścieżka do katalog
 
 ## Weryfikacja
 
-- 337 testów modelu, 124 interfejsu Chrome i 6 gotowej strony — 467 zaliczonych.
+- 337 testów modelu, 125 interfejsu Chrome i 6 gotowej strony — 468 zaliczonych.
 - `refinements-v25.test.js`: 12 nowych przypadków punktów zaczepienia, parametrów,
   masy pustego obiektu, rzeczywistych cum, zachowania banana na łuku i wake,
   uszkodzeń miękkiego obiektu/barki/RIB-a, pompy i zgodności szybszego wake.
-- `refinements-v25.spec.js`: 4 nowe przypadki pełnej konfiguracji, rzeczywistego
+- `refinements-v25.spec.js`: 5 nowych przypadków pełnej konfiguracji, rzeczywistego
   zacumowanego startu, zapisania pustego materaca, przycisków stanowisk, diod
-  pompy z brakiem energii oraz telefonu.
+  pompy z brakiem energii telefonu oraz odstępów knag barki z czterema linami.
 - Regresje v24 floty i produkcyjne przechodzą przez klikanie punktów na mapie.
   Testy liczby knag i napisów pompy uwzględniają nową rufową oraz tryb AUTO.
 - Sprawdzono samodzielny HTML pod ścieżką GitHub Pages, Android Chrome,
