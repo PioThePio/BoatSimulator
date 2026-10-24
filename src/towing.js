@@ -208,4 +208,4 @@ export function towStep(r,b,dt){
  updateTowGeometry(r);if(r.boatLoaded&&r.secured)placeTrailerBoat(r,b);
 }
 export function trailerContact(r,b,dt){winchStep(r,b,dt);trailerBoatContact(r,b,dt);loadingScoreStep(r,b,dt);}
-export function towAudioBoat(r,b){r.audioBoat??={};return Object.assign(r.audioBoat,{...b,tyreSlip:r.tyreSlip??0,suppressIgnitionAlarm:true,spec:{...b.spec,profile:'suv',jet:false},time:r.time,engines:[r.engine],throttle:r.pedal,throttle2:0,planing:0,telemetry:{surge:0,sway:0,thrust:0},thrusters:{},fuel:{refueling:false}});}
+export function towAudioBoat(r,b){r.audioBoat??={};return Object.assign(r.audioBoat,{...b,tyreSlip:r.tyreSlip??0,suppressIgnitionAlarm:true,spec:{...b.spec,profile:'suv',jet:false,racing:false,diesel:false},time:r.time,engines:[r.engine],throttle:r.pedal,throttle2:0,planing:0,telemetry:{surge:0,sway:0,thrust:0},thrusters:{},fuel:{refueling:false}});}

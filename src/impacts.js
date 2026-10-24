@@ -1,3 +1,4 @@
+import {voyageEvent} from './voyage-events.js';
 import {clamp} from './world.js';
 export const ZONES={bow:'Dziób',portBow:'Lewa burta · przód',portMid:'Lewa burta · środek',portStern:'Lewa rufa',transom:'Pawęż',starboardStern:'Prawa rufa',starboardMid:'Prawa burta · środek',starboardBow:'Prawa burta · przód'};
 export const BOTTOM_ZONES={bottomBow:'Dno · przód',bottomMid:'Dno · środek',bottomStern:'Dno · tył'};
@@ -25,7 +26,9 @@ export function recordImpact(b,{arm,speed,effective,protectedContact=false,fende
  const raw=contactDamage??(kind==='gentle'?0:100*excess/capacity);
  if(raw===0)kind='gentle';
  b.contactEpisodes??={};let episode=b.contactEpisodes[key];
- if(!episode||b.time-episode.seen>.35)episode=b.contactEpisodes[key]={seen:b.time,peak:0,dockPeak:0};
+ const newEpisode=!episode||b.time-episode.seen>.35;
+ if(newEpisode&&speed>=.08)voyageEvent(b,{type:'impact',target,energy,speed,message:`${bottom?'Kontakt z dnem':protectedContact?'Kontakt odbijacza':'Uderzenie'} · ${Math.round(energy)} J · ${speed.toFixed(2)} m/s`});
+ if(newEpisode)episode=b.contactEpisodes[key]={seen:b.time,peak:0,dockPeak:0};
  episode.seen=b.time;
  const damage=contactDamage===undefined?Math.max(0,raw-episode.peak):raw;episode.peak=Math.max(episode.peak,raw);
  const dockRaw=dock?100*Math.max(0,energy-80)/Math.max(9000,b.spec.mass*12):0,dockLoss=Math.max(0,dockRaw-episode.dockPeak);episode.dockPeak=Math.max(episode.dockPeak,dockRaw);

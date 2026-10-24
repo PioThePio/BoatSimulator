@@ -1,4 +1,5 @@
-import {createFleetCraft} from './fleet-craft.js';
+import {CRAFTS} from './craft.js';
+import {createFleetCraft,TOWABLES} from './fleet-craft.js';
 import {syncFleetWorld,MAX_FLEET} from './fleet.js';
 import {BOLLARDS} from './world.js';
 import {WORLD_DISTANCE_SCALE} from './zegrze.js';
@@ -33,7 +34,7 @@ export function restoreSession(value){
   if(!ids.has(f.activeId)||!ids.has(f.rigBoatId)||!finite(f.nextId,2,1e6)||!finite(f.nextTowId,1,1e6)||!finite(f.time,0))throw Error('Błędna sesja.');
   if(f.tows.some(r=>!ids.has(r.from)||!ids.has(r.to)||r.from===r.to||!finite(r.length,.6,60)||!finite(r.strength,1000,40000)||!finite(r.EA,1000,1e7)||!['bow','stern','portBow','starboardBow','portStern','starboardStern','portMid','starboardMid','towCenter'].includes(r.fromEnd)||!['bow','stern','portBow','starboardBow','portStern','starboardStern','portMid','starboardMid','towCenter'].includes(r.toEnd)))throw Error('Błędny hol.');
   const base=createFleetCraft('runabout');if(!Array.isArray(data.world?.booms)||data.world.booms.length!==base.booms.length||!data.world.buoys||!Array.isArray(data.world.traffic))throw Error('Błędny stan akwenu.');
-  f.boats=f.boats.map(saved=>{const b=createFleetCraft(saved.fleetKind??saved.spec.profile);Object.assign(b,saved);if(b.fleetKind==='banana'||b.fleetKind==='mat')b.spec.inflatable=true;for(const r of b.ropes){r.control=0;r.rate=0;r.effortTime=0;}b.thrusters.bow=b.thrusters.stern=0;return b;});
+  f.boats=f.boats.map(saved=>{const b=createFleetCraft(saved.fleetKind??saved.spec.profile);Object.assign(b,saved);const name=TOWABLES[b.fleetKind]?.name??CRAFTS[b.spec.profile]?.name??b.spec.name;if(b.name===b.spec.name||/ · \d+$/.test(b.name??''))b.name=name+(b.name?.match(/ · \d+$/)?.[0]??'');b.spec.name=name;if(b.fleetKind==='banana'||b.fleetKind==='mat')b.spec.inflatable=true;for(const r of b.ropes){r.control=0;r.rate=0;r.effortTime=0;}b.thrusters.bow=b.thrusters.stern=0;return b;});
   const trafficById=new Map(data.world.traffic.map(q=>[q.id,q]));
   data.world.traffic=base.traffic.map(q=>trafficById.get(q.id)??q);
   data.world.buoys=base.buoys.map((q,i)=>data.world.buoys[i]??q);

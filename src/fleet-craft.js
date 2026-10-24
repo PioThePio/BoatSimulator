@@ -6,11 +6,11 @@ import {createBoat} from './physics.js';
 
 // SI hulls; the inflatable loads include seated riders. They have no hidden motor.
 export const TOWABLES={
- barge:{name:'Barka bez napędu',length:10.5,beam:3.5,mass:4100,draft:.48,freeboard:.65,hullType:'flat',drag:1.65,lateral:1.2,windage:.9,wave:.65,breakForce:40000,color:'#929e8c'},
- banana:{name:'Banan · 3 osoby',length:4.8,beam:1.1,mass:260,draft:.14,freeboard:.32,hullType:'flat',drag:.60,lateral:.45,windage:.55,wave:1.7,breakForce:6000,color:'#e8ce56',planing:true,sealed:true},
- mat:{name:'Materac do holowania · 1 osoba',length:2.2,beam:1.6,mass:93,draft:.08,freeboard:.22,hullType:'flat',drag:1.1,lateral:.55,windage:.6,wave:1.9,breakForce:5000,color:'#d69b61',planing:true,sealed:true},
- rowboat:{name:'Łódź wiosłowa · 1 osoba',length:3.8,beam:1.5,mass:140,draft:.18,freeboard:.36,hullType:'v',drag:.85,lateral:1,windage:.55,wave:1.2,breakForce:6000,color:'#d1ba91',manual:true},
- kayak:{name:'Kajak · 1 osoba',length:3.6,beam:.7,mass:100,draft:.14,freeboard:.2,hullType:'v',drag:.65,lateral:1.15,windage:.3,wave:1.4,breakForce:4000,color:'#cfa259',manual:true}
+ barge:{name:'Barka',length:10.5,beam:3.5,mass:4100,draft:.48,freeboard:.65,hullType:'flat',drag:1.65,lateral:1.2,windage:.9,wave:.65,breakForce:40000,color:'#929e8c'},
+ banana:{name:'Banan',length:4.8,beam:1.1,mass:260,draft:.14,freeboard:.32,hullType:'flat',drag:.60,lateral:.45,windage:.55,wave:1.7,breakForce:6000,color:'#e8ce56',planing:true,sealed:true},
+ mat:{name:'Materac',length:2.2,beam:1.6,mass:93,draft:.08,freeboard:.22,hullType:'flat',drag:1.1,lateral:.55,windage:.6,wave:1.9,breakForce:5000,color:'#d69b61',planing:true,sealed:true},
+ rowboat:{name:'Wiosłówka',length:3.8,beam:1.5,mass:140,draft:.18,freeboard:.36,hullType:'v',drag:.85,lateral:1,windage:.55,wave:1.2,breakForce:6000,color:'#d1ba91',manual:true},
+ kayak:{name:'Kajak',length:3.6,beam:.7,mass:100,draft:.14,freeboard:.2,hullType:'v',drag:.65,lateral:1.15,windage:.3,wave:1.4,breakForce:4000,color:'#cfa259',manual:true}
 };
 export const fleetName=b=>b.name??TOWABLES[b.fleetKind]?.name??b.spec.name;
 export function createFleetCraft(kind,options={}){

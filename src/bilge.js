@@ -1,5 +1,5 @@
 import {clamp} from './world.js';
-export const BILGE_PUMPS={tender:32,flat:32,rib:50,runabout:50,cabin:95,cruiser:126,pwc:32,swamp:32}; // nominal L/min at 12 V
+export const BILGE_PUMPS={tender:32,flat:32,rib:50,runabout:50,cabin:95,cruiser:126,pwc:32,swamp:32,racing:126}; // nominal L/min at 12 V
 export const pumpMode=q=>q.manual?'on':q.auto?'auto':'off';
 export function setPumpMode(q,mode){q.manual=mode==='on';q.auto=mode==='auto';if(mode==='off'){q.running=false;q.outflow=0;}}
 export function deckIngressRate(b){

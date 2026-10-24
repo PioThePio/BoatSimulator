@@ -62,3 +62,11 @@ export function fleetStep(fleet,env,dt){
  rescueStep(fleet,env,dt);
 }
 export function recordFleetTrails(fleet){for(const b of fleet.boats)if(!b.towRig?.boatLoaded)recordTrail(b.trail,b);}
+
+export function removeFleetBoat(fleet,id){
+ const b=fleet.boats.find(q=>q.id===id);if(!b)return{ok:false,message:'Nie ma tej jednostki.'};
+ if(fleet.boats.length===1)return{ok:false,message:'Pozostaw co najmniej jedną jednostkę.'};
+ if(id===fleet.rigBoatId)return{ok:false,message:'Jednostka przypisana do SUV-a pozostaje w sesji. Usuń dodatkową jednostkę.'};
+ fleet.tows=fleet.tows.filter(r=>r.from!==id&&r.to!==id);fleet.boats=fleet.boats.filter(q=>q!==b);
+ if(fleet.activeId===id)fleet.activeId=fleet.rigBoatId;syncFleetWorld(fleet);return{ok:true,boat:activeBoat(fleet),message:'Usunięto: '+b.name};
+}

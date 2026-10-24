@@ -1,16 +1,18 @@
 # Przystań — symulator manewrów na Zegrzu
 
-**[Uruchom w przeglądarce](https://piothepio.github.io/BoatSimulator/?v=26.0.0)** · komputer, telefon lub tablet, bez konta i instalowania gry.
+**[Uruchom w przeglądarce](https://piothepio.github.io/BoatSimulator/?v=27.0.0)** · komputer, telefon lub tablet, bez konta i instalowania gry.
 
 Symulator z widokiem z góry do ćwiczenia manewrów, cumowania, kotwiczenia,
-holowania i wodowania z przyczepy. Ma osiem profili łodzi, pięć rodzajów
+holowania i wodowania z przyczepy. Ma dziewięć profili łodzi, pięć rodzajów
 napędu, niezależne silniki, instalację elektryczną, paliwo, uszkodzenia,
 zęzę i pompę. Wiatr, prąd, fale, kilwater, cumy i odbijacze fizycznie
 oddziałują na jednostki. SUV z przyczepą pozwala przećwiczyć slipowanie.
 
 Można tworzyć flotę do ośmiu jednostek, w tym barkę, banan, materac,
 wiosłówkę i kajak, oraz rzucać koło ratunkowe i treningowy manekin MOB.
-Lokalny automatyczny zapis umożliwia kontynuowanie próby po powrocie.
+Tor treningowy ma znaki IALA A i fizyczne podwodne przeszkody.
+Wyścigowa ma dwa turbodoładowane diesle do 600 KM każdy. Logbook zbiera
+łączne statystyki i incydenty. Lokalny automatyczny zapis umożliwia kontynuowanie próby po powrocie.
 
 Mapa jest interpretacją Jeziora Zegrzyńskiego w skali odległości 50%,
 z portami, mostami, ujściami rzek i wyspami. Euzebia oraz treningowy układ

@@ -1,8 +1,10 @@
+import {windSound} from './wind-response.js';
+import {turboParameters} from './racing.js';
 import {clamp,waveHeight,weatherAt} from './world.js';
 export function soundParameters(b,e={}){
  const speed=Math.hypot(b.telemetry.surge??0,b.telemetry.sway??0),weather=weatherAt(b.time,e);
  const plane=clamp((b.planing-.2)/.6,0,1),skimming=plane*plane*(3-2*plane),car=b.spec.profile==='suv';
- return{engines:b.engines.map(en=>{
+ return{wind:windSound(weather.windSpeed,e.windSound!==false),engines:b.engines.map(en=>{
    const running=en.key==='running',starting=en.key==='starting',v8=!b.spec.jet&&en.hp>=150;
    const load=running?clamp(en.load,0,1):0,working=running&&en.gear!==0;
    const wet=clamp(en.immersion,0,1),vent=clamp(en.ventilation,0,1);
@@ -13,11 +15,11 @@ export function soundParameters(b,e={}){
    const churn=running&&!b.spec.air?clamp(.10*Math.sqrt(braking/30000)+.075*bubbles+.045*raising,0,.15):0;
    return{timbre:b.spec.jet?'jet':v8?'v8':'light',carStarter:car&&starting,starterFrequency:155+35*clamp((en.startTime??0)/.25,0,1),frequency:Math.max(12,en.rpm/60*(b.spec.jet?2.5:v8?1:b.spec.profile==='cruiser'?3:2)),
     harmonicRatio:v8?4:2.015,harmonicMix:v8?.065+.095*load:.10+.08*load,bass:v8?.22:0,mechanicalMix:v8?.025:.035,
-    level:running?(.013+.020*en.n)*(1+.15*load):starting&&!car?.038:0,
+    level:running?(.013+.020*en.n)*(1+.15*load)*(b.spec.racing?1.25:1):starting&&!car?.038:0,
     cutoff:starting?750:v8?220+en.rpm*.11+load*180:260+en.rpm*(b.spec.jet?.28:.23)+load*220,
     exhaust:running?(v8?.025:.008)+(v8?.070:.030)*en.n*(.2+.8*load):0,exhaustCutoff:130+en.n*(v8?270:500)+load*140,
     churn,churnCutoff:350+vent*500+clamp(braking/30000,0,1)*300,bubbleRate:4+en.n*7+Math.min(3,en.opposingFlow*.3),
-    starting,rpm:en.rpm,load};
+    turbo:b.spec.racing?turboParameters(en):null,starting,rpm:en.rpm,load};
   }),
   waves:clamp(waveHeight(e,b.time)*.15+weather.windSpeed*.001,0,.10),
   wash:clamp(speed/22,0,1)*(.012+.07*b.planing)+clamp(Math.abs(b.telemetry.thrust??0)/7000,0,1)*.018,
@@ -57,7 +59,8 @@ export function createSoundscape({context=null}={}){
   const engines=[-.26,.26].map(pan=>{
    const source=oscillator('triangle',25),harmonic=oscillator('triangle',50),mechanical=oscillator('sine',270),bass=oscillator('sine',12),bassMix=ctx.createGain(),mechanicalMix=ctx.createGain(),mix=ctx.createGain(),filter=ctx.createBiquadFilter(),gain=ctx.createGain();
    bassMix.gain.value=0;bass.connect(bassMix);bassMix.connect(filter);mechanicalMix.gain.value=.035;mechanical.connect(mechanicalMix);mechanicalMix.connect(filter);mix.gain.value=.10;source.connect(filter);harmonic.connect(mix);mix.connect(filter);filter.type='lowpass';filter.Q.value=.5;filter.frequency.value=300;gain.gain.value=0;filter.connect(gain);panConnect(gain,pan,engineMaster);
-   return{source,harmonic,mechanical,bass,bassMix,mechanicalMix,mix,filter,gain,exhaust:noiseVoice(240,pan,true,engineMaster),churn:noiseVoice(450,pan,true),timbre:'light'};
+   const turbo={source:oscillator('sine',850),gain:ctx.createGain()};turbo.gain.gain.value=0;turbo.source.connect(turbo.gain);panConnect(turbo.gain,pan,engineMaster);
+   return{turbo,source,harmonic,mechanical,bass,bassMix,mechanicalMix,mix,filter,gain,exhaust:noiseVoice(240,pan,true,engineMaster),churn:noiseVoice(450,pan,true),timbre:'light'};
   });
   // Tunnel thrust is mostly turbulent water. No sustained pitched oscillator.
   const thrusters=[-.15,.15].map(pan=>noiseVoice(520,pan));
@@ -69,14 +72,16 @@ export function createSoundscape({context=null}={}){
   starter.filter.type='lowpass';starter.filter.frequency.value=850;starter.gain.gain.value=0;starter.source.connect(starter.filter);starter.filter.connect(starter.gain);starter.gain.connect(engineMaster);
   const tyres=noiseVoice(550,0,true),fan=noiseVoice(900,0,true),winch=noiseVoice(190);
   const bilge={pump:noiseVoice(180,0,true),slosh:noiseVoice(400,0,true),alarm:oscillator('sine',760),gain:ctx.createGain()};bilge.gain.gain.value=0;bilge.alarm.connect(bilge.gain);bilge.gain.connect(master);
-  graph={master,engineMaster,buffer,engines,thrusters,pump,trim,alarm,starter,bilge,tyres,fan,winch,v8Wave,waves:noiseVoice(240),wash:noiseVoice(1100),spray:noiseVoice(1900,-.35),sprayRight:noiseVoice(2300,.35)};
+  const whiteBuffer=ctx.createBuffer(1,ctx.sampleRate*2,ctx.sampleRate),whiteData=whiteBuffer.getChannelData(0);for(let i=0;i<whiteData.length;i++)whiteData[i]=Math.random()*2-1;
+  const wind={source:ctx.createBufferSource(),filter:ctx.createBiquadFilter(),gain:ctx.createGain()};wind.source.buffer=whiteBuffer;wind.source.loop=true;wind.filter.type='lowpass';wind.filter.frequency.value=250;wind.filter.Q.value=.5;wind.gain.gain.value=0;wind.source.connect(wind.filter);wind.filter.connect(wind.gain);wind.gain.connect(master);wind.source.start();
+  graph={wind,master,engineMaster,buffer,engines,thrusters,pump,trim,alarm,starter,bilge,tyres,fan,winch,v8Wave,waves:noiseVoice(240),wash:noiseVoice(1100),spray:noiseVoice(1900,-.35),sprayRight:noiseVoice(2300,.35)};
  }
- function pulse(frequency,level,duration=.12,noisy=false){
+ function pulse(frequency,level,duration=.12,noisy=false,engineOnly=false){
   if(!graph||!enabled||!active)return;
   const gain=ctx.createGain(),filter=ctx.createBiquadFilter(),source=noisy?ctx.createBufferSource():ctx.createOscillator(),now=ctx.currentTime;
   filter.Q.value=.5;
   if(noisy){source.buffer=graph.buffer;filter.type='lowpass';filter.frequency.value=frequency;}else{source.type='triangle';filter.type='lowpass';filter.frequency.value=Math.max(1000,frequency*2.5);source.frequency.setValueAtTime(frequency,now);source.frequency.exponentialRampToValueAtTime(Math.max(20,frequency*.4),now+duration);}
-  source.connect(filter);filter.connect(gain);gain.connect(graph.master);gain.gain.setValueAtTime(.0001,now);gain.gain.linearRampToValueAtTime(level,now+.006);gain.gain.exponentialRampToValueAtTime(.0001,now+duration);
+  source.connect(filter);filter.connect(gain);gain.connect(engineOnly?graph.engineMaster:graph.master);gain.gain.setValueAtTime(.0001,now);gain.gain.linearRampToValueAtTime(level,now+.006);gain.gain.exponentialRampToValueAtTime(.0001,now+duration);
   source.start(now);source.stop(now+duration+.02);source.onended=()=>{source.disconnect();filter.disconnect();gain.disconnect();};
  }
  function unlock(){
@@ -98,30 +103,30 @@ export function createSoundscape({context=null}={}){
    active=!!isActive;
    if(!graph)return;
    target(graph.master.gain,enabled&&active?volume*.8:0);
-   const values=soundParameters(b,e);target(graph.tyres.gain.gain,values.tyres);target(graph.tyres.flutter.frequency,9+Math.abs(b.engines[0].rpm/800));target(graph.fan.gain.gain,values.fan);target(graph.fan.filter.frequency,600+1200*b.engines[0].n);target(graph.winch.gain.gain,values.winch);
+   const values=soundParameters(b,e);target(graph.wind.gain.gain,values.wind.level,.12);target(graph.wind.filter.frequency,values.wind.cutoff,.18);target(graph.tyres.gain.gain,values.tyres);target(graph.tyres.flutter.frequency,9+Math.abs(b.engines[0].rpm/800));target(graph.fan.gain.gain,values.fan);target(graph.fan.filter.frequency,600+1200*b.engines[0].n);target(graph.winch.gain.gain,values.winch);
    const starter=values.engines.find(en=>en.carStarter),compression=.55+.45*Math.sin(b.time*2*Math.PI*13)**2;
    target(graph.starter.gain.gain,starter?.024*compression:0,.012);target(graph.starter.source.frequency,(starter?.starterFrequency??180)*(1+.035*Math.sin(b.time*2*Math.PI*13)),.012);target(graph.starter.noise.gain.gain,starter?.065:0,.015);target(graph.starter.noise.flutter.frequency,13);
    target(graph.bilge.pump.gain.gain,values.bilgePump);target(graph.bilge.slosh.gain.gain,values.bilgeSlosh);target(graph.bilge.gain.gain,values.bilgeAlarm?.035*(Math.sin(b.time*8)>0?1:.25):0);
    values.engines.forEach((en,i)=>{
-    const v=graph.engines[i];
+    const v=graph.engines[i];target(v.turbo.gain.gain,en.turbo?.level??0,.12);target(v.turbo.source.frequency,en.turbo?.frequency??850,.15);
     if(v.timbre!==en.timbre){if(en.timbre==='v8')v.source.setPeriodicWave(graph.v8Wave);else v.source.type='triangle';v.timbre=en.timbre;}
     target(v.source.frequency,en.starting?95:en.frequency);target(v.harmonic.frequency,en.starting?185:en.frequency*en.harmonicRatio);target(v.bass.frequency,Math.max(8,en.frequency*.5));
     target(v.mix.gain,en.harmonicMix);target(v.bassMix.gain,en.starting?0:en.bass);target(v.mechanicalMix.gain,en.mechanicalMix);target(v.mechanical.frequency,en.starting?350:120+en.frequency*(en.timbre==='v8'?4:6));
     target(v.filter.frequency,en.cutoff);target(v.gain.gain,en.level*(en.starting?.55+.45*Math.sin(b.time*25)**2:1));
     target(v.exhaust.gain.gain,en.exhaust);target(v.exhaust.filter.frequency,en.exhaustCutoff);target(v.exhaust.flutter.frequency,Math.max(6,en.frequency*(en.timbre==='v8'?4:2)));target(v.churn.gain.gain,en.churn);target(v.churn.filter.frequency,en.churnCutoff);target(v.churn.flutter.frequency,en.bubbleRate);
    });
-   for(let i=values.engines.length;i<graph.engines.length;i++){const v=graph.engines[i];target(v.gain.gain,0);target(v.exhaust.gain.gain,0);target(v.churn.gain.gain,0);}
+   for(let i=values.engines.length;i<graph.engines.length;i++){const v=graph.engines[i];target(v.turbo.gain.gain,0);target(v.gain.gain,0);target(v.exhaust.gain.gain,0);target(v.churn.gain.gain,0);}
    target(graph.waves.gain.gain,values.waves*(.75+.25*Math.sin(b.time*1.3)));target(graph.wash.gain.gain,values.wash*(1-.72*values.skimming));target(graph.wash.filter.frequency,values.waterCutoff);
    target(graph.spray.gain.gain,values.spray*.65);target(graph.spray.filter.frequency,values.sprayCutoff);target(graph.sprayRight.gain.gain,values.spray*.55);target(graph.sprayRight.filter.frequency,values.sprayCutoff*1.2);
    values.thrusters.forEach((v,i)=>{target(graph.thrusters[i].gain.gain,v);target(graph.thrusters[i].filter.frequency,420+v*2200);});target(graph.pump.gain.gain,values.pump);target(graph.alarm.gain.gain,(values.ignitionAlarm||values.temperatureAlarm)?.045:0,.025);
    target(graph.trim.gain.gain,values.trimPump*.022);target(graph.trim.noise.gain.gain,values.trimPump*.055);target(graph.trim.source.frequency,175+values.trimPump*28);
    if(boatRef!==b){boatRef=b;previous=null;}
    if(previous&&active){
-    b.engines.forEach((en,i)=>{const old=previous.engines[i];if(!old)return;const command=i?b.throttle2:b.throttle;if(values.commandClick&&Math.sign(command)!==old.command)pulse(900,.085,.055);if(en.key!==old.key)pulse(650,.09,.065);if(en.gear!==old.gear){pulse(en.gear?650:850,.22,.10,true);pulse(en.gear?155:210,.09,.08);}});
+    b.engines.forEach((en,i)=>{const old=previous.engines[i];if(!old)return;const command=i?b.throttle2:b.throttle;if(b.spec.racing&&turboParameters(en,{...old,command:old.commandValue}).bov)pulse(2900,.13,.24,true,true);if(values.commandClick&&Math.sign(command)!==old.command)pulse(900,.085,.055);if(en.key!==old.key)pulse(650,.09,.065);if(en.gear!==old.gear){pulse(en.gear?650:850,.22,.10,true);pulse(en.gear?155:210,.09,.08);}});
     if(b.lastImpact&&b.lastImpact!==previous.impact){const q=b.lastImpact,level=clamp(.12+Math.sqrt(q.energy)*.003,.12,.30);pulse(q.protectedContact?145:105,level,q.protectedContact?.17:.24);pulse(q.protectedContact?600:1400,level*(q.protectedContact?.5:1),q.protectedContact?.10:.20,true);}
     if(b.events[0]!==previous.event&&/pękła|zerw|Zerw/.test(b.events[0]?.message??''))pulse(1900,.22,.12,true);
    }
-   previous={engines:b.engines.map((en,i)=>({key:en.key,gear:en.gear,command:Math.sign(i?b.throttle2:b.throttle)})),impact:b.lastImpact,event:b.events[0]};
+   previous={engines:b.engines.map((en,i)=>({boost:b.spec.racing?turboParameters(en).boost:0,key:en.key,gear:en.gear,commandValue:en.command,command:Math.sign(i?b.throttle2:b.throttle)})),impact:b.lastImpact,event:b.events[0]};
   },
  };
 }

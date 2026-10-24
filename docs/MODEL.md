@@ -10,7 +10,7 @@ jawnymi przybliżeniami treningowymi; nie są kalibracją konkretnej łodzi.
 | System | Co rzeczywiście jest liczone | Uproszczenia / brakujące zjawiska |
 | --- | --- | --- |
 | Ruch kadłuba | Pęd wzdłużny, boczny, obrót, masa dodana, rozłożone opory | Model płaski z dodatkowymi oscylatorami, bez pełnej dynamiki bryły 3D |
-| Kadłuby | Osiem różnych profili, masa, załoga, paliwo, wyposażenie, zanurzenie | Współczynniki empiryczne, bez krzywych z prób morskich |
+| Kadłuby | Dziewięć różnych profili, masa, załoga, paliwo, wyposażenie, zanurzenie | Współczynniki empiryczne, bez krzywych z prób morskich |
 | Napędy | Zaburtowy, Z-drive, wał/ster, waterjet, śmigło powietrzne; dwa silniki | Brak szczegółowych map śrub, przekładni i producentów |
 | Ślizg i skręt | Płynny udział ślizgu, opór przejściowy, utrata prędkości na zwrocie, poślizg | Bez pełnego modelu Savitsky’ego i geometrii spray rails |
 | Trym / wentylacja | Położenie nogi, ciąg, zanurzenie, wzrost RPM i spadek ciągu przy napowietrzeniu | Umowna geometria śruby i dolotu; nie model erozji kawitacyjnej |
@@ -71,21 +71,25 @@ więc reset/depenetracja nie dodają fałszywych kilometrów.
 | Płaskodenna | 4,6 × 1,9 | 440 | 0,23 | 50 | 45 | Zaburtowy |
 | RIB | 5,2 × 2,25 | 470 | 0,30 | 100 | 100 | Zaburtowy |
 | Swamp boat | 5,3 × 2,35 | 650 | 0,16 | 180 | 90 | Śmigło powietrzne |
+| Wyścigowa | 9,2 × 2,35 | 1850 | 0,58 | 2 × 600 | 450 | Dwa Z-drive |
 
 Start domyślnie: jeden silnik, zbiornik 75% pełny, 2 osoby po 75 kg
-i 25 kg wyposażenia; skuter 1 osoba +5 kg. Strumieniowe są opcjonalne.
+i 25 kg wyposażenia; skuter 1 osoba +5 kg. Kabinowa ma domyślny dziobowy strumieniowy; wypornościowa dziobowy i rufowy.
+Można je wyłączyć w konfiguracji. Jawne `false` zachowuje wariant bez instalacji
+i jej masy; starsze zapisy zachowują własne wyposażenie.
 Trym podnoszonego napędu 10%, a na zabezpieczonej przyczepie 100%.
 Nowa próba zaczyna z wyłączonymi silnikami. Przeliczana masa obejmuje
 kadłub, silniki, zbiorniki, osprzęt, załogę, paliwo i wodę w zęzie.
 Drugi silnik zwiększa masę i ma osobną dynamikę.
 
 Parametry edytowalne: długość 2,8–11 m, szerokość 1,1–3,8 m, kadłub
-200–8000 kg, 1/2 silniki (skuter/airboat tylko 1), 10–350 KM na silnik,
+200–8000 kg, 1/2 silniki (skuter/airboat tylko 1; wyścigowa zawsze 2), 10–350 KM na silnik,
+a wyścigowa do 600 KM na silnik,
 10–800 l paliwa, 1/2 zbiorniki, 0–12 osób, 0–1500 kg wyposażenia.
 To zakres eksperymentów, nie potwierdzenie dopuszczalności takich
 konfiguracji przez producenta.
 
-Paliwo ma 0,745 kg/l, woda zęzowa 1 kg/l. Zanurzenie rośnie według
+Benzyna ma 0,745 kg/l, olej napędowy wyścigowej 0,84 kg/l, woda zęzowa 1 kg/l. Zanurzenie rośnie według
 `Δm / (1000 × L × B × 0.7)`. Woda i paliwo położone bliżej rufy zmieniają
 środek masy i moment bezwładności. Masa dodana wzdłużna to 1,08m,
 boczna 1,65m (zabawki dmuchane 1,15m); moment yaw jest powiększony
@@ -140,6 +144,32 @@ Ciąg jest ograniczony momentem przy małej prędkości i dostępną mocą
 przy dużej. Obciążenie zależy od napływu, cofania przeciw ruchowi,
 przepływu bocznego i fal. Zmienia RPM oraz dźwięk. Rozruch i bieg
 pełzający nie są stałą etykietą liczbową — obroty mają dynamikę.
+
+## Wyścigowa i turbodoładowanie
+
+Oddzielny profil `racing.js`: deep-V 27°, L/B 9,2/2,35 m, kadłub 1850 kg,
+2 × 600 KM, 450 l oleju napędowego, trym początkowy 20%, 1,5 obrotu koła.
+Normalne profile zachowują dawny limit mocy i kalibrację. Wariant bez
+strumieniowych jest bazą porównawczych audytów napędów, niezależnie od
+nowych domyślnych opcji wyposażenia kabinowej/wypornościowej.
+
+Wyłącznie ten profil ma szybszą stałą narastania obrotów 0,22–0,38 s,
+RPM biegu jałowego 720 i zakres wału około 3450 RPM ponad pracę biegu.
+Opór w ślizgu mnoży się przez `0.48 + 0.5 × clamp(abs(trim-.20)/.22,0,1)`;
+w wyporności korekta zanika z udziałem ślizgu. To jawne przybliżenie
+mniejszej powierzchni zwilżonej smukłego wyścigowego kadłuba. Nadal działają
+masy dodane, rozłożone siły boczne, energia zwrotu, poślizg, wentylacja,
+fale, kolizje i termika. W pomiarze 30 s spokojnej wody domyślna jednostka
+osiąga około 114,5 km/h; pełny zwrot zmniejsza prędkość do około 44 km/h
+po 10 s. Wyniki są modelowe, nie dane producenta.
+
+Spalanie używa współczynnika 0,225 zamiast 0,29 przy członie KM × n³.
+Turbo korzysta z rzeczywistych `n`, obciążenia i stanu silnika: boost
+`n² × (.25+.75×load)`, gwizd 850–4050 Hz, głośność do 0,018 na silnik.
+Gwałtowne odjęcie polecenia przy boost >0,18 uruchamia krótkie syknięcie
+BOV z szumu. Wygasające obroty bez kolejnej zmiany polecenia nie powtarzają
+syku. To dodatkowe głosy audio; dawne głosy silników, kliknięć i stacyjki
+zostają. Pauza/wyciszenie oraz głośność silników obejmują nowy napęd.
 
 ## Trym, wentylacja, grafika i temperatura
 
@@ -224,6 +254,24 @@ w każdym kroku; po wypompowaniu parametry wracają. Alarm działa od
 50% umownej pojemności zęzy. Osobny uproszczony model zalewania
 obniża kadłub, zwiększa pokrytą wodą część i może zalać silnik.
 
+Woda daje dodatkowy dynamiczny moment przegłębienia: cel pitch zawiera
+`min(0.10, 0.18 × waterKg/totalMass)` rad ponad istniejący wpływ środka
+masy. Nie dodaje się drugi raz masy wody ani statycznego zanurzenia.
+`immersionReadings` podaje bieżące zanurzenie środka, dziobu i rufy z
+heave/pitch i aktualnej powierzchni. Profil dopasowuje skalę, oznacza
+zalany pokład/cały kadłub, a rosnąca woda przesuwa kadłub w dół względem
+tej samej linii powierzchni.
+
+`flood-systems.js` odcina instalację przy całkowitym zatonięciu lub
+krytycznym przecieku napędu (driveLeak ≥0,7 i propDamage ≥85%) po dotarciu
+wody do instalacji przy submersion >0,6. Awaria jest zatrzaskiwana:
+master OFF, SOC i V =0, wszystkie powered=false, alternator/odbiorniki
+bez prądu, silniki OFF, pompa i strumieniowe stoją, rozruch jest blokowany.
+Przełącznik nie omija awarii. Taki stan przechodzi przez dotychczasowy
+snapshot i odczyt. Po osuszeniu serwis może odtworzyć instalację i
+akumulator z SOC 60%, pozostawiając główne zasilanie OFF do ręcznego
+włączenia. Zdrowy akumulator i odwracalna termika zachowują stare zasady.
+
 ## Cumy, odbijacze, kotwica i szkody
 
 Cuma działa wyłącznie na rozciąganie. Ma długość spoczynkową, `EA/L`,
@@ -295,6 +343,39 @@ dwa odbicia. Twarde pomosty mają współczynniki około 0,56–0,64, naturalny
 brzeg 0,34, łagodna plaża 0,08, dodatkowo energia szybko maleje z drogą
 i liczbą odbić. Nie ma niekończącego się wzmacniania fal. Most jest
 rysowany nad wodą; kolidują jego podpory, nie cały przelot.
+
+## Wizualna i akustyczna reakcja na wiatr
+
+`wind-response.js` jest czystym odwzorowaniem aktualnej prędkości pogody.
+Do 3 m/s brak dodatkowego zagęszczenia; od 6 m/s rośnie biała część
+akcentów, gęstość do ×3,8 i delikatna szara domieszka w kolorze wody.
+Warstwa jest wycięta obrysem jeziora i wysp, nie barwi lądu. Renderowanie
+nie zmienia równań fal ani sił. Osobny przełącznik wyłącza tę warstwę.
+
+Nowy generator to osobny bufor białego szumu i filtr lowpass. Gain
+`0.004 × windSpeed`, cutoff `250+95×windSpeed` Hz, z wygładzaniem
+zmian w czasie rzeczywistym. Przy 0 m/s cel głośności jest 0.
+Wyciszenie, pauza i przełącznik szumu odcinają efekt. Nie zastępuje
+istniejącej warstwy silników, wody, biegów ani rozruchu.
+
+## Tor wodny, IALA A i podwodne przeszkody
+
+`navigation-marks.js` definiuje dwa umowne szlaki w górę Narwi i Bugu.
+Pary mają czerwone walce po lewej oraz zielone stożki po prawej względem
+kierunku szlaku; rozstaw jest ograniczony szerokością wody. Kardynalne
+N/E/W mają poprawne czarno-żółte pasy i konfiguracje dwóch stożków;
+renderer obsługuje też S. Znaki odosobnionego niebezpieczeństwa mają
+czarny–czerwony–czarny i dwie kule. Jest 30 oznaczeń, w tym trzy pary
+niebezpieczeństwo/kardynalny. Analizowane pozycje pozostają na wodzie.
+Pławy mają niewielki ograniczony ruch i kołysanie, bez nowych numerów
+polerów lub zmian dotychczasowych cum.
+
+Trzy głazy mają promienie 5/4/4,5 m i minimalną głębokość 0,32/0,25/0,38 m.
+Gładka korekta lokalnego dna podaje materiał rock do istniejącego
+`groundContact` i `propellerContact`, więc szkody wynikają z obecnej
+energii i geometrii, a nie samego dotknięcia obrazka. Pozostałe dno nie
+zmienia się. Wyłączenie znaków w Pogodzie ukrywa grafikę, pozostawia dno.
+Rozmieszczenie jest treningowe, bez potwierdzenia rzeczywistego toru.
 
 ## Ssanie brzegowe i interakcje mijania
 
@@ -423,7 +504,12 @@ Kompresja świata nie skraca samych budowli.
 **Euzebia** jest dodana osobno od wysp ujścia Bugu, przy ujściu Rządzy
 w rejonie Arciechowa/Ryni. Ma nieregularny obrys, płycizny, wybrane
 łagodne piaszczyste podejścia i pięć drzew do cumowania. W obecnym
-modelu jest największą wyspą. Jej obrys i wymiar są interpretowane.
+modelu jest największą wyspą. Jej obrys i wymiar są interpretowane. Zachodnia i część południowej
+strony mają łagodne podejście z ciągłym przejściem nachylenia 0,085–0,21.
+Płytki pas wody jest rysowany z cache rastra `bottomAt` o komórce 2 m,
+z interpolacją Canvas, a suchy piasek jest osobno nad linią wody.
+Dwie nowe kępy szuwarów mają ten sam opór co istniejące rośliny.
+Współrzędne drzew i ich stare indeksy pozostają bez przesuwania.
 
 **Pilawa** leży po wschodniej stronie południowego basenu według
 dostarczonej mapki lokalizacyjnej. Model ma cztery poprzeczne pomosty,
@@ -448,6 +534,32 @@ Głębokości, pogłębienia portowe, mielizny, lokalne przepływy i plaże są
 modelowane na potrzeby ćwiczeń, nie z sondaży. Mosty mają założone
 prześwity 7,5/6,5/3,5 m bez dokumentacji zarządców. Mapa nie jest
 źródłem informacji nawigacyjnej o rzeczywistym Zegrzu.
+
+## Logbook i zarządzanie flotą
+
+`logbook.js` używa osobnego klucza `przystan-logbook-v1`. Bieżący save
+nadal ma stary klucz i schemat. Sesja otrzymuje trwały `logbookId`, a
+agregator sumuje przyrosty liczników poszczególnych łodzi. Kolejne
+zapisy/wyjścia/odczyty aktualizują ten sam rejs. Zapamiętany najwyższy
+stan liczników zapobiega powtórnemu naliczaniu po odczycie starszej kopii.
+Dystans na wodzie, logiczne motogodziny, zużyte paliwo i liczba uderzeń
+są sumowane bez danych SUV-a; po usunięciu łodzi wcześniejszy wkład zostaje.
+
+Zachowywane są 30 ostatnich sesji i 200 incydentów, niezależnie od sum
+całego użytkowania. Incydenty mają stabilne sekwencje, czas symulacji
+i czas wyświetlany lokalnie. Kontakt ciągły jest jednym epizodem,
+nie 120 uderzeniami na sekundę; pokazywana jest policzona energia J,
+bez deklarowania nieznanej szczytowej siły. Zapis następuje razem z
+okresowym autosave oraz opuszczeniem strony. Modal ma przełącznik
+zapisywania; brak miejsca lub dostępu nie uszkadza zapisu samej gry.
+
+`removeFleetBoat` usuwa dodatkowe ciało i jego liny holownicze/cumy,
+przywraca stanowisko podstawowe, jeżeli to usuwane było aktywne,
+i aktualizuje wspólne źródła wake. Identyfikatory nie są ponownie
+używane. Ostatnia łódź oraz łódź przypisana do zestawu SUV są chronione,
+aby zachować dotychczasową logikę przyczepy. Krótsze nazwy są wspólne
+dla nowych menu; stare automatycznie wygenerowane nazwy są normalizowane
+przy odczycie, bez zmiany parametrów lub wyposażenia starych jednostek.
 
 ## Zapis, zgodność i architektura
 
@@ -496,6 +608,16 @@ Audyt nowych miejsc obejmuje ląd/wodę, nasady pomostów, polery,
 cumowane ciała, paliwo, starty i kompatybilność starego zapisu.
 Testy przeglądarkowe obejmują dostęp do nowych miejsc i ratownictwa
 oraz działające aktualne odnośniki dokumentacji.
+
+`development.test.js` sprawdza wiatr, audio, osiągi i trym wyścigowej,
+limity napędów, domyślne strumieniowe, usuwanie floty, trwałe sumy Logbooku,
+ponowne odczyty i starsze kopie, faktyczne głazy, masę/przegłębienie wody,
+zatrzask zwarcia, naprawę osuszonej instalacji i łagodne podejścia wyspy.
+`development.spec.js` sprawdza menu i kontrolki, rzeczywiste głosy Web Audio
+z BOV, obraz wiatru, Logbook po odczycie, usuwanie stanowiska, oznakowanie,
+zatopioną elektronikę i widok telefonu. Starsze testy zostały dostosowane
+wyłącznie do celowych nowych wymagań: limitu wyścigowej, fabrycznych
+strumieniowych oraz OFF po zwarciu zamiast dawnego zapłonu.
 
 `npm run audit:physics` wypisuje deterministyczne pomiary zachowania
 zamiast tylko wyszukiwania funkcji w kodzie. `npm run benchmark`

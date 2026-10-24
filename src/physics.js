@@ -1,3 +1,6 @@
+import {voyageEvent} from './voyage-events.js';
+import {racingResistance} from './racing.js';
+import {bilgeTrimAngle,applyFloodShort} from './flood-systems.js';
 import {enforceMainPower} from './electrical.js';
 import {contacts,boomContacts} from './contacts.js';
 import {beginFenderStep} from './fenders.js';
@@ -29,12 +32,12 @@ export function createBoat(scenario='approach',options={}){
  const starts={approach:[43,37,-2.1],berth:[24.3,22,-Math.PI/2],open:[64,48,-Math.PI/2],beach:[8.2,147,Math.PI/2],island:[304,278,Math.PI],fuel:[54,20,Math.PI/2],service:[SERVICE_STATION.start.x,SERVICE_STATION.start.y,SERVICE_STATION.start.a],canal:[304,204,0],harbor:[61,40,-Math.PI/2],lake:[80,110,0]};
  const selected=MAP_STARTS[scenario];const [x,y,a]=selected?[selected.x,selected.y,selected.a]:starts[scenario]||starts.approach;
  return{...createSystems(spec,options.coldStart),booms:createBooms(),buoys:createBuoys(),traffic:createTraffic(),x,y,a,vx:0,vy:0,w:0,steer:0,actualSteer:0,throttle:0,throttle2:0,linked:true,enginesRaised:false,groundLoad:0,groundMaterial:'sand',spec,
- engines:spec.powers.map((hp,i)=>engineState(hp,spec.engineCount===1?0:(i===0?-1:1)*spec.engineSpacing/2,options.coldStart)),
+ engines:spec.powers.map((hp,i)=>{const en=engineState(hp,spec.engineCount===1?0:(i===0?-1:1)*spec.engineSpacing/2,options.coldStart);if(spec.racing)en.trim=en.trimTarget=.20;return en;}),
  fenders:true,damage:0,dockDamage:0,sectionDamage:{},bottomDamage:{},impacts:[],impactTimes:{},ropes:[],anchor:createAnchor(spec),time:0,lastImpact:null,events:[],maxTension:0,wake:[],
  cameraZoom:1,heave:0,heaveVelocity:0,roll:0,rollVelocity:0,pitch:0,pitchVelocity:0,planing:0,underKeel:bottomAt(x,y).depth-spec.draft,grounded:false,groundEvent:-10,
  telemetry:{surge:0,sway:0,thrust:0,drag:0,shaftPower:0}};
 }
-function event(b,message){b.events.unshift({time:b.time,message});b.events=b.events.slice(0,12);}
+function event(b,message){if(!/^(Łagodny kontakt|Uszkodzenie ·|Silna kolizja)/.test(message))voyageEvent(b,{type:'incident',message});b.events.unshift({time:b.time,message});b.events=b.events.slice(0,12);}
 function oscillator(state,vel,target,omega,zeta,dt,forcing=0){const acc=omega*omega*(target-state)-2*zeta*omega*vel+forcing;vel+=acc*dt;return[state+vel*dt,vel];}
 export function step(b,e,dt,{sharedStep=true}={}){
  b.time+=dt;enforceMainPower(b);beginFenderStep(b);const S=b.spec,c=Math.cos(b.a),s=Math.sin(b.a);
@@ -45,7 +48,7 @@ export function step(b,e,dt,{sharedStep=true}={}){
   if(b.engines.length===2)b.engines[1].trimTarget=b.engines[0].trimTarget;
   for(const [i,en]of b.engines.entries()){
    propellerContact(b,en,dt,m=>event(b,m),e);
-   updateEngine(en,i?b.throttle2:b.throttle,0,dt,b.damage,{starterVoltage:b.battery.voltage,noFuel:b.fuel.litres<=0,jet:S.jet,air:S.air,fixedDrive:S.propulsion==='inboard',moored:true,onTrailer:true,speed:0,immersion:en.immersion,intake:en.intake});
+   updateEngine(en,i?b.throttle2:b.throttle,0,dt,b.damage,{starterVoltage:b.battery.voltage,noFuel:b.fuel.litres<=0,jet:S.jet,air:S.air,racing:!!S.racing,fixedDrive:S.propulsion==='inboard',moored:true,onTrailer:true,speed:0,immersion:en.immersion,intake:en.intake});
    const steering=engineSteering(b,en,dt);en.forceSteer=steering;
    const delta=S.air||S.propulsion==='inboard'?0:steering,T=en.thrust*(S.jet||S.air||S.propulsion==='inboard'?1:Math.cos(trimAngle(en.trim)));en.effectiveThrust=T;
    const air=airRudderForce(S,T,b.actualSteer),X=S.air?air.x:T*Math.cos(delta),Y=S.air?air.y:-T*Math.sin(delta),fx=c*X-s*Y,fy=s*X+c*Y;
@@ -70,7 +73,7 @@ export function step(b,e,dt,{sharedStep=true}={}){
  const water={x:env.current.x+wave.vx*.65,y:env.current.y+wave.vy*.65};
  const onSupports=b.towRig?launchVerticalStep(b.towRig,b,e,dt):false,wetFraction=onSupports?(b.wetFraction??1):1;
  if(!onSupports)[b.heave,b.heaveVelocity]=oscillator(b.heave,b.heaveVelocity,wave.eta*(1+(S.waveResponse-1)*b.planing)-floodingDepth(b)-(b.anchor.shape?.V??0)/(1000*9.81*S.length*S.beam*.65),4.2+3*b.planing,.65,dt);
- floodingStep(b,dt,wave.eta);
+ floodingStep(b,dt,wave.eta);applyFloodShort(b,wave.eta);
  const windSide=-env.wind.x*s+env.wind.y*c;
  const rollTarget=clamp(Math.atan(-wave.sx*s+wave.sy*c)*S.waveResponse+windSide*Math.abs(windSide)*S.freeboard/(S.mass*.9)-b.planing*Math.atan((b.telemetry.surge??0)*b.w/9.81)*.6+(S.inflatable&&e.towEffects!==false?(b.towHeel??0):0),-.3,.3);
  if(!onSupports)[b.roll,b.rollVelocity]=oscillator(b.roll,b.rollVelocity,rollTarget,Math.sqrt(9.81/(S.beam*.32)),.28,dt);
@@ -90,7 +93,7 @@ export function step(b,e,dt,{sharedStep=true}={}){
  const targetPlaning=S.planing&&u>0?wetFraction*clamp((fn-.48*threshold)/(.4*threshold),0,1)*clamp((liftRatio-(S.jet?.12:.22)*threshold)/(S.jet?.40:.43),0,1):0;
  b.planing+=(targetPlaning-b.planing)*(1-Math.exp(-dt/(targetPlaning>b.planing?2.8:1.4)));
  const hump=Math.exp(-(((fn-.55)/.24)**2))*(1-.65*b.planing);
- const pitchTarget=clamp(Math.atan(wave.sx*c+wave.sy*s)*S.waveResponse+hump*.085+(b.planing*(.045+driveAngle*.42))+(b.telemetry.acceleration??0)*.014-S.cgX/S.length*.3-(b.anchor.shape?.V??0)/(S.mass*9.81)*.5,-.12,.24);
+ const pitchTarget=clamp(Math.atan(wave.sx*c+wave.sy*s)*S.waveResponse+hump*.085+(b.planing*(.045+driveAngle*.42))+(b.telemetry.acceleration??0)*.014-S.cgX/S.length*.3-(b.anchor.shape?.V??0)/(S.mass*9.81)*.5+bilgeTrimAngle(S,b.bilge?.litres),-.12,.24);
  if(!onSupports)[b.pitch,b.pitchVelocity]=oscillator(b.pitch,b.pitchVelocity,pitchTarget,Math.sqrt(9.81/(S.length*.14)),.65,dt);
  // ITTC-inspired friction + approximate wave-making hump and planing support drag.
  const re=Math.max(1e5,Math.abs(u)*S.length/1e-6),cf=.075/(Math.log10(re)-2)**2;
@@ -106,7 +109,8 @@ export function step(b,e,dt,{sharedStep=true}={}){
  // Turning costs power through sideslip and the extra lift needed for centripetal
  // acceleration, rather than a brake keyed to the steering-wheel angle.
  const induced=S.mass*9.81*.10*(turnLoad*turnLoad-1)*b.planing;
- const drag=S.inflatable?inflatableDrag(S,u,b.planing):friction+Math.sign(u)*(turnDrag+induced+waveDrag+support+displacementLimit+transom);
+ const baseDrag=S.inflatable?inflatableDrag(S,u,b.planing):friction+Math.sign(u)*(turnDrag+induced+waveDrag+support+displacementLimit+transom);
+ const drag=S.racing?racingResistance(baseDrag,b.planing,meanTrim):baseDrag;
  force((-drag-S.mass*.009*u)*wetFraction*(S.towDragFactor??1),0);
  if(S.inflatable&&e.towEffects!==false)force(-crossWaveDrag(S,u,b.encounter.crossSlope)*wetFraction,0);
  const poweredTurn=clamp(Math.abs(b.actualSteer)/S.maxSteer,0,1)*clamp(b.engines.reduce((sum,en)=>sum+Math.abs(en.thrust),0)/(S.mass*2),0,1)*clamp(1-Math.abs(u)/5,0,1);
@@ -131,7 +135,7 @@ export function step(b,e,dt,{sharedStep=true}={}){
   engine.lastSurface=g.surface;
   const vertical=b.heaveVelocity+g.mountX*Math.cos(b.pitch)*b.pitchVelocity+engine.y*Math.cos(b.roll)*b.rollVelocity;
   const waveLoad=clamp(2.5*Math.abs(u)*Math.max(0,surfaceRate-vertical)/(9.81*S.length),0,.25);
-  let thrust=updateEngine(engine,i===0?b.throttle:b.throttle2,inflow,dt,b.damage,{starterVoltage:b.battery.voltage,noFuel:b.fuel.litres<=0,jet:S.jet,air:S.air,fixedDrive:S.propulsion==='inboard',onTrailer:onSupports,grounded:b.grounded,moored:b.ropes.length>0,raised:b.enginesRaised,speed:Math.hypot(ur,vr),immersion:engine.immersion,intake:engine.intake,crossflow:lateral,waveLoad});
+  let thrust=updateEngine(engine,i===0?b.throttle:b.throttle2,inflow,dt,b.damage,{starterVoltage:b.battery.voltage,noFuel:b.fuel.litres<=0,jet:S.jet,air:S.air,racing:!!S.racing,fixedDrive:S.propulsion==='inboard',onTrailer:onSupports,grounded:b.grounded,moored:b.ropes.length>0,raised:b.enginesRaised,speed:Math.hypot(ur,vr),immersion:engine.immersion,intake:engine.intake,crossflow:lateral,waveLoad});
   if(b.enginesRaised){thrust=0;engine.thrust=0;}
   thrust*=S.jet||S.air||S.propulsion==='inboard'?1:Math.cos(trimAngle(engine.trim));
   engine.effectiveThrust=thrust;

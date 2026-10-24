@@ -33,6 +33,7 @@ export function installCockpit(api){
   document.body.dataset.passive=String(!!S.passive);
   const noTrim=S.passive||S.air||S.jet||S.propulsion==='inboard',trim=b.enginesRaised?1:avg('trim'),temperature=Math.max(...en.map(e=>e.temperature));
   $('#first-engine h3').textContent=en.length===2?'Lewy':'Solo';$('#gauge-rpm2').hidden=en.length!==2;$('#instruments').classList.toggle('twins',en.length===2);$('#gauge-rpm .gauge-name').textContent=en.length===2?'OBROTY · LEWY':'OBROTOMIERZ';
+  for(const id of ['rpm','rpm2']){const g=$('#gauge-'+id);g.dataset.max=S.racing?'4500':'6500';g.querySelectorAll('.gauge-dial>text')[1].textContent=S.racing?'4.5':'6.5';}$('#gauge-speed').dataset.max=S.racing?'200':'120';$('#gauge-speed').querySelectorAll('.gauge-dial>text')[1].textContent=S.racing?'200':'120';
   const values={rpm:en[0].rpm,rpm2:en[1]?.rpm??0,speed:Math.hypot(b.vx,b.vy)*3.6,fuel:b.fuel.capacity?100*b.fuel.litres/b.fuel.capacity:0,trim:100*trim,volt:b.battery.voltage,temp:temperature};
   for(const [id,value]of Object.entries(values)){const el=$('#gauge-'+id),fraction=Math.max(0,Math.min(1,(value-+el.dataset.min)/(+el.dataset.max-+el.dataset.min)));el.querySelector('.needle').style.transform=`rotate(${fraction*180}deg)`;el.querySelector('strong').textContent=value.toFixed(['rpm','rpm2','fuel','trim','temp'].includes(id)?0:1);}
   $('#gauge-fuel strong').textContent=b.fuel.litres.toFixed(1)+' l';$('#gauge-fuel small').textContent=b.fuel.flow.toFixed(1)+' L/h';$('#gauge-fuel small').title='Litry na godzinę czasu eksploatacyjnego';
@@ -45,7 +46,7 @@ export function installCockpit(api){
   $('#fuel-status').textContent=`${b.fuel.litres.toFixed(1)} / ${b.fuel.capacity} l · ${b.fuel.flow.toFixed(1)} L/h${b.fuel.refueling?' · TANKOWANIE':b.fuel.status?' · '+b.fuel.status:''}`;
   $('#refuel').textContent=b.fuel.refueling?'■ Stop tankowania':'⛽ Tankuj';
   $('#repair').textContent=b.service.active?'■ Przerwij naprawę':b.towRig?.boatLoaded?'🔧 Napraw na stanowisku':'🔧 Napraw przy slipie';$('#repair-status').textContent=b.service.status+(b.service.active?' · '+Math.round(b.service.progress*100)+'%':'');
-  const q=b.bilge;updateBilgePanel(b);const warnings=[];if(b.sunken)warnings.push('ŁÓDŹ ZATOPIONA');else if(b.swamped)warnings.push('Zalany pokład · pompuj i wracaj do serwisu');if(q.alarm)warnings.push('UWAGA — WODA W ZĘZIE');
+  const q=b.bilge;updateBilgePanel(b);const warnings=[];if(b.electrics.floodFault)warnings.push('ZWARCIE · instalacja zalana · brak zasilania');if(b.sunken)warnings.push('ŁÓDŹ ZATOPIONA');else if(b.swamped)warnings.push('Zalany pokład · pompuj i wracaj do serwisu');if(q.alarm)warnings.push('UWAGA — WODA W ZĘZIE');
   const stage=thermalStage(temperature);
   if(stage!=='normal'||en.some(e=>e.thermalTrip))warnings.push(({high:'HIGH TEMP',alarm:'ALARM TEMPERATURY',overheat:'OVERHEAT'})[stage]+' · zmniejsz gaz i sprawdź chłodzenie'+(en.some(e=>e.thermalTrip)?' · silnik zatrzymany':''));
   else if(en.some(e=>e.key==='running'&&e.cooling<.25))warnings.push('Brak chłodzenia — opuść napęd');

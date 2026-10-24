@@ -1,3 +1,5 @@
+import {makeNavigationMarks,hazardBottom} from './navigation-marks.js';
+import {euzebiaBeachWeight,euzebiaSlope} from './island-approach.js';
 import {ZEGRZE_BOUNDS,ZEGRZE_SHORE,ZEGRZE_ISLANDS,BRIDGES,REMOTE_HARBORS,FUEL_LOCATION,MAP_LABELS,fromAtlas,WORLD_DISTANCE_SCALE} from './zegrze.js';
 import {createShoreQuery} from './shore-geometry.js';
 import {weatherAt} from './weather.js';
@@ -77,8 +79,7 @@ export function shoreAt(x,y){
  }
  const canal=canalAt(x),inRzadza=x>rz.x-500&&x<rz.x+2600&&Math.abs(y-canal.y)<100;
  if(inRzadza&&best.edge==='lake')best.edge='canal';
- const sector=best.along<0?best.along+Math.PI*2:best.along;
- const beach=best.island==='euzebia'?EUZEBIA.beachSectors.some(([a,b])=>sector>=a&&sector<=b):best.edge==='island'&&best.along>.3&&best.along<2.8||BEACHES.some(q=>Math.hypot(x-q.x,y-q.y)<q.r);
+ const beach=best.island==='euzebia'?euzebiaBeachWeight(best.along)>.05:best.edge==='island'&&best.along>.3&&best.along<2.8||BEACHES.some(q=>Math.hypot(x-q.x,y-q.y)<q.r);
  return{...best,beach,land:best.distance<1e-7};
 }
 // Additional faces are moorable wherever water is accessible. No map labels
@@ -107,9 +108,10 @@ for(const [i,a]of [.55,1.05,1.55,2.85,3.08].entries()){
  for(let j=0;j<4;j++){const q=islandQueries.get(EUZEBIA.id)(p.x,p.y);if(q.distance>1.45)break;p.x+=q.nx*(1.6-q.distance);p.y+=q.ny*(1.6-q.distance);}
  BOLLARDS.push({...p,id:'EUZ-D'+(i+1),kind:'tree',label:'Euzebia · drzewo '+(i+1),site:'euzebia'});
 }
+for(const id of ['EUZ-D4','EUZ-D5']){const tree=BOLLARDS.find(q=>q.id===id),n=shoreAt(tree.x,tree.y);REEDS.push({x:tree.x+n.nx*5,y:tree.y+n.ny*5,r:7,shallow:true});}
 MAP_STARTS.pilawa=PILAWA.start;MAP_STARTS.euzebia={x:EUZEBIA.x-EUZEBIA.rx-35,y:EUZEBIA.y,a:Math.PI/2};
 export function bottomAt(x,y){
- const shore=shoreAt(x,y),dist=shore.distance,slope=shore.beach?.085:shore.edge==='canal'?.65:.21*(1+.28*Math.sin(x*.027)+.16*Math.cos(y*.041));
+ const shore=shoreAt(x,y),dist=shore.distance,slope=shore.island==='euzebia'?euzebiaSlope(shore.along):shore.beach?.085:shore.edge==='canal'?.65:.21*(1+.28*Math.sin(x*.027)+.16*Math.cos(y*.041));
  const basin=shore.edge==='canal'?3.2:8.5;
  let depth=dist>=0?basin*(1-Math.exp(-dist*slope/basin)):dist*(shore.beach?.07:.32);
  if(dist>=0){for(const s of SHOALS)depth-=s.drop*Math.exp(-((x-s.x)**2/s.rx**2+(y-s.y)**2/s.ry**2));depth=Math.max(.015,depth+.10*Math.sin(x*.13)*Math.sin(y*.16)*clamp(dist/12,0,1));}
@@ -133,7 +135,7 @@ export function bottomAt(x,y){
   depth+=(slipDepth(x,y)-depth)*across*end;
  }
  const material=x>ramp.x&&x<ramp.x+ramp.w&&y>=ramp.y&&y<ramp.y+ramp.h?'rock':shore.beach?'sand':(shore.edge==='island'&&shore.along<0)||x>73&&x<220&&y>-15&&y<40?'rock':shore.distance>50?'mud':'sand';
- return{depth,material,name:{sand:'piasek',mud:'muł',rock:'kamienie'}[material],holding:{sand:28,mud:12,rock:3}[material],shoreDistance:dist,land:shore.land,beach:shore.beach};
+ return hazardBottom(x,y,{depth,material,name:{sand:'piasek',mud:'muł',rock:'kamienie'}[material],holding:{sand:28,mud:12,rock:3}[material],shoreDistance:dist,land:shore.land,beach:shore.beach});
 }
 export function bottomGradient(x,y){const d=.12;return{x:(bottomAt(x+d,y).depth-bottomAt(x-d,y).depth)/(2*d),y:(bottomAt(x,y+d).depth-bottomAt(x,y-d).depth)/(2*d)};}
 export function reedDensityAt(x,y){if(shoreAt(x,y).land)return 0;return REEDS.reduce((v,r)=>Math.max(v,clamp(1-Math.hypot(x-r.x,y-r.y)/r.r,0,1)),0);}
@@ -213,3 +215,5 @@ export const MAP_POIS=[
  {id:'pilawa',name:'Port Pilawa',x:PILAWA.x+35,y:PILAWA.y,priority:5},
  {id:'pilawa-fuel',name:'⛽ ORLEN · Pilawa',x:PILAWA.fuel.x,y:PILAWA.fuel.y,priority:5},
  ...MAP_LABELS.map((q,i)=>({id:'town-'+i,...q,priority:1}))];
+
+export const NAV_MARKS=makeNavigationMarks(shoreAt);

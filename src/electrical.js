@@ -1,3 +1,4 @@
+import {applyFloodShort} from './flood-systems.js';
 import {clamp} from './world.js';
 
 export const ELECTRICAL_LOADS={starter:110,ignition:1.2,navigationLights:.65,gps:.35,sonar:.70,instruments:.55};
@@ -19,6 +20,7 @@ export function enforceMainPower(b){
 }
 export function setMainPower(b,on){b.electrics.master=!!on;enforceMainPower(b);electricalStep(b,0);}
 export function electricalStep(b,dt,thrusterAmps=0){
+ if(b.electrics.floodFault){applyFloodShort(b);return;}
  const battery=b.battery,devices=b.electrics,master=devices.master!==false;
  enforceMainPower(b);
  const availableAlternator=master?b.engines.reduce((sum,en)=>sum+alternatorCurrent(en),0):0;

@@ -30,7 +30,7 @@ test('planing develops gradually, displacement cruiser stays displacement, overt
 });
 test('PWC is a single waterjet with little steering authority without thrust, unlike a skeg',()=>{
  const jet=createBoat('open',{profile:'pwc',engineCount:2,bowThruster:true}),outboard=createBoat('open');assert.equal(jet.engines.length,1);assert.equal(jet.spec.bowThruster,false);jet.a=outboard.a=0;jet.vx=outboard.vx=6;jet.steer=outboard.steer=.25;run(jet,1);run(outboard,1);assert.ok(Math.abs(jet.w)<.001);assert.ok(Math.abs(outboard.w)>.01);jet.throttle=.5;run(jet,4);assert.ok(jet.w>.01);
- for(const profile of Object.keys(CRAFTS))assert.equal(specification({profile,powers:[500]}).powers[0],350);
+ for(const profile of Object.keys(CRAFTS))assert.equal(specification({profile,powers:[700]}).powers[0],CRAFTS[profile].maxHp);
 });
 test('newly thrown rope has slack and no impulse at any of five cleats',()=>{
  const keys=['bow','portBow','starboardBow','portStern','starboardStern'];const positions=keys.map(end=>cleat(createBoat('berth'),end));assert.equal(new Set(positions.map(p=>p.x+','+p.y)).size,5);

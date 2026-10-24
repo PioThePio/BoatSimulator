@@ -13,7 +13,7 @@ const dt=1/120;
 export function swim(b,seconds,e={}){for(let i=0;i<seconds*120;i++){step(b,e,dt);b.x=80;b.y=110;}return b;}
 export function tow(r,b,seconds,e={}){for(let i=0;i<seconds*120;i++){towStep(r,b,dt);step(b,e,dt);trailerContact(r,b,dt);}}
 const motion=b=>({surge:b.telemetry.surge,sway:b.telemetry.sway,yaw:b.w,speed:Math.hypot(b.vx,b.vy),planing:b.planing,rpm:b.engines[0].rpm,thrust:b.engines[0].thrust,ventilation:b.engines[0].ventilation});
-const boatFor=drive=>createBoat('lake',{profile:drive==='air'?'swamp':drive==='jet'?'pwc':'cabin',propulsion:drive});
+const boatFor=drive=>createBoat('lake',{profile:drive==='air'?'swamp':drive==='jet'?'pwc':'cabin',propulsion:drive,bowThruster:false,sternThruster:false});
 export function auditResults(){
  const result={};
  result.drives=Object.fromEntries(['outboard','zdrive','inboard','jet','air'].map(drive=>{

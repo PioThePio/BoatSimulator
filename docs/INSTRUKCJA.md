@@ -10,6 +10,8 @@ wymiary, masę kadłuba, dopuszczony dla niej napęd, liczbę silników i moc.
 Ustaw zbiorniki, opcjonalne strumieniowe, załogę i wyposażenie. Podsumowanie
 pokazuje rzeczywistą masę startową z paliwem oraz zanurzenie.
 
+Kabinowa ma domyślnie strumieniowy dziobowy, a wypornościowa dziobowy i rufowy; można je odznaczyć. Wyścigowa ma zawsze dwa Z-drive do 600 KM każdy. Pozostałe jednostki zachowują limit 350 KM na silnik.
+
 Wybierz miejsce startu i pogodę. Dostępne są otwarta woda, port główny,
 pomosty, plaża, wyspy przy Bugu, Euzebia, Pilawa, zatoka Rządzy, paliwo,
 serwis oraz zadania z SUV-em i przyczepą. Start na przyczepie podnosi
@@ -48,6 +50,19 @@ logiczne, zgodne ze skróconą geografią. ETA pojawia się podczas zbliżania
 do celu, nie na postoju ani podczas oddalania. To kierunek do celu po
 prostej, nie wyznaczona trasa omijająca ląd. Wyłączony GPS ukrywa odczyty.
 
+## Tor wodny i znaki
+
+Przycisk ⚑ Znaki otwiera legendę. Umowny kierunek toru biegnie z jeziora
+w górę Narwi i Bugu: zielone stożki są po prawej, czerwone walce po lewej.
+Kardynalne wskazują stronę omijania przeszkody. Dwa stożki w górę oznaczają
+N, w dół S, podstawami do siebie E, wierzchołkami do siebie W.
+
+Odizolowane niebezpieczeństwo ma barwy czarny–czerwony–czarny i dwie
+czarne kule. Pod takimi znakami są fizyczne głazy z wodą płytszą niż
+0,5 m: można uszkodzić dno i śrubę. Znaki ukryjesz w Pogodzie; podwodne
+przeszkody pozostają. To treningowy tor i przeszkody, bez deklaracji
+zgodności z aktualnym oznakowaniem rzeczywistego akwenu.
+
 ## Sterowanie łodzią
 
 | Czynność | Klawiatura / ekran |
@@ -74,6 +89,22 @@ Silnik ma zwłokę obrotów i zmianę biegu, więc manetka nie oznacza
 natychmiastowego ciągu. Dwa silniki mają własne obroty, stacyjki i siły.
 Można je rozsprzęgnąć, ustawić przeciwne biegi, a w ustawieniach kierownicy
 rozdzielić kąty dwóch zaburtówek/Z-etek. Trym jest wspólny.
+
+## Wyścigowa offshore
+
+Wyścigowa jest w menu nowej próby i Flocie. Ma 9,2 m długości, głęboki
+kadłub V i dwa wysokoprężne napędy Z-drive po maksymalnie 600 KM.
+Manetki szybciej podnoszą obroty. Sprzężenie manetek, osobne stacyjki,
+niezależne kąty i trym działają jak w pozostałych łodziach.
+
+Optimum modelu trymu jest w pobliżu 20%. Za niski i wysoki zwiększają
+opór; nadmierne podniesienie nadal napowietrza śruby i ogranicza chłodzenie.
+Na spokojnej wodzie konfiguracja domyślna w pomiarze modelowym osiąga
+około 115 km/h. Masa, paliwo, trym, skręt i fala zmieniają osiągi.
+Prędkościomierz ma zakres 200 km/h, obrotomierze 4500 RPM.
+Głęboki dźwięk dwóch silników uzupełnia gwizd turbo rosnący z obciążeniem
+i obrotami oraz syk po gwałtownym odjęciu gazu. Suwak Silniki reguluje
+pracę napędu; cały dźwięk nadal podlega wyciszeniu i pauzie.
 
 ## Rozruch, elektryka i przyrządy
 
@@ -129,6 +160,11 @@ daje stałą siłę. Fala może zależeć od wiatru albo mieć własną wysokoś
 i kierunek. Można włączać lokalne osłony, zacumowane łodzie oraz nowe
 oddziaływanie ssania brzegowego i poprzecznej fali na holowane zabawki.
 
+Przy 0–3 m/s tafla pozostaje spokojniejsza. Powyżej 6 m/s rośnie liczba
+białych zmarszczek i piany, a woda staje się bardziej szarawa. Szum wiatru
+rośnie płynnie z aktualną siłą i milknie przy zerze. Efekty wizualne
+i szum można wyłączyć osobno w Pogodzie, bez zmiany samych sił wiatru.
+
 Prąd działa przez ruch względem wody; wiatr działa na nadwodną część
 kadłuba i może go obracać. Kabinówka, RIB, skuter i swamp reagują inaczej.
 Przy stromym brzegu/pomoście lub bliskim mijaniu równoległej łodzi
@@ -171,6 +207,11 @@ Trzy odbijacze na każdej burcie wystają poza kadłub, kompresują się
 i pozwalają powoli przesuwać wzdłuż kei. Chronią miejsca, które faktycznie
 dotykają. Silny lub nieosłonięty kontakt nadal uszkadza kadłub.
 
+Na zachodniej stronie Euzebii widać suchą piaszczystą plażę, niebieskozielony
+pas płytkiej wody i stopniowe pogłębianie. Kolor płytkiej wody jest liczony
+z tego samego dna co echosonda i kontakt kadłuba. Przy dwóch miejscach są
+szuwary: można w nie wpłynąć, ale zwiększają opór.
+
 Na Euzebii pięć drzew jest punktami dzikiego cumowania. Podejdź powoli,
 obserwuj dno i zanurzenie; większą jednostkę pozostaw dalej na kotwicy.
 Pilawa ma ciasne przejścia między różnymi zacumowanymi łodziami.
@@ -207,6 +248,14 @@ i zatrzymuje poniżej 3 l. Potrzebuje zasilania i akumulatora. Powyżej
 50% zęzy działa alarm. Duży przeciek może przekroczyć wydajność pompy;
 zalewanie jest widoczne na pokładzie, łódź osiada i może zatonąć, gasząc
 silnik. Pompa nie naprawia dziury.
+
+Całkowite zatonięcie albo silnie uszkodzony napęd z zalaną instalacją
+powodują zwarcie: akumulator spada do 0 V, gasną odbiorniki, zatrzymuje
+się pompa i strumieniowe, a rozrusznik nie działa. Przełącznik główny
+nie przywraca sam zasilania. Po osuszeniu i naprawie instalacji w serwisie
+można je ponownie włączyć. Profil wyraźnie oznacza pokład pod wodą lub
+położenie poniżej linii wody; bieżące zanurzenie przy zalewaniu uwzględnia
+osiadanie i niższą rufę.
 
 Nominalnie: otwarta/płaskodenna/swamp/skuter 32 l/min, RIB/motorówka 50,
 kabinowa 95, wypornościowa 126. Napięcie wpływa na faktyczną wydajność.
@@ -249,6 +298,12 @@ przechylają się od naciągu i reagują na poprzeczny kilwater. Duża barka
 znacznie bardziej obciąża holownik. Miękki obiekt jest przy lekkim
 kontakcie odpychany, ciężki daje większą reakcję. Nie symulujemy ludzi
 spadających z banana ani oplatania liny wokół śruby.
+
+W oknie Flota przy dodatkowych jednostkach jest Usuń. Usunięcie odpina
+wszystkie połączone z nią hole i cumy oraz usuwa ją z zapisu. Gdy usuwasz
+aktualne stanowisko, sterowanie wraca do łodzi podstawowej. Zebrane
+statystyki zostają w Logbooku. Łódź podstawowa przypisana do SUV-a jest
+chroniona przed usunięciem, aby zachować zestaw i co najmniej jedną łódź.
 
 ## Ratownictwo — koło i manekin MOB
 
@@ -298,6 +353,30 @@ nie od jednej wymaganej pozycji kół. Zbyt głęboka przyczepa słabo prowadzi
 dziób, zbyt płytka zwiększa nacisk i opór wciągania. Nachylenie slipu
 można zmieniać w Pogodzie. Wynik załadunku ocenia osiowość, tor wejścia,
 pozycję i prędkość zatrzymania oraz uderzenia.
+
+## Logbook — dziennik użytkownika
+
+▤ Logbook na mapie ma trzy sekcje: kafle łącznego dystansu na wodzie,
+motogodzin silników, zużytego paliwa i liczby uderzeń; ostatnie rejsy
+z datą, czasem, paliwem i maksymalną prędkością; przewijane incydenty
+z godziną, jednostką i opisem. Energia uderzenia jest podawana w J,
+bez wymyślania niezmierzonej szczytowej siły w kN.
+
+Zapis aktualizuje ten sam rejs przy autosave i opuszczaniu strony.
+Kontynuacja nie dopisuje powtórnie tych samych kilometrów czy godzin.
+Nowa próba tworzy nowy rejs. Usunięte jednostki zachowują już zebrany
+wkład do sum. SUV nie powiększa dystansu na wodzie ani paliwa łodzi.
+Obowiązują te same logiczne dystanse/godziny co w licznikach symulatora.
+
+Dziennik przechowuje 30 ostatnich rejsów i 200 incydentów, a sumy
+obejmują także wcześniejsze rejsy. Można wyłączyć zapisywanie w oknie.
+Jest lokalny dla przeglądarki i witryny, niezależny od bieżącego zapisu
+gry; rozpoczęcie nowej próby nie czyści sum. Czyszczenie danych witryny
+usuwa oba zapisy.
+
+Przy pierwszym uruchomieniu dziennik przejmuje dostępne liczniki bieżącego
+zapisu. Nie odtwarza wcześniej usuniętych sesji ani dawnych incydentów.
+Uszkodzone dane dziennika nie blokują kontynuacji samej gry.
 
 ## Zapis lokalny, dźwięk i problemy
 

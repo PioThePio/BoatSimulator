@@ -1,3 +1,4 @@
+import {RACING_PROFILE} from './racing.js';
 import {STARTER_LIMITS} from './electrical.js';
 import {trimAngle} from './drive.js';
 import {thermalStep,THERMAL_LIMITS} from './thermal.js';
@@ -12,38 +13,42 @@ export const CRAFTS={
 CRAFTS.flat={...CRAFTS.tender,name:'Płaskodenna 4,6 m',length:4.6,beam:1.9,hullMass:440,draft:.23,hp:50,deadrise:3,color:'#e2dab7'};
 CRAFTS.rib={...CRAFTS.runabout,name:'RIB 5,2 m',length:5.2,beam:2.25,hullMass:470,draft:.30,hp:100,deadrise:18,color:'#b4bdbc'};
 CRAFTS.swamp={...CRAFTS.flat,name:'Swamp boat · śmigło powietrzne 5,3 m',length:5.3,beam:2.35,hullMass:650,draft:.16,hp:180,freeboard:.42,fuel:90,air:true,color:'#bec39a'};
-const hulls={tender:['v',.2,.55,1,1],runabout:['v',.2,.6,1,1],cabin:['cabin',.4,1,1.1,.85],cruiser:['displacement',.6,1,.0,.65],pwc:['jet',0,.3,.75,.9],flat:['flat',.2,.55,.7,1.65],rib:['rib',.25,.9,.78,1.1],swamp:['flat',0,.85,.65,1.5]};
+CRAFTS.racing={...RACING_PROFILE};
+for(const [id,name]of Object.entries({tender:'Otwarta',runabout:'Motorówka',cabin:'Kabinowa',cruiser:'Wypornościowa',pwc:'Skuter',flat:'Płaskodenna',rib:'RIB',swamp:'Swamp boat'}))CRAFTS[id].name=name;
+CRAFTS.cabin.defaultBow=true;CRAFTS.cruiser.defaultBow=CRAFTS.cruiser.defaultStern=true;
+const hulls={racing:['v',.1,.45,.9,1.05],tender:['v',.2,.55,1,1],runabout:['v',.2,.6,1,1],cabin:['cabin',.4,1,1.1,.85],cruiser:['displacement',.6,1,.0,.65],pwc:['jet',0,.3,.75,.9],flat:['flat',.2,.55,.7,1.65],rib:['rib',.25,.9,.78,1.1],swamp:['flat',0,.85,.65,1.5]};
 for(const [id,p]of Object.entries(CRAFTS)){
  const [hullType,propWalkStrength,windageFactor,planingThreshold,waveResponse]=hulls[id];
- Object.assign(p,{maxHp:350,hullType,propWalkStrength,windageFactor,planingThreshold,waveResponse});
+ Object.assign(p,{maxHp:p.maxHp??350,hullType,propWalkStrength,windageFactor,planingThreshold,waveResponse});
 }
-export const PROPULSIONS={tender:['outboard'],runabout:['outboard','zdrive'],cabin:['outboard','zdrive','inboard'],cruiser:['inboard'],pwc:['jet'],flat:['outboard'],rib:['outboard'],swamp:['air']};
+export const PROPULSIONS={tender:['outboard'],runabout:['outboard','zdrive'],cabin:['outboard','zdrive','inboard'],cruiser:['inboard'],pwc:['jet'],flat:['outboard'],rib:['outboard'],swamp:['air'],racing:['zdrive']};
 for(const [id,p]of Object.entries(CRAFTS)){p.propulsions=PROPULSIONS[id];p.steeringDegrees=p.jet?28:45;}
 export function specification(options={}){
  const profile=options.profile in CRAFTS?options.profile:'runabout',p=CRAFTS[profile];
  const length=clamp(Number(options.length)||p.length,2.8,11),beam=clamp(Number(options.beam)||p.beam,1.1,3.8),hullMass=clamp(Number(options.hullMass)||p.hullMass,200,8000);
- const engineCount=p.jet||p.air?1:options.engineCount===2?2:1;
- const powers=Array.from({length:engineCount},(_,i)=>clamp(Number(options.powers?.[i])||p.hp,10,350));
+ const engineCount=p.fixedEngineCount??(p.jet||p.air?1:options.engineCount===2?2:1);
+ const bowThruster=!p.jet&&!p.air&&!!(options.bowThruster??p.defaultBow),sternThruster=!p.jet&&!p.air&&!!(options.sternThruster??p.defaultStern);
+ const powers=Array.from({length:engineCount},(_,i)=>clamp(Number(options.powers?.[i])||p.hp,10,p.maxHp));
  const fuelCapacity=clamp(Number(options.fuelCapacity)||p.fuel,10,800),tankCount=options.tankCount===2?2:1;
  const crewCount=clamp(Math.round(Number(options.crewCount??(p.jet?1:2))),0,12),crewMass=crewCount*75,equipmentMass=clamp(Number(options.equipmentMass??(p.jet?5:25)),0,1500);
  // A sterndrive is an inboard engine with a steerable, tiltable leg. It must
  // never share the fixed-shaft/rudder branch (inboard) merely by engine location.
  const propulsion=p.propulsions.includes(options.propulsion)?options.propulsion:p.propulsions[0];
- const structureMass=hullMass+powers.reduce((sum,hp)=>sum+(p.jet?0:28+hp*.62),0)+fuelCapacity*.08+2*tankCount+(p.jet?0:22*(Number(!!options.bowThruster)+Number(!!options.sternThruster)));
+ const structureMass=hullMass+powers.reduce((sum,hp)=>sum+(p.jet?0:28+hp*.62),0)+fuelCapacity*.08+2*tankCount+(p.jet?0:22*(Number(bowThruster)+Number(sternThruster)));
  const dryMass=structureMass+crewMass+equipmentMass;
- const mass=dryMass+fuelCapacity*.75*.745;
- const base={...p,profile,length,beam,hullMass,engineCount,powers,fuelCapacity,tankCount,dryMass,mass,structureMass,crewCount,crewMass,equipmentMass,propulsion,
+ const mass=dryMass+fuelCapacity*.75*(p.diesel?.84:.745);
+ const base={...p,fuelDensity:p.diesel?.84:.745,profile,length,beam,hullMass,engineCount,powers,fuelCapacity,tankCount,dryMass,mass,structureMass,crewCount,crewMass,equipmentMass,propulsion,
   propWalkStrength:clamp(Number(options.propWalkStrength??p.propWalkStrength),0,1),windageFactor:clamp(Number(options.windageFactor??p.windageFactor),0,2),
-  referenceMass:structureMass+(p.jet?75:150)+(p.jet?5:25)+fuelCapacity*.75*.745,referenceDraft:p.draft*(hullMass/p.hullMass)**.32,draft:p.draft*(hullMass/p.hullMass)**.32,engineSpacing:engineCount===2?beam*.46:0,maxSteer:(p.jet?p.steeringDegrees:clamp(Number(options.steeringLimit)||p.steeringDegrees,30,45))*Math.PI/180,
-  wheelTurns:({tender:1.5,runabout:2.5,cabin:3,cruiser:3.5,pwc:.25,flat:1.5,rib:2,swamp:.75})[profile],steeringLockTime:({tender:1,runabout:1.4,cabin:1.7,cruiser:1.9,pwc:.45,flat:1,rib:1.1,swamp:.65})[profile],thrusterRating:clamp(length*beam*45,220,1550),
-  engineLever:p.jet?-.40*length:p.air?-.50*length:propulsion==='inboard'?-.36*length:-.44*length,rudderLever:-.53*length,bowThruster:!p.jet&&!p.air&&!!options.bowThruster,sternThruster:!p.jet&&!p.air&&!!options.sternThruster};
+  referenceMass:structureMass+(p.jet?75:150)+(p.jet?5:25)+fuelCapacity*.75*(p.diesel?.84:.745),referenceDraft:p.draft*(hullMass/p.hullMass)**.32,draft:p.draft*(hullMass/p.hullMass)**.32,engineSpacing:engineCount===2?beam*.46:0,maxSteer:(p.jet?p.steeringDegrees:clamp(Number(options.steeringLimit)||p.steeringDegrees,30,45))*Math.PI/180,
+  wheelTurns:({tender:1.5,runabout:2.5,cabin:3,cruiser:3.5,pwc:.25,flat:1.5,rib:2,swamp:.75,racing:1.5})[profile],steeringLockTime:({tender:1,runabout:1.4,cabin:1.7,cruiser:1.9,pwc:.45,flat:1,rib:1.1,swamp:.65,racing:.6})[profile],thrusterRating:clamp(length*beam*45,220,1550),
+  engineLever:p.jet?-.40*length:p.air?-.50*length:propulsion==='inboard'?-.36*length:-.44*length,rudderLever:-.53*length,bowThruster,sternThruster};
  return updateMass(base,fuelCapacity*.75);
 }
 export function updateMass(spec,fuelLitres,bilgeLitres=0){
- spec.mass=spec.dryMass+Math.max(0,fuelLitres)*.745+Math.max(0,bilgeLitres);
+ spec.mass=spec.dryMass+Math.max(0,fuelLitres)*(spec.fuelDensity??.745)+Math.max(0,bilgeLitres);
  spec.draft=Math.max(.08,spec.referenceDraft+(spec.mass-spec.referenceMass)/(1000*spec.length*spec.beam*.7));
- spec.cgX=-spec.length*(.16*fuelLitres*.745+.30*bilgeLitres)/spec.mass;
- spec.inertia=spec.mass*((.27*spec.length)**2+(.22*spec.beam)**2)+fuelLitres*.745*(spec.length*.16)**2+bilgeLitres*(spec.length*.30)**2;
+ spec.cgX=-spec.length*(.16*fuelLitres*(spec.fuelDensity??.745)+.30*bilgeLitres)/spec.mass;
+ spec.inertia=spec.mass*((.27*spec.length)**2+(.22*spec.beam)**2)+fuelLitres*(spec.fuelDensity??.745)*(spec.length*.16)**2+bilgeLitres*(spec.length*.30)**2;
  spec.mx=spec.mass*1.08;spec.my=spec.mass*(spec.inflatable?1.15:1.65);spec.iz=spec.inertia*(spec.inflatable?1.2:1.55);
  return spec;
 }
@@ -53,6 +58,7 @@ export function engineKey(b,index,action){
  if(b.disabledEngine&&action!=='off')return{ok:false,message:'Awaria napędu · odholuj jednostkę do serwisu.'};
  const en=b.engines[index];if(!en)return{ok:false,message:'Brak silnika.'};
  if(action==='off'){en.key='off';en.startTime=0;en.gear=0;en.thrust=0;en.ventilation=0;return{ok:true,message:'Silnik wyłączony.'};}
+ if(action!=='off'&&b.electrics?.floodFault)return{ok:false,message:'Instalacja zalana · wymagany serwis.'};
  if(action==='ignition'&&b.electrics?.master===false)return{ok:false,message:'Włącz główne zasilanie łodzi.'};
  if(action==='ignition'){en.key='ignition';en.thrust=0;en.gear=0;return{ok:true,message:'Zapłon włączony.'};}
  if(action==='start'){
@@ -105,7 +111,7 @@ export function updateEngine(en,command,inflow,dt,damage=0,context={}){
  else{
   en.shift=0;const demand=desired?.23+.77*clamp((Math.abs(cmd)-.08)/.92,0,1)**.65:0;
   const target=clamp(demand*(1-.035*en.load-.025*transientLoad)+en.ventilation*.13,0,1);
-  const tau=target>en.n?(context.jet?.25+.18*en.load:.65+.30*(en.hp/350)**.3+.35*en.load):(context.jet?.22:.4);
+  const tau=target>en.n?(context.jet?.25+.18*en.load:context.racing?.22+.16*en.load:.65+.30*(en.hp/350)**.3+.35*en.load):(context.jet?.22:.4);
   en.n+=(target-en.n)*(1-Math.exp(-dt/tau));
  }
  const n=en.n,gear=en.gear;
@@ -127,13 +133,13 @@ export function updateEngine(en,command,inflow,dt,damage=0,context={}){
  en.regrip=Math.max(recovery,(en.regrip??0)*Math.exp(-dt/.45));
  en.thrust=desired===gear?gear*Math.min(bollard,powerLimit)*(1-damage/100)*(1-en.propDamage/100)**1.5*en.propGrip*en.thermalLimit:0;
  // Idle governor responds to clutch load; small combustion/governor ripple, independent per engine.
- const idle=750+(gear!==0?65*clamp(n/.22,0,1):0),shaft=4750*clamp((n-.23)/.77,0,1);
+ const idle=(context.racing?720:750)+(gear!==0?65*clamp(n/.22,0,1):0),shaft=(context.racing?3450:4750)*clamp((n-.23)/.77,0,1);
  const ripple=(11+9*n)*Math.sin(en.clock*8.1+en.y*2.7)+5*Math.sin(en.clock*13.7+en.hp*.01);
  // Cold idle hunting fades with temperature and throttle; each engine has its
  // own phase. It never introduces RPM on an engine that has stopped.
  const cold=clamp((60-en.temperature)/42,0,1)*(1-clamp((n-.23)/.25,0,1)),phase=en.y*2.3+en.hp*.013;
  const hunting=cold*(18*Math.sin(en.clock*2.1+phase)+9*Math.sin(en.clock*3.3-phase));
  en.rpm=idle+shaft+en.ventilation*450+ripple+hunting;
- en.fuelFlow=.45+.003*en.hp+.29*en.hp*n**3*(.55+.45*en.load);
+ en.fuelFlow=.45+.003*en.hp+(context.racing?.225:.29)*en.hp*n**3*(.55+.45*en.load);
  return en.thrust;
 }
