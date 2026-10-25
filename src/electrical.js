@@ -14,7 +14,7 @@ export function batteryResistance(battery){return .003*80/battery.capacity*(1+8*
 export function loadedBatteryVoltage(battery,current){return clamp(batteryOpenVoltage(battery.soc)-Math.max(0,current)*batteryResistance(battery),8,13);}
 export function enforceMainPower(b){
  if(b.electrics?.master!==false)return;
- for(const en of b.engines){en.key='off';en.rpm=en.thrust=en.gear=en.ventilation=0;}
+ for(const en of b.engines){if(en.key==='running'||en.key==='starting')en.key='ignition';en.n=en.rpm=en.thrust=en.gear=en.ventilation=0;}
  for(const end of ['bow','stern'])b.thrusters[end+'Actual']=b.thrusters[end+'Force']=0;
  b.bilge.running=false;b.bilge.outflow=0;
 }
@@ -27,7 +27,7 @@ export function electricalStep(b,dt,thrusterAmps=0){
  const available=master&&(battery.soc>.001&&battery.voltage>9.5||availableAlternator>2);
  const loads={ignition:master&&b.engines.some(en=>en.key!=='off')?ELECTRICAL_LOADS.ignition:0,
   starter:master?b.engines.filter(en=>en.key==='starting').length*ELECTRICAL_LOADS.starter:0,
-  thrusters:master&&devices.thrusters!==false?thrusterAmps:0,bilge:master&&b.bilge.running?b.bilge.pumpAmps:0};
+  thrusters:master&&devices.thrusters!==false?thrusterAmps:0,windlass:master?(b.anchor?.electricalAmps??0):0,bilge:master&&b.bilge.running?b.bilge.pumpAmps:0};
  for(const name of ['navigationLights','gps','sonar','instruments']){devices.powered[name]=!!(devices[name]&&available);loads[name]=devices.powered[name]?ELECTRICAL_LOADS[name]:0;}
  const demand=Object.values(loads).reduce((a,v)=>a+v,0);
  // The regulator supplies consumers, then tapers charging at the very top of SOC.

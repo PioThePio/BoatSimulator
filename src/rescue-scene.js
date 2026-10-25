@@ -1,3 +1,7 @@
+import {propulsionFlow} from './local-water.js';
+import {sampleWakeTransport} from './wake.js';
+import {wakeHistories} from './wave-field.js';
+import {sampleBrakingWaves} from './braking-waves.js';
 import {createRescue,RESCUE_TYPES,advanceRescueObject,pickupStatus} from './rescue.js';
 import {environment,bottomAt,SOLIDS} from './world.js';
 import {point} from './rigging.js';
@@ -12,7 +16,7 @@ export function throwRescue(fleet,b,kind='ring',side=1){
  const sign=side<0?-1:1,pos=point(b,0,sign*(b.spec.beam*.5+1.2)),c=Math.cos(b.a),s=Math.sin(b.a);
  if(bottomAt(pos.x,pos.y).depth<=0||SOLIDS.some(d=>pos.x>d.x-p.beam*.5&&pos.x<d.x+d.w+p.beam*.5&&pos.y>d.y-p.beam*.5&&pos.y<d.y+d.h+p.beam*.5))return{ok:false,message:'Po tej stronie jest ląd lub pomost. Wybierz drugą burtę.'};
  const o={id:'rescue-'+state.nextId++,kind,...pos,a:b.a,vx:b.vx-sign*s*1.5,vy:b.vy+sign*c*1.5,heave:0,roll:0,thrownAt:fleet.time,recovered:false,contactAt:-10};
- state.objects=[...state.objects.filter(q=>!q.recovered),...state.objects.filter(q=>q.recovered).slice(-15),o];state.targetId=o.id;
+ state.objects=[...state.objects.filter(q=>!q.recovered),...state.objects.filter(q=>q.recovered).slice(-15),o];state.targetId=o.id;state.alarmSequence=(state.alarmSequence??0)+1;
  voyageEvent(b,{type:'sar',rescueId:o.id,message:'Ćwiczenie SAR · rozpoczęto · '+p.name});
  return{ok:true,object:o,message:p.name+' · wyrzucono z '+(sign<0?'lewej':'prawej')+' burty.'};
 }
@@ -25,10 +29,13 @@ export function recoverRescue(fleet,b,id){
 }
 export function rescueStep(fleet,e,dt){
  const state=fleet.rescue??=createRescue(),world=fleet.boats[0];
+ if(state.pending&&fleet.time>=state.pending.at){const p=state.pending,b=fleet.boats.find(q=>q.id===p.boatId);if(!b)state.pending=null;else{const r=throwRandomRescue(fleet,b,p.kind);if(r.ok)state.pending=null;else p.at=fleet.time+2;}}
  for(let i=0;i<state.objects.length;i++){
   let o=state.objects[i];if(o.recovered)continue;
   if(o.contactMetrics)for(const id of Object.keys(o.contactMetrics))if(!fleet.boats.some(b=>b.id===id))delete o.contactMetrics[id];
   const flow=environment(fleet.time,e,o.x,o.y),wave=sampleWater(world,o.x,o.y,e),floor=bottomAt(o.x,o.y);
+  const jet=propulsionFlow(fleet.boats,o.x,o.y);for(const h of wakeHistories(world)){const d=sampleWakeTransport(h,o.x,o.y,fleet.time);jet.x+=d.x;jet.y+=d.y;}for(const h of [world.brakingWaves??[],...(world.wakeSources??[]).map(q=>q.braking??[])]){const d=sampleBrakingWaves(h,o.x,o.y,fleet.time);jet.x+=d.driftX;jet.y+=d.driftY;}
+  flow.current={x:flow.current.x+jet.x,y:flow.current.y+jet.y};o.localFlow=Math.hypot(jet.x,jet.y);o.waveEncounter=Math.abs(wave.eta);
   Object.assign(o,advanceRescueObject(o,flow,wave,floor,dt));
   // Soft contact with hulls; a floating training object yields to the boat.
   for(const b of fleet.boats){if(Math.hypot(o.x-b.x,o.y-b.y)>b.spec.length+1)continue;const c=Math.cos(b.a),s=Math.sin(b.a),dx=o.x-b.x,dy=o.y-b.y,x=dx*c+dy*s,y=-dx*s+dy*c,r=RESCUE_TYPES[o.kind].beam*.5,rx=b.spec.length*.45,ry=b.spec.beam*.48,n=Math.hypot(x/(rx+r),y/(ry+r));if(n>=1)continue;
@@ -41,3 +48,6 @@ export function rescueStep(fleet,e,dt){
   for(const d of SOLIDS){const x=Math.max(d.x,Math.min(o.x,d.x+d.w)),y=Math.max(d.y,Math.min(o.y,d.y+d.h)),dx=o.x-x,dy=o.y-y,r=RESCUE_TYPES[o.kind].beam*.5,dist=Math.hypot(dx,dy);if(dist>.001&&dist<r){const nx=dx/dist,ny=dy/dist,rel=o.vx*nx+o.vy*ny;o.x+=nx*(r-dist);o.y+=ny*(r-dist);if(rel<0){o.vx-=rel*nx;o.vy-=rel*ny;}}}
  }
 }
+
+export function throwRandomRescue(fleet,b,kind='ring',random=Math.random){const side=random()<.5?-1:1,first=throwRescue(fleet,b,kind,side);return first.ok?first:throwRescue(fleet,b,kind,-side);}
+export function scheduleRescue(fleet,b,kind='mob',random=Math.random){fleet.rescue??=createRescue();fleet.rescue.pending={kind,boatId:b.id,at:fleet.time+30+Math.max(0,Math.min(1,random()))*150};return fleet.rescue.pending;}

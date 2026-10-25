@@ -49,8 +49,8 @@ test('throw inherits motion, creates separate objects without using vessel slots
  b.towRig={boatLoaded:true};assert.equal(throwRescue(f,b).ok,false);delete b.towRig;for(let i=0;i<11;i++)assert.equal(throwRescue(f,b,'mob',-1).ok,true);assert.equal(throwRescue(f,b).ok,false);assert.equal(f.rescue.objects.length,12);
  const near=createBoat('lake',{coldStart:true});Object.assign(near,{x:14.5,y:22,a:Math.PI/2});const g=createFleet(near);assert.equal(throwRescue(g,near,'ring',-1).ok,false);
 });
-test('pickup requires close hull, neutral and low relative speed; no remote rescue or automatic pickup',()=>{
- const f=fresh(),b=f.boats[0],o=throwRescue(f,b).object;o.vx=o.vy=0;assert.ok(pickupStatus(b,o).ok);b.throttle=.08;assert.equal(recoverRescue(f,b,o.id).ok,false);b.throttle=0;b.vx=1;assert.equal(pickupStatus(b,o).ok,false);b.vx=0;o.y+=5;assert.equal(pickupStatus(b,o).ok,false);o.y-=5;f.time=12;assert.equal(recoverRescue(f,b,o.id).ok,true);assert.equal(f.rescue.recovered,1);assert.equal(o.elapsed,12);assert.equal(recoverRescue(f,b,o.id).ok,false);
+test('pickup requires close hull and low relative speed; an in-gear approach remains possible and records the controls',()=>{
+ const f=fresh(),b=f.boats[0],o=throwRescue(f,b).object;o.vx=o.vy=0;assert.ok(pickupStatus(b,o).ok);b.throttle=.08;assert.equal(pickupStatus(b,o).ok,true);b.throttle=0;b.vx=1;assert.equal(pickupStatus(b,o).ok,false);b.vx=0;o.y+=5;assert.equal(pickupStatus(b,o).ok,false);o.y-=5;f.time=12;assert.equal(recoverRescue(f,b,o.id).ok,true);assert.equal(f.rescue.recovered,1);assert.equal(o.elapsed,12);assert.equal(recoverRescue(f,b,o.id).ok,false);
 });
 test('rescue objects encounter current; contact is counted without sinking the hull',()=>{
  const f=fresh(),b=f.boats[0],o=throwRescue(f,b,'mob').object;o.x=b.x;o.y=b.y;o.vx=o.vy=0;rescueStep(f,calm,dt);assert.equal(f.rescue.contacts,1);assert.equal(b.damage,0);

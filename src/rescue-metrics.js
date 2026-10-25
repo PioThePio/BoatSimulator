@@ -21,7 +21,7 @@ export function rescueContactMeasurement(b,o,normal,objectMass){
 }
 export function rescueResult(b,o,time){
  const approach=rescueApproach(b,o),contact=o.contactMetrics?.[b.id??'boat']??{},peakForce=contact.peakForce??0;
- const speedPenalty=40*clamp(approach.relativeSpeed/.55,0,1)**2,impactPenalty=50*clamp(peakForce/1000,0,1),gearPenalty=contact.inGear?10:0;
+ const speedPenalty=40*clamp(approach.relativeSpeed/.55,0,1)**2,impactPenalty=50*clamp(peakForce/1000,0,1),gearPenalty=(contact.inGear?10:0)+(approach.neutral?0:30);
  return{objectId:o.id,kind:o.kind,boatId:b.id??'boat',elapsed:Math.max(0,time-o.thrownAt),pickupSpeed:approach.relativeSpeed,closingSpeed:approach.closingSpeed,peakForce,contacts:contact.contacts??0,contactInGear:!!contact.inGear,enginesNeutral:approach.neutral,enginesRunning:approach.running,engines:approach.engines,score:Math.round(clamp(100-speedPenalty-impactPenalty-gearPenalty,0,100))};
 }
 export function selectedRescue(fleet){const objects=fleet?.rescue?.objects??[];return objects.find(o=>o.id===fleet.rescue.targetId&&!o.recovered)??objects.find(o=>!o.recovered);}

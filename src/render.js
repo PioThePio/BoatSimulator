@@ -1,3 +1,4 @@
+import {drawBrakingWaves} from './braking-waves.js';
 import {windSurface} from './wind-response.js';
 import {drawNavigation} from './render-navigation.js';
 import {drawEuzebiaShallows} from './render-shallows.js';
@@ -21,14 +22,20 @@ import {drawFenders} from './render-fenders.js';
 import {drawFleet,drawUnpowered} from './render-fleet.js';
 import {drawRescue} from './render-rescue.js';
 export {vehicleLookAhead,minimapProjection} from './camera.js';
-function drawTerrain(ctx){
+const terrainPaths=new WeakMap(),outlines=new WeakMap();
+function outline(q,padding=0){let m=outlines.get(q);if(!m){m=new Map();outlines.set(q,m);}if(!m.has(padding))m.set(padding,islandOutline(padding,q));return m.get(padding);}
+function shapePath(points){let p=terrainPaths.get(points);if(!p){p=new Path2D();points.forEach((q,i)=>i?p.lineTo(q.x,q.y):p.moveTo(q.x,q.y));p.closePath();terrainPaths.set(points,p);}return p;}
+let waterMask;
+function drawTerrain(ctx,bounds=null){
  ctx.fillStyle='#aec59b';ctx.fillRect(WORLD.left,WORLD.top,WORLD.right-WORLD.left,WORLD.bottom-WORLD.top);
  for(const q of BEACHES){ctx.beginPath();ctx.ellipse(q.x,q.y,q.r,q.r*.75,0,0,Math.PI*2);ctx.fillStyle='#e0ce9f';ctx.fill();}
- path(ctx,LAKE);ctx.fillStyle='#8bb5c0';ctx.fill();ctx.save();ctx.clip();
- for(const [width,color]of [[180,'#92bdc5'],[70,'#a0c8cb'],[22,'#afd0ce'],[4,'#bfd9d1']]){path(ctx,LAKE);ctx.lineJoin='round';ctx.lineWidth=width;ctx.strokeStyle=color;ctx.stroke();}
+ const lake=shapePath(LAKE);ctx.fillStyle='#8bb5c0';ctx.fill(lake);ctx.save();ctx.clip(lake);
+ for(const [width,color]of [[180,'#92bdc5'],[70,'#a0c8cb'],[22,'#afd0ce'],[4,'#bfd9d1']]){ctx.lineJoin='round';ctx.lineWidth=width;ctx.strokeStyle=color;ctx.stroke(lake);}
  const harbour=ctx.createRadialGradient(78,28,15,78,28,95);harbour.addColorStop(0,'#7dabb750');harbour.addColorStop(1,'#7dabb700');ctx.fillStyle=harbour;ctx.beginPath();ctx.ellipse(78,28,95,60,0,0,Math.PI*2);ctx.fill();
- for(const q of ISLANDS){if(q.id==='euzebia'){drawEuzebiaShallows(ctx);path(ctx,islandOutline(0,q));ctx.fillStyle='#9bb58a';ctx.fill();ctx.save();ctx.clip();ctx.strokeStyle='#e0ce9f';ctx.lineWidth=14;ctx.lineJoin='round';ctx.lineCap='round';ctx.beginPath();let active=false;for(let i=0;i<=q.outline.length;i++){const p=q.outline[i%q.outline.length];if(euzebiaBeachWeight(Math.atan2(p.y-q.y,p.x-q.x))<.3){active=false;continue;}if(active)ctx.lineTo(p.x,p.y);else ctx.moveTo(p.x,p.y);active=true;}ctx.stroke();ctx.restore();}else{path(ctx,islandOutline(10,q));ctx.fillStyle='#afd0ce';ctx.fill();path(ctx,islandOutline(0,q));ctx.fillStyle='#e0ce9f';ctx.fill();path(ctx,islandOutline(-4,q));ctx.fillStyle='#9bb58a';ctx.fill();}}
- ctx.restore();
+ for(const q of ISLANDS){const r=Math.max(q.rx,q.ry)+50;if(bounds&&(q.x+r<bounds.left||q.x-r>bounds.right||q.y+r<bounds.top||q.y-r>bounds.bottom))continue;
+  if(q.id==='euzebia'){drawEuzebiaShallows(ctx);const land=shapePath(outline(q));ctx.fillStyle='#9bb58a';ctx.fill(land);ctx.save();ctx.clip(land);ctx.strokeStyle='#e0ce9f';ctx.lineWidth=14;ctx.lineJoin='round';ctx.lineCap='round';ctx.beginPath();let active=false;for(let i=0;i<=q.outline.length;i++){const p=q.outline[i%q.outline.length];if(euzebiaBeachWeight(Math.atan2(p.y-q.y,p.x-q.x))<.3){active=false;continue;}if(active)ctx.lineTo(p.x,p.y);else ctx.moveTo(p.x,p.y);active=true;}ctx.stroke();ctx.restore();}
+  else{ctx.fillStyle='#afd0ce';ctx.fill(shapePath(outline(q,10)));ctx.fillStyle='#e0ce9f';ctx.fill(shapePath(outline(q)));ctx.fillStyle='#9bb58a';ctx.fill(shapePath(outline(q,-4)));}
+ }ctx.restore();
 }
 export function mapProjection(width,height){const scale=Math.min(width/(WORLD.right-WORLD.left),height/(WORLD.bottom-WORLD.top));return{scale,x:(width-(WORLD.right-WORLD.left)*scale)/2,y:(height-(WORLD.bottom-WORLD.top)*scale)/2};}
 function drawBridges(ctx,scale){
@@ -142,7 +149,7 @@ export function renderWorld(ctx,state){
  ctx.clearRect(0,0,width,height);ctx.fillStyle='#aec59b';ctx.fillRect(0,0,width,height);
  ctx.save();ctx.translate(width/2,height/2);ctx.scale(scale,scale);ctx.translate(-camera.x,-camera.y);
  const visible=(x,y,pad=4)=>x>bounds.left-pad&&x<bounds.right+pad&&y>bounds.top-pad&&y<bounds.bottom+pad;
- drawTerrain(ctx);
+ drawTerrain(ctx,bounds);
  drawParking(ctx);
  // Small shore settlement and a concrete slip next to the service fingers.
  for(const house of BUILDINGS){
@@ -162,15 +169,18 @@ export function renderWorld(ctx,state){
  }
  // Sparse anchored surface features replace the metre grid. They make translation legible.
  const H=waveHeight(env,b.time),speed=.07+H*.6,angle=(env.waveDirection??90)*Math.PI/180,nx=Math.sin(angle),ny=-Math.cos(angle);
- const wind=windSurface(weatherAt(b.time,env).windSpeed,env.windVisuals!==false);if(wind.tint){ctx.save();ctx.beginPath();for(const polygon of [LAKE,...ISLANDS.map(q=>islandOutline(0,q))]){polygon.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.closePath();}ctx.clip('evenodd');ctx.fillStyle=`rgba(100,114,124,${wind.tint})`;ctx.fillRect(bounds.left,bounds.top,bounds.right-bounds.left,bounds.bottom-bounds.top);ctx.restore();}
+ const wind=windSurface(weatherAt(b.time,env).windSpeed,env.windVisuals!==false);if(wind.tint){if(!waterMask){waterMask=new Path2D();waterMask.addPath(shapePath(LAKE));for(const q of ISLANDS)waterMask.addPath(shapePath(outline(q)));}ctx.save();ctx.clip(waterMask,'evenodd');ctx.fillStyle=`rgba(100,114,124,${wind.tint})`;ctx.fillRect(bounds.left,bounds.top,bounds.right-bounds.left,bounds.bottom-bounds.top);ctx.restore();}
+ const whiteTexture=new Path2D(),blueTexture=new Path2D();
  const textureStep=Math.max(2.6,9/scale,Math.max(5,22/scale)*wind.spacing);
  for(let y=Math.floor(bounds.top/textureStep)*textureStep;y<bounds.bottom+textureStep;y+=textureStep)for(let x=Math.floor(bounds.left/textureStep)*textureStep;x<bounds.right+textureStep;x+=textureStep){
   const seed=Math.sin(x*12.9898+y*78.233)*43758.5453,part=seed-Math.floor(seed),phase=(b.time*speed+part*4)%4;
   const px=x+part*4.7+nx*phase,py=y+part*4.8+ny*phase;if(shoreAt(px,py).land)continue;
   const curl=(.10+H*.22)*Math.sin(b.time*1.15+part*Math.PI*2),sway=.06*Math.sin(b.time*.8+part*11);
-  ctx.strokeStyle=part>.55-wind.white*.3?`rgba(250,254,249,${wind.opacity})`:'#b3cecd';ctx.lineWidth=.07+wind.white*.07;ctx.beginPath();ctx.moveTo(px-.7,py+sway);ctx.bezierCurveTo(px-.28,py-.12+curl,px+.25,py+.12-curl,px+.7,py-sway);ctx.stroke();
+  const texture=part>.55-wind.white*.3?whiteTexture:blueTexture;texture.moveTo(px-.7,py+sway);texture.bezierCurveTo(px-.28,py-.12+curl,px+.25,py+.12-curl,px+.7,py-sway);
  }
+ ctx.lineWidth=.07+wind.white*.07;ctx.strokeStyle=`rgba(250,254,249,${wind.opacity})`;ctx.stroke(whiteTexture);ctx.strokeStyle='#b3cecd';ctx.stroke(blueTexture);
  for(const history of wakeHistories(b))if(history.length){drawHullWake(ctx,history,b.time);drawReflectedWake(ctx,history,b.time,reflectionFacesNear(camera.x,camera.y));}
+ for(const h of [b.brakingWaves??[],...(b.wakeSources??[]).map(q=>q.braking??[])])drawBrakingWaves(ctx,h,b.time);
  if(!overview)drawSurfaceFlow(ctx,b,env,bounds,scale);
  if(!overview)drawReflectedWeather(ctx,b,env,reflectionFacesNear(camera.x,camera.y,40));
  // Trees remain on dry land; reeds are traversable water vegetation.
@@ -262,13 +272,14 @@ function drawBoat(ctx,b){
  }
  for(const [end,x] of [['bow',2.05],['stern',-2.05]]){const power=b.thrusters[end+'Actual'];if(Math.abs(power)<.05)continue;ctx.strokeStyle='#f8fff0';ctx.lineWidth=.13;const dir=-Math.sign(power);for(let i=0;i<4;i++){const d=(i+(b.time*4)%1)*.28;ctx.beginPath();ctx.moveTo(x-.15,dir*(1.05+d));ctx.lineTo(x+.15,dir*(1.05+d));ctx.stroke();}}
  ctx.save();ctx.scale(5.5/b.spec.length,2.1/b.spec.beam);drawFenders(ctx,b);ctx.restore();
- if(b.electrics?.powered.navigationLights){for(const [x,y,color]of [[1.2,-.77,'#e2685b'],[1.2,.77,'#74d794'],[-2.65,0,'#fff8dc']]){ctx.fillStyle=color;ctx.beginPath();ctx.arc(x,y,.09,0,Math.PI*2);ctx.fill();}}
+ if(b.spec.jet){const eye=cleatLocal(b.spec,'bow');ctx.save();ctx.scale(5.5/b.spec.length,2.1/b.spec.beam);ctx.strokeStyle='#f4e6ba';ctx.fillStyle='#193b36';ctx.lineWidth=.07;ctx.beginPath();ctx.arc(eye.x,eye.y,.16,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.restore();}
+ if(b.electrics?.powered.navigationLights){for(const [x,y,color]of [[1.2,-.77,'#e2685b'],[1.2,.77,'#74d794'],[-2.65,0,'#fff8dc']]){ctx.fillStyle=color;ctx.beginPath();ctx.arc(x,y,.16,0,Math.PI*2);ctx.fill();}}
  drawDeckWater(ctx,b);
  ctx.strokeStyle='#5c8a88';ctx.lineWidth=.035;ctx.beginPath();ctx.moveTo(-2,Math.sin(b.roll)*3);ctx.lineTo(1.5,Math.sin(b.roll)*3);ctx.stroke();ctx.fillStyle='#d5a64f';for(const end of Object.keys(attachmentNames(b))){const p=cleatLocal(b.spec,end);ctx.fillStyle=end==='stern'?'#152f2b':'#d5a64f';ctx.beginPath();ctx.arc(p.x*5.5/b.spec.length,p.y*2.1/b.spec.beam,end==='stern'?.20:.10,0,Math.PI*2);ctx.fill();}ctx.restore();
 }
 export function renderMinimap(canvas,b,view){
  const c=canvas.getContext('2d'),w=canvas.width,h=canvas.height,p=minimapProjection(w,h,b),scale=p.scale;
- c.clearRect(0,0,w,h);c.fillStyle='#aec59b';c.fillRect(0,0,w,h);c.save();c.scale(scale,scale);c.translate(-p.left,-p.top);drawTerrain(c);
+ c.clearRect(0,0,w,h);c.fillStyle='#aec59b';c.fillRect(0,0,w,h);c.save();c.scale(scale,scale);c.translate(-p.left,-p.top);drawTerrain(c,{left:p.left,top:p.top,right:p.left+w/scale,bottom:p.top+h/scale});
  c.lineWidth=1/scale;for(const q of BRIDGES){c.strokeStyle=q.dam?'#8e785d':'#789385';c.beginPath();c.moveTo(q.a.x,q.a.y);c.lineTo(q.b.x,q.b.y);c.stroke();}
  c.fillStyle='#607e65';for(const q of [{x:80,y:15},...REMOTE_HARBORS])c.fillRect(q.x-2/scale,q.y-2/scale,4/scale,4/scale);
  c.fillStyle='#c39d4b';c.beginPath();c.arc(FUEL_STATION.x,FUEL_STATION.y,3/scale,0,Math.PI*2);c.fill();

@@ -162,7 +162,7 @@ export function environment(t,e={},x=null,y=null){
  return{wind,current,shelter,waveScale:dry?0:.4+.6*shelter};
 }
 export function waveHeight(e,t=0){return e.autoWaves?Math.min(.55,.004*weatherAt(t,e).windSpeed**2):(e.waveHeight??0);}
-let dockReflectionFaces;
+let dockReflectionFaces,reflectionGrid;
 function staticReflectionFaces(){
  if(dockReflectionFaces)return dockReflectionFaces;
  dockReflectionFaces=DOCKS.flatMap((d,i)=>[
@@ -172,12 +172,14 @@ function staticReflectionFaces(){
  return dockReflectionFaces;
 }
 export function reflectionFacesNear(x,y,radius=70){
+ const all=staticReflectionFaces();if(!reflectionGrid){reflectionGrid=new Map();all.forEach((f,id)=>{f.order=id;for(let ix=Math.floor(Math.min(f.a.x,f.b.x)/80);ix<=Math.floor(Math.max(f.a.x,f.b.x)/80);ix++)for(let iy=Math.floor(Math.min(f.a.y,f.b.y)/80);iy<=Math.floor(Math.max(f.a.y,f.b.y)/80);iy++){const key=ix+','+iy;let bucket=reflectionGrid.get(key);if(!bucket){bucket=[];reflectionGrid.set(key,bucket);}bucket.push(f);}});}
+ const nearby=new Set();for(let ix=Math.floor((x-radius)/80);ix<=Math.floor((x+radius)/80);ix++)for(let iy=Math.floor((y-radius)/80);iy<=Math.floor((y+radius)/80);iy++)for(const f of reflectionGrid.get(ix+','+iy)??[])nearby.add(f);
  const p={x,y},faces=[];
- for(const f of staticReflectionFaces()){
+ for(const f of nearby){
   const {a,dx,dy,length2}=f,u=clamp(((x-a.x)*dx+(y-a.y)*dy)/length2,0,1),distance=Math.hypot(x-a.x-u*dx,y-a.y-u*dy);
   if(distance<radius&&wallDistance(p,f)>.001)faces.push({...f,distance});
  }
- faces.sort((a,b)=>a.distance-b.distance);faces.splice(4);
+ faces.sort((a,b)=>a.distance-b.distance||a.order-b.order);faces.splice(4);
  const s=shoreAt(x,y);
  if(s.distance>0&&s.distance<radius){const q={x:x-s.nx*s.distance,y:y-s.ny*s.distance},half=65;
   faces.push({id:'shore',a:{x:q.x-s.ny*half,y:q.y+s.nx*half},b:{x:q.x+s.ny*half,y:q.y-s.nx*half},nx:s.nx,ny:s.ny,coefficient:s.beach?.08:q.x>0&&q.x<165&&Math.abs(q.y-4)<3?.62:.34,distance:s.distance});

@@ -1,3 +1,4 @@
+import {openFuel} from './helpers/fuel.js';
 import {attachBow,openBollard} from './helpers/mooring.js';
 import {test,expect} from '@playwright/test';
 async function hold(page,locator,ms=500){await locator.scrollIntoViewIfNeeded();const r=await locator.boundingBox();await page.mouse.move(r.x+r.width/2,r.y+r.height/2);await page.mouse.down();await page.waitForTimeout(ms);await page.mouse.up();await page.waitForTimeout(130);}
@@ -26,8 +27,8 @@ test('weather has two endpoints per strength slider, independent direction range
  await page.locator('#wind-min').focus();await page.keyboard.press('ArrowLeft');await expect(page.locator('#wind-min')).toHaveValue('9.5');await expect(page.locator('#wind-value')).toHaveText('9.5–10.0 m/s');await page.screenshot({path:'/tmp/boat-v9-weather.png',fullPage:false});
 });
 test('fuel requires tying to the fuel pier and detaching stops filling',async({page})=>{
- await page.goto('/');await page.locator('#start-location').selectOption('fuel');await page.locator('#begin-session').click();await page.locator('#refuel').click();await expect(page.locator('#toast')).toContainText('Przywiąż');await expect(page.locator('#fuel-status')).not.toContainText('TANKOWANIE');
- await attachBow(page);await page.locator('#refuel').click();await expect(page.locator('#fuel-status')).toContainText('TANKOWANIE');await page.locator('[data-action=detach][data-rope=bow]').click();await expect(page.locator('#fuel-status')).toContainText('przerwane');
+ await page.goto('/');await page.locator('#start-location').selectOption('fuel');await page.locator('#begin-session').click();await openFuel(page);await page.locator('#refuel').click();await expect(page.locator('#toast')).toContainText('Przywiąż');await expect(page.locator('#fuel-status')).not.toContainText('TANKOWANIE');
+ await attachBow(page);await openFuel(page);await page.locator('#refuel').click();await expect(page.locator('#fuel-status')).toContainText('TANKOWANIE');await page.locator('#fuel-close').click();await openBollard(page);await page.locator('[data-action=detach][data-rope=bow]').click();await expect(page.locator('#fuel-status')).toContainText('przerwane');
 });
 test('synthesised engine audio contains signal, rises with RPM and respects mute and pause',async({page})=>{
  await page.goto('/');

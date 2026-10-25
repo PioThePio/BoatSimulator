@@ -1,3 +1,5 @@
+import {recordBrakingWave} from './braking-waves.js';
+import {sternPowerOnState,oarForces} from './maneuver-transient.js';
 import {voyageEvent} from './voyage-events.js';
 import {racingResistance} from './racing.js';
 import {bilgeTrimAngle,applyFloodShort} from './flood-systems.js';
@@ -114,7 +116,8 @@ export function step(b,e,dt,{sharedStep=true}={}){
  force((-drag-S.mass*.009*u)*wetFraction*(S.towDragFactor??1),0);
  if(S.inflatable&&e.towEffects!==false)force(-crossWaveDrag(S,u,b.encounter.crossSlope)*wetFraction,0);
  const poweredTurn=clamp(Math.abs(b.actualSteer)/S.maxSteer,0,1)*clamp(b.engines.reduce((sum,en)=>sum+Math.abs(en.thrust),0)/(S.mass*2),0,1)*clamp(1-Math.abs(u)/5,0,1);
- if(S.inflatable)inflatableLateral(S,v,b.w,b.planing,force);else hullLateralForces(S,u,v,b.w,b.planing,(x,y,px,py)=>force(x*wetFraction,y*wetFraction,px,py),poweredTurn);
+ b.powerOn=sternPowerOnState(S,b.engines,b.actualSteer,u,dt,b.powerOn);
+ if(S.inflatable)inflatableLateral(S,v,b.w,b.planing,force);else hullLateralForces(S,u,v,b.w,b.planing,(x,y,px,py)=>force(x*wetFraction,y*wetFraction,px,py),poweredTurn,b.powerOn.release);
  if(!b.bank||b.time>=(b.bankAt??0)){b.bank=bankInfluence(b);b.bankAt=b.time+.25;}
  const bankSteering=1-.06*b.bank.strength*clamp(Math.abs(u)/2,0,1);
  // Outboards rotate at a finite rate; linked controls copy commands, not engine states.
@@ -156,7 +159,7 @@ export function step(b,e,dt,{sharedStep=true}={}){
   force(skeg*Math.sin(delta),skeg*Math.cos(delta),x,y);
  });
  // Oars/paddle, when occupied, supply human power rather than an invisible engine.
- if(S.manual&&b.occupied){const thrust=Math.sign(b.throttle)*Math.min(90,85/Math.max(.8,Math.abs(u)))*Math.abs(b.throttle);force(thrust,0);force(0,-Math.abs(thrust)*.65*Math.sin(b.actualSteer),-.35*S.length,0);}
+ if(S.manual&&b.occupied){const oars=oarForces(S,u,b.throttle,b.actualSteer);b.oars=oars;force(oars.port,0,0,-oars.arm);force(oars.starboard,0,0,oars.arm);}
  systemsStep(b,dt);
  force(0,b.thrusters.bowForce,S.length*.38,0);force(0,b.thrusters.sternForce,-S.length*.38,0);
  const reeds=reedDensityAt(b.x,b.y);b.reeds=reeds;
@@ -174,7 +177,7 @@ export function step(b,e,dt,{sharedStep=true}={}){
  const vdot=(Y-S.mass*ur*b.w)/(S.mass+(S.my-S.mass)*wetFraction);
  // Empirical hull stability cancels the bare potential-flow Munk moment.
  // Leaving it uncalibrated amplifies sideslip into a spin at planing speed.
- const rotationalDrag=(S.inflatable?.12:S.air?.35:1)*.5*1000*S.beam*S.length**4*(.004+.003*b.planing)*b.w*Math.abs(b.w);
+ const rotationalDrag=(1-.42*(b.powerOn?.release??0))*(S.inflatable?.12:S.air?.35:1)*.5*1000*S.beam*S.length**4*(.004+.003*b.planing)*b.w*Math.abs(b.w);
  const rdot=(N-rotationalDrag)/S.iz-(.10+.04*Math.abs(u)/S.length)*b.w;
  // Convert body acceleration to world acceleration without double-counting frame rotation.
  const du=udot-b.w*vr,dv=vdot+b.w*ur;
@@ -182,7 +185,7 @@ export function step(b,e,dt,{sharedStep=true}={}){
  solveRopes(b,dt,m=>event(b,m));updateAnchor(b,e,dt,m=>event(b,m));
  groundContact(b,wave,dt,m=>event(b,m));
  b.x+=b.vx*dt;b.y+=b.vy*dt;b.a+=b.w*dt;
- if(wetFraction>.1&&bottomAt(b.x,b.y).depth>0)recordHullWake(b.wake,b,env.current);else b.wake=[];
+ if(wetFraction>.1&&bottomAt(b.x,b.y).depth>0){recordHullWake(b.wake,b,env.current);recordBrakingWave(b,env.current,dt);}else b.wake=[];
  contacts(b,dt);boomContacts(b,dt);trafficStep(b,e,dt,{integrate:sharedStep});if(sharedStep&&e.traffic)for(const q of b.traffic)boomContacts(q,dt,b);if(sharedStep)boomStep(b,e,dt);
  if(b.damage>=100){b.throttle=0;b.throttle2=0;}
  b.telemetry={surge:ur,sway:vr,thrust:totalThrust,drag:Math.abs(drag),acceleration:udot,shaftPower:b.engines.reduce((sum,en)=>sum+en.hp*735.5*en.n**3,0)};

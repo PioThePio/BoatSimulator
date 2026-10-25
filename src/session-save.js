@@ -19,7 +19,8 @@ const finite=(v,lo=-1e8,hi=1e8)=>typeof v==='number'&&Number.isFinite(v)&&v>=lo&
 function validateTree(value){
  let count=0;const visit=(v,depth=0)=>{if(++count>350000||depth>30)throw Error('Zbyt duży zapis.');if(typeof v==='number'&&!Number.isFinite(v))throw Error('Błędna liczba.');if(v&&typeof v==='object')for(const [key,q]of Object.entries(v)){if(['__proto__','prototype','constructor'].includes(key))throw Error('Błędne pole.');visit(q,depth+1);}};visit(value);
 }
-export function restoreSession(value){
+let expectedBoomCount;
+export function restoreSession(value,{validateOnly=false}={}){
  try{
   const data=typeof value==='string'?JSON.parse(value):JSON.parse(JSON.stringify(value));
   if(data?.version!==SAVE_VERSION||data.worldScale!==WORLD_DISTANCE_SCALE||!finite(data.savedAt,0,1e15))throw Error('Nieobsługiwana wersja zapisu.');
@@ -33,7 +34,10 @@ export function restoreSession(value){
   }
   if(!ids.has(f.activeId)||!ids.has(f.rigBoatId)||!finite(f.nextId,2,1e6)||!finite(f.nextTowId,1,1e6)||!finite(f.time,0))throw Error('Błędna sesja.');
   if(f.tows.some(r=>!ids.has(r.from)||!ids.has(r.to)||r.from===r.to||!finite(r.length,.6,60)||!finite(r.strength,1000,40000)||!finite(r.EA,1000,1e7)||!['bow','stern','portBow','starboardBow','portStern','starboardStern','portMid','starboardMid','towCenter'].includes(r.fromEnd)||!['bow','stern','portBow','starboardBow','portStern','starboardStern','portMid','starboardMid','towCenter'].includes(r.toEnd)))throw Error('Błędny hol.');
-  const base=createFleetCraft('runabout');if(!Array.isArray(data.world?.booms)||data.world.booms.length!==base.booms.length||!data.world.buoys||!Array.isArray(data.world.traffic))throw Error('Błędny stan akwenu.');
+  expectedBoomCount??=createFleetCraft('runabout').booms.length;if(!Array.isArray(data.world?.booms)||data.world.booms.length!==expectedBoomCount||!data.world.buoys||!Array.isArray(data.world.traffic))throw Error('Błędny stan akwenu.');
+  if(data.rig&&(!finite(data.rig.car?.x)||!finite(data.rig.car?.y)||!finite(data.rig.trailer?.x)||!finite(data.rig.trailer?.y)||!data.rig.winch))throw Error('Błędny stan SUV-a.');
+  if(validateOnly)return{ok:true};
+  const base=createFleetCraft('runabout');
   f.boats=f.boats.map(saved=>{const b=createFleetCraft(saved.fleetKind??saved.spec.profile);Object.assign(b,saved);const name=TOWABLES[b.fleetKind]?.name??CRAFTS[b.spec.profile]?.name??b.spec.name;if(b.name===b.spec.name||/ · \d+$/.test(b.name??''))b.name=name+(b.name?.match(/ · \d+$/)?.[0]??'');b.spec.name=name;if(b.fleetKind==='banana'||b.fleetKind==='mat')b.spec.inflatable=true;for(const r of b.ropes){r.control=0;r.rate=0;r.effortTime=0;}b.thrusters.bow=b.thrusters.stern=0;return b;});
   const trafficById=new Map(data.world.traffic.map(q=>[q.id,q]));
   data.world.traffic=base.traffic.map(q=>trafficById.get(q.id)??q);
@@ -51,8 +55,8 @@ export function readAutosave(storage){
 export function writeAutosave(storage,session,now=Date.now()){
  try{
   const raw=JSON.stringify(snapshotSession(session,now));if(raw.length>4_000_000)throw Error('Zapis przekracza dostępny rozmiar.');
-  if(!restoreSession(raw).ok)throw Error('Błędny stan symulacji.');
-  const old=storage.getItem(SAVE_KEY);if(old&&restoreSession(old).ok)try{storage.setItem(BACKUP_KEY,old);}catch{}
+  if(!restoreSession(raw,{validateOnly:true}).ok)throw Error('Błędny stan symulacji.');
+  const old=storage.getItem(SAVE_KEY);if(old&&restoreSession(old,{validateOnly:true}).ok)try{storage.setItem(BACKUP_KEY,old);}catch{}
   storage.setItem(SAVE_KEY,raw);return{ok:true,savedAt:now};
  }catch{return{ok:false,message:'Zapis lokalny niedostępny lub brak miejsca. Zezwól na dane tej strony w przeglądarce.'};}
 }

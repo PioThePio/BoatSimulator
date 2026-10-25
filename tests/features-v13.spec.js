@@ -22,7 +22,7 @@ test('wind arrow shows local live speed and destination direction; a retrieval s
 });
 
 test('slip angle is shared by setup and live controls and survives a new trial',async({page})=>{
- await page.goto('/');await page.locator('#setup-slip-angle').selectOption('12');await page.locator('#start-location').selectOption('trailer');await page.locator('#begin-session').click();await expect(page.locator('#slip-angle')).toHaveValue('12');await expect(page.locator('#slip-angle-value')).toHaveText('12° · 21%');await page.locator('#slip-angle').fill('6');await page.locator('#reset').click();await expect(page.locator('#setup-slip-angle')).toHaveValue('6');await expect(page.locator('#start-location')).toHaveValue('trailer');
+ await page.goto('/');await page.locator('#setup-slip-angle').selectOption('12');await page.locator('#start-location').selectOption('trailer');await page.locator('#begin-session').click();await expect(page.locator('#slip-angle')).toHaveValue('12');await expect(page.locator('#slip-angle-value')).toHaveText('12° · 21%');await page.locator('#trip-open').click();await page.locator('#slip-angle').fill('6');await page.locator('#trip-dialog .setup-heading button').click();await page.locator('#reset').click();await expect(page.locator('#setup-slip-angle')).toHaveValue('6');await expect(page.locator('#start-location')).toHaveValue('trailer');
 });
 
 test('phone car console, wind and trailer controls fit without horizontal scrolling',async({page})=>{

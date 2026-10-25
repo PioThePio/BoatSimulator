@@ -36,8 +36,8 @@ test('lowering advice appears only for a raised and exposed drive, with differen
 test('SAR radial closing speed differs from relative speed and includes turning at the pickup point',()=>{
  const {b,o}=scene();Object.assign(o,{x:b.x+10,y:b.y,vx:1});b.vx=3;b.vy=0;let q=rescueApproach(b,o);near(q.closingSpeed,2);near(q.relativeSpeed,2);b.vx=-1;q=rescueApproach(b,o);near(q.closingSpeed,-2);b.vx=1;b.vy=2;q=rescueApproach(b,o);near(q.closingSpeed,0);near(q.relativeSpeed,2);b.vy=0;b.w=1;assert.ok(rescueApproach(b,o).relativeSpeed>2);
 });
-test('SAR pickup waits for real gear N, even after the throttle command was already moved to neutral',()=>{
- const {b,o}=scene();b.engines[0].key='running';b.engines[0].gear=1;b.throttle=0;assert.equal(pickupStatus(b,o).ok,false);b.engines[0].gear=0;assert.equal(pickupStatus(b,o).ok,true);b.w=1;assert.equal(pickupStatus(b,o).ok,false);
+test('SAR pickup permits actual gear F with a penalty but still rejects excessive relative speed',()=>{
+ const {b,o}=scene();b.engines[0].key='running';b.engines[0].gear=1;b.throttle=0;assert.equal(pickupStatus(b,o).ok,true);assert.equal(rescueResult(b,o,0).score,70);b.engines[0].gear=0;assert.equal(pickupStatus(b,o).ok,true);b.w=1;assert.equal(pickupStatus(b,o).ok,false);
 });
 test('contact force estimate grows with impact speed squared and object mass, vanishes at rest and does not change velocities',()=>{
  const {b,o}=scene(),before=[b.vx,o.vx];b.vx=1;const a=rescueContactMeasurement(b,o,{x:1,y:0},80);b.vx=2;const fast=rescueContactMeasurement(b,o,{x:1,y:0},80),ring=rescueContactMeasurement(b,{...o,kind:'ring'},{x:1,y:0},2.5);near(fast.force,a.force*4);assert.ok(fast.force>ring.force*10);b.vx=0;assert.equal(rescueContactMeasurement(b,o,{x:1,y:0},80).force,0);assert.deepEqual([b.vx,o.vx],before);

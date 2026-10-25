@@ -8,6 +8,7 @@ import {boomPoint} from './marina.js';
 const notify=b=>message=>{if(!b.events)return;b.events.unshift({time:b.time,message});b.events.splice(12);};
 const dockSolids=new Set(DOCKS);
 function rectHit(p,radius,rect){
+ if(p.x+radius<=rect.x||p.x-radius>=rect.x+rect.w||p.y+radius<=rect.y||p.y-radius>=rect.y+rect.h)return null;
  const near={x:clamp(p.x,rect.x,rect.x+rect.w),y:clamp(p.y,rect.y,rect.y+rect.h)},dx=p.x-near.x,dy=p.y-near.y,d=Math.hypot(dx,dy);let depth=radius-d,n;
  if(depth<=0)return null;
  if(d<1e-8){const faces=[{v:p.x-rect.x,x:-1,y:0},{v:rect.x+rect.w-p.x,x:1,y:0},{v:p.y-rect.y,x:0,y:-1},{v:rect.y+rect.h-p.y,x:0,y:1}].sort((a,b)=>a.v-b.v);n={x:faces[0].x,y:faces[0].y};depth=radius+faces[0].v;}else n={x:dx/d,y:dy/d};
@@ -27,7 +28,9 @@ export function contacts(b,dt,indices=null){
  }
 }
 export function boomContacts(b,dt,world=b){
+ const bound=b.spec.length*.5+b.spec.beam*.5+1;
  for(const q of world.booms){
+  if(Math.abs(b.x-q.x1)>q.length+bound||Math.abs(b.y-q.y1)>q.length+bound)continue;
   const end=boomPoint(q),dx=end.x-q.x1,dy=end.y-q.y1;
   const hitFor=sample=>{const p=point(b,sample.x,sample.y),t=clamp(((p.x-q.x1)*dx+(p.y-q.y1)*dy)/(q.length*q.length),0,1),near=boomPoint(q,t),rx=p.x-near.x,ry=p.y-near.y,d=Math.hypot(rx,ry),depth=sample.radius+q.width/2-d;if(depth<=0||d<1e-6)return null;return{p,near,n:{x:rx/d,y:ry/d},depth};};
   if(b.fenders)for(const g of fenderGeometry(b.spec)){let hit=null;for(const sample of fenderContactShape(g)){const h=hitFor(sample);if(h&&(!hit||h.depth>hit.depth))hit={...h,sample};}if(!hit)continue;const {near}=hit,arm={x:near.x-q.x1,y:near.y-q.y1},otherInverse=n=>(arm.x*n.y-arm.y*n.x)**2/q.inertia,react=(n,j)=>{q.w+=(arm.x*n.y-arm.y*n.x)*j/q.inertia;};fenderContact(b,hit.sample,{...hit,otherVelocity:{x:near.vx,y:near.vy},otherInverse,react,target:'Y-'+q.id},dt,notify(b));}

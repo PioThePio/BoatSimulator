@@ -1,3 +1,5 @@
+import {installScreenLayout} from './screen-layout.js';
+import {installRestoreHistory} from './restore-history.js';
 import {installMapAlerts} from './map-alerts.js';
 import {installNavigationLegend} from './render-navigation.js';
 import {installLogbook} from './logbook-ui.js';
@@ -9,6 +11,7 @@ import {spawnFleetCraft} from './fleet-spawns.js';
 import './style.css';
 import './helm.css';
 import './fleet.css';
+import './screen.css';
 import {createFleet,activeBoat,rigBoat,addFleetBoat,selectFleetBoat,fleetStep,recordFleetTrails,removeFleetBoat} from './fleet.js';
 import {installFleetUI} from './fleet-ui.js';
 import {installRescueUI} from './rescue-ui.js';
@@ -21,7 +24,7 @@ import {ropeLoadState} from './rope-load.js';
 import {markup} from './layout.js';
 import {createBoat,point,cleat,attachRope,environment,clamp,bottomAt,waveAt} from './physics.js';
 import {CRAFTS,specification} from './craft.js';
-import {BOLLARDS,WORLD,weatherAt,waveHeight,shoreAt,SERVICE_STATION,REMOTE_HARBORS,MAP_LABELS,MAP_POIS} from './world.js';
+import {BOLLARDS,WORLD,weatherAt,waveHeight,shoreAt,SERVICE_STATION,REMOTE_HARBORS,MAP_LABELS,MAP_POIS,FUEL_STATIONS} from './world.js';
 import {nearService} from './service.js';
 import {installCockpit} from './cockpit.js';
 import {renderWorld,renderMinimap} from './render.js';
@@ -44,7 +47,7 @@ window.addEventListener('blur',()=>sound.setActive(false));document.addEventList
 $('#sound-toggle').onchange=()=>{soundSettings();sound.unlock();};$('#sound-volume').oninput=$('#engine-volume').oninput=soundSettings;
 let start='lake',boatOptions={profile:'runabout',engineCount:1,powers:[90,90],coldStart:true},boat=createBoat(start,boatOptions);
 let vehicle='boat',towRig=createTowRig(boat);
-let fleet=createFleet(boat),sessionReady=false,pendingPlacement=null,lastAutosave=performance.now();
+let fleet=createFleet(boat),sessionReady=false,restoreHistory=null,screenUI=null,pendingPlacement=null,lastAutosave=performance.now();
 $('#steering-settings').insertAdjacentHTML('beforeend',`<fieldset id="twin-steering" hidden><legend>Kąty dwóch napędów</legend><label><input id="link-steering" type="checkbox" checked> Wspólna kierownica</label>${['Lewy','Prawy'].map((name,i)=>`<label>${name} <output id="drive-angle-${i}">0°</output><input id="drive-steer-${i}" aria-label="Kąt napędu ${name.toLowerCase()}" type="range" min="-45" max="45" step="1" value="0" disabled></label>`).join('')}</fieldset>`);
 $('#link-steering').onchange=e=>{for(const en of boat.engines)en.steerTarget=e.target.checked?null:boat.actualSteer;syncControls();};
 for(const i of [0,1])$('#drive-steer-'+i).oninput=e=>{if(boat.engines[i])boat.engines[i].steerTarget=+e.target.value*Math.PI/180;syncControls();};
@@ -54,7 +57,7 @@ $('.telemetry').onclick=e=>{if(e.target.closest('button'))return;speedUnit=speed
 document.addEventListener('click',e=>{const button=e.target.closest('[data-flow-unit]');if(!button)return;const key=button.dataset.flowUnit;flowUnits[key]=flowUnits[key]==='m/s'?'km/h':'m/s';try{localStorage.setItem('przystan-'+key+'-unit',flowUnits[key]);}catch{}telemetry();});
 let atlas=createAtlas();
 let paused=false,zoom=1,follow=true,overview=false,manualCenter=null,centerReference={x:boat.x,y:boat.y},selectedEngine=0,selectedTarget=null;
-let trail=boat.trail,view=null,sonarHistory=[],sonarTime=0,lastEvent=null,last=performance.now(),accumulator=0,telemetryAt=0;
+let trail=boat.trail,view=null,sonarHistory=[],sonarTime=0,lastEvent=null,last=performance.now(),accumulator=0,telemetryAt=0,soundAt=-Infinity;
 const env={windSpeed:0,windDirection:90,currentSpeed:0,currentDirection:90,gusts:false,waveHeight:0,waveDirection:90,autoWaves:true,spatialEffects:true,traffic:true};
 const keys=new Set(),keyTimes=new Map(),blockedGas=new Set();
 let toastTimer;
@@ -79,7 +82,7 @@ function syncControls(){
 function setSteer(v){if(vehicle==='suv')towRig.steer=clamp(v,-SUV.maxSteer,SUV.maxSteer);else boat.steer=clamp(v,-boat.spec.maxSteer,boat.spec.maxSteer);syncControls();}
 function setThrottle(v,index=selectedEngine){v=boat.damage>=100||boat.spec.passive&&!boat.spec.manual?0:throttleValue(boat.spec.air?Math.max(0,v):v);selectedEngine=index;if(boat.linked||boat.spec.engineCount===1)boat.throttle=boat.throttle2=v;else if(index===0)boat.throttle=v;else boat.throttle2=v;syncControls();}
 function neutralAll(){boat.throttle=boat.throttle2=0;for(const k of ['w','s','arrowup','arrowdown'])if(keys.has(k)){keys.delete(k);blockedGas.add(k);}syncControls();}
-const cockpitApi={boat:()=>boat,selected:()=>selectedEngine,setThrottle,neutral:neutralAll,toast,env};
+const cockpitApi={boat:()=>boat,selected:()=>selectedEngine,setThrottle,neutral:neutralAll,toast,env,vehicle:()=>vehicle};
 const updateCockpit=installCockpit(cockpitApi);
 const towApi={boat:()=>boat,rig:()=>towRig,vehicle:()=>vehicle,setVehicle,toast,afterReset:()=>{keys.clear();blockedGas.clear();releaseRopeControls();centerBoat();renderRopes();syncControls();telemetry();}};
 const updateTowCockpit=installTowCockpit(towApi);
@@ -88,9 +91,9 @@ const pumpControls=document.createElement('div');pumpControls.className='bilge-c
 const serviceMap=document.createElement('div');serviceMap.id='service-map';serviceMap.hidden=true;serviceMap.append($('#repair'),$('#repair-status'));$('.water-wrap').append(serviceMap);
 const updateOperations=installOperationsUI({boat:()=>boat,rig:()=>towRig,vehicle:()=>vehicle});
 const updatePowerPanel=installPowerPanel({boat:()=>boat,refresh:()=>telemetry()});
-const updateRescue=installRescueUI({fleet:()=>fleet,boat:()=>boat,vehicle:()=>vehicle,toast,save:saveGame,focus:o=>{overview=false;follow=false;manualCenter={x:o.x,y:o.y};}});
 const fleetUI=installFleetUI({fleet:()=>fleet,vehicle:()=>vehicle,env,toast,save:saveGame,remove:id=>{releaseAllHolds();logbook.persist();const r=removeFleetBoat(fleet,id);toast(r.message);if(r.ok){if(boat.id===id){boat=r.boat;vehicle='boat';trail=boat.trail;selectedEngine=0;sonarHistory=[];sonarTime=0;lastEvent=null;$('#destination').value=boat.navigationTarget??'';centerBoat();}selectedTarget=null;$('#mooring-picker').hidden=true;renderRopes();syncControls();telemetry();saveGame();}},release:releaseAllHolds,select:selectBoat,focus:id=>{const b=fleet.boats.find(q=>q.id===id);if(b){overview=false;follow=false;manualCenter={x:b.x,y:b.y};}},place:request=>pendingPlacement=request});
 const logbook=installLogbook({fleet:()=>fleet,ready:()=>sessionReady,toast});installNavigationLegend();
+const updateRescue=installRescueUI({fleet:()=>fleet,boat:()=>boat,vehicle:()=>vehicle,toast,save:saveGame,focus:o=>{overview=false;follow=false;manualCenter={x:o.x,y:o.y};}});
 function releaseAllHolds(){keys.clear();blockedGas.clear();releaseRopeControls();towApi.clearCarPedals();cockpitApi.holds.bow=cockpitApi.holds.stern=0;for(const b of fleet.boats)b.thrusters.bow=b.thrusters.stern=0;for(const r of fleet.tows)r.control=0;}
 function selectBoat(id){
  if(vehicle==='suv'&&Math.hypot(towRig.car.vx,towRig.car.vy)>.15){toast('Zatrzymaj SUV-a przed przesiadką.');return;}
@@ -104,14 +107,15 @@ function saveGame(){
  boat.navigationTarget=$('#destination').value;
  const weather=Object.fromEntries(weatherFields.map(id=>{const el=$('#'+id);return[id,el.type==='checkbox'?el.checked:el.value];}));
  let result;try{result=writeAutosave(localStorage,{fleet,towRig,env,start,boatOptions,vehicle,weather,ui:{zoom,follow,overview,manualCenter,centerReference,atlas,showTrail,selectedEngine,sonarHistory,sonarTime}});}catch{result={ok:false,message:'Przeglądarka blokuje zapis lokalny.'};}
+ if(result.ok&&restoreHistory)try{restoreHistory.record(localStorage.getItem('przystan-session-v1'),result.savedAt);}catch{}
  logbook.persist();
  $('#autosave-state').textContent=result.ok?'Zapisano lokalnie · '+new Date(result.savedAt).toLocaleTimeString('pl-PL',{hour:'2-digit',minute:'2-digit'}):result.message;$('#autosave-state').classList.toggle('danger',!result.ok);lastAutosave=performance.now();
 }
 window.addEventListener('pagehide',()=>{releaseAllHolds();saveGame();});window.addEventListener('blur',saveGame);document.addEventListener('visibilitychange',()=>{if(document.hidden){releaseAllHolds();saveGame();}});
 
 function centerBoat(){follow=true;overview=false;manualCenter=null;const p=vehicle==='suv'?towRig.car:boat;centerReference={x:p.x,y:p.y};}
-function setVehicle(next){if(next===vehicle){if(next==='boat'&&boat.id!==fleet.rigBoatId)selectBoat(fleet.rigBoatId);return;}if(next==='boat'&&Math.hypot(towRig.car.vx,towRig.car.vy)>.15){toast('Zatrzymaj SUV-a przed przesiadką do łodzi.');return;}zoom*=((vehicle==='boat'?boat.cameraZoom:1)/(next==='boat'?boat.cameraZoom:1));neutralAll();if(next==='suv'&&boat.id!==fleet.rigBoatId){selectBoat(fleet.rigBoatId);}towApi.clearCarPedals();if(next==='boat')selectCarGear(towRig,'P');vehicle=next;keys.clear();cockpitApi.holds.bow=cockpitApi.holds.stern=0;boat.thrusters.bow=boat.thrusters.stern=0;releaseRopeControls();$('#mooring-picker').hidden=$('#anchor-picker').hidden=true;centerBoat();syncControls();telemetry();toast(next==='suv'?'Stanowisko SUV · stacyjka, PRND · W gaz / S hamulec':'Stanowisko łodzi');saveGame();}
-function reset(){if(sessionReady)logbook.persist();paused=false;$('#paused-label').hidden=true;$('#pause').textContent='Ⅱ';boat=createBoat(start,boatOptions);boat.electrics.sonar=$('#sonar-toggle').checked;towRig=createTowRig(boat,{loaded:start==='trailer',atSlip:start==='retrieve'});fleet=createFleet(boat);pendingPlacement=null;$('#placement-help').hidden=true;vehicle=start==='trailer'?'suv':'boat';towApi.clearCarPedals();selectedEngine=0;centerBoat();keys.clear();blockedGas.clear();cockpitApi.holds.bow=cockpitApi.holds.stern=0;trail=boat.trail;sonarHistory=[];sonarTime=0;lastEvent=null;selectedTarget=null;$('#mooring-picker').hidden=$('#anchor-picker').hidden=true;renderRopes();syncControls();telemetry();accumulator=0;toast('Nowa próba · stacyjka w prawo: zapłon, następnie rozruch.');}
+function setVehicle(next){const mapBase=Math.min(width/140,height/80);if(next===vehicle){if(next==='boat'&&boat.id!==fleet.rigBoatId)selectBoat(fleet.rigBoatId);return;}if(next==='boat'&&Math.hypot(towRig.car.vx,towRig.car.vy)>.15){toast('Zatrzymaj SUV-a przed przesiadką do łodzi.');return;}zoom*=((vehicle==='boat'?boat.cameraZoom:1)/(next==='boat'?boat.cameraZoom:1));neutralAll();if(next==='suv'&&boat.id!==fleet.rigBoatId){selectBoat(fleet.rigBoatId);}towApi.clearCarPedals();if(next==='boat')selectCarGear(towRig,'P');vehicle=next;keys.clear();cockpitApi.holds.bow=cockpitApi.holds.stern=0;boat.thrusters.bow=boat.thrusters.stern=0;releaseRopeControls();$('#mooring-picker').hidden=$('#anchor-picker').hidden=true;centerBoat();syncControls();telemetry();const mapRect=canvas.getBoundingClientRect();zoom*=mapBase/Math.max(.01,Math.min(mapRect.width/140,mapRect.height/80));toast(next==='suv'?'Stanowisko SUV · stacyjka, PRND · W gaz / S hamulec':'Stanowisko łodzi');saveGame();}
+function reset(){screenUI?.close();if(sessionReady)logbook.persist();paused=false;$('#paused-label').hidden=true;$('#pause').textContent='Ⅱ';boat=createBoat(start,boatOptions);boat.electrics.sonar=$('#sonar-toggle').checked;towRig=createTowRig(boat,{loaded:start==='trailer',atSlip:start==='retrieve'});fleet=createFleet(boat);pendingPlacement=null;$('#placement-help').hidden=true;vehicle=start==='trailer'?'suv':'boat';towApi.clearCarPedals();selectedEngine=0;centerBoat();keys.clear();blockedGas.clear();cockpitApi.holds.bow=cockpitApi.holds.stern=0;trail=boat.trail;sonarHistory=[];sonarTime=0;lastEvent=null;selectedTarget=null;$('#mooring-picker').hidden=$('#anchor-picker').hidden=true;renderRopes();syncControls();telemetry();accumulator=0;toast('Nowa próba · stacyjka w prawo: zapłon, następnie rozruch.');}
 $('#throttle').oninput=e=>setThrottle(+e.target.value/100,0);$('#throttle2').oninput=e=>setThrottle(+e.target.value/100,1);
 for(const [id,index]of [['throttle',0],['throttle2',1]])$('#'+id).onpointerdown=()=>{selectedEngine=index;syncControls();};
 $('#center').onclick=()=>setSteer(0);$('#reset').onclick=()=>openSetup();
@@ -165,7 +169,7 @@ const startDescriptions={euzebia:'Wyspa Euzebia przy ujściu Rządzy · łagodne
 $('#start-location').onchange=()=>{start=$('#start-location').value;$('#start-description').textContent=startDescriptions[start];};
 function restoreWeather(){$('#setup-weather').append($('#environment-panel'));}
 function closeWeather(){$('#weather-picker').hidden=true;restoreWeather();}
-function openSetup(){releaseRopeControls();keys.clear();blockedGas.clear();towApi.clearCarPedals();cockpitApi.holds.bow=cockpitApi.holds.stern=0;closeWeather();$('#mooring-picker').hidden=$('#anchor-picker').hidden=true;$('#start-location').value=start;$('#start-description').textContent=startDescriptions[start];if(!$('#setup-dialog').open)$('#setup-dialog').showModal();}
+function openSetup(){if(sessionReady){saveGame();try{const current=readAutosave(localStorage);if(current.ok){$('#continue-session').hidden=false;$('#continue-session').onclick=()=>continueSession(current);$('#resume-info').textContent='Bieżący zapis · '+new Date(current.session.savedAt).toLocaleTimeString('pl-PL')+' · powrót w pauzie';}}catch{}}restoreHistory?.refresh();releaseRopeControls();keys.clear();blockedGas.clear();towApi.clearCarPedals();cockpitApi.holds.bow=cockpitApi.holds.stern=0;closeWeather();$('#mooring-picker').hidden=$('#anchor-picker').hidden=true;$('#start-location').value=start;$('#start-description').textContent=startDescriptions[start];if(!$('#setup-dialog').open)$('#setup-dialog').showModal();}
 function finishSetup(){start=$('#start-location').value;if(!applyCraft())return;$('#setup-dialog').close();sessionReady=true;$('#continue-session').hidden=true;last=performance.now();accumulator=0;saveGame();}
 $('#open-settings').onclick=openSetup;$('#begin-session').onclick=finishSetup;
 $('#setup-close').onclick=()=>$('#setup-dialog').close();$('#setup-dialog').addEventListener('cancel',()=>{keys.clear();});
@@ -209,10 +213,9 @@ $('#map-ropes').onclick=e=>{const choice=e.target.closest('[data-cleat]'),action
 const mooringPopup=draggablePopup($('#mooring-picker'),$('#mooring-handle'));
 draggablePopup($('#anchor-picker'),$('#anchor-handle'));
 $('#close-mooring').onclick=()=>{releaseRopeControls();$('#mooring-picker').hidden=true;};$('#close-anchor').onclick=()=>$('#anchor-picker').hidden=true;
-function showAnchor(){closeWeather();$('#mooring-picker').hidden=true;$('#anchor-picker').hidden=false;$('#map-anchor-target').value=$('#anchor-target').value;$('#anchor-picker').scrollIntoView({block:'nearest'});}
+function showAnchor(){closeWeather();$('#mooring-picker').hidden=true;$('#anchor-picker').hidden=false;$('#anchor-picker').scrollIntoView({block:'nearest'});}
 $('#show-anchor').onclick=showAnchor;
-for(const id of ['anchor-suggest','map-anchor-suggest'])$('#'+id).onclick=()=>{const advice=anchorAdvice(boat,env);$('#anchor-target').value=$('#map-anchor-target').value=advice.length;};
-for(const id of ['anchor-target','map-anchor-target'])$('#'+id).oninput=e=>$('#'+(id==='anchor-target'?'map-anchor-target':'anchor-target')).value=e.target.value;
+for(const id of ['anchor-suggest'])$('#'+id).onclick=()=>{const advice=anchorAdvice(boat,env);$('#anchor-target').value=advice.length;};
 for(const btn of document.querySelectorAll('[data-anchor]'))btn.onclick=()=>{const input=$('#anchor-target');if(!input.reportValidity())return;toast(anchorCommand(boat,btn.dataset.anchor,+input.value).message);};
 function mapZoom(factor){if(overview)zoomAtlas(atlas,factor,width/2,height/2,width,height);else zoom=clamp(zoom*factor,.16,3);}
 $('#zoom-in').onclick=()=>mapZoom(1.25);$('#zoom-out').onclick=()=>mapZoom(1/1.25);$('#follow').onclick=centerBoat;
@@ -231,6 +234,7 @@ canvas.onclick=e=>{
  for(const b of fleet.boats)if(b!==boat)for(const end of Object.keys(attachmentNames(b))){const q=cleat(b,end),dist=Math.hypot(p.x-q.x,p.y-q.y);if(dist<pointDistance){pointDistance=dist;boatPoint={boatId:b.id,end};}}
  if(boatPoint){openMooring(boatPoint);return;}
  let best=-1,d=Math.max(.8,12/view.scale);BOLLARDS.forEach((_,i)=>{const q=mooringPoint(boat,i),dist=Math.hypot(p.x-q.x,p.y-q.y);if(dist<d){best=i;d=dist;}});
+ const station=FUEL_STATIONS.find(q=>Math.hypot(p.x-q.pumpX,p.y-q.pumpY)<Math.min(d,Math.max(1,14/view.scale)));if(station){screenUI.openFuel(station);return;}
  const bow=cleat(boat,'bow'),bowDistance=Math.hypot(p.x-bow.x,p.y-bow.y);
  if(bowDistance<Math.max(boat.spec.length*.15,13/view.scale)&&(best<0||bowDistance<d)){showAnchor();return;}
  if(best>=0)openMooring(best);
@@ -251,13 +255,13 @@ function drawAnchorProfile(){
  const c=anchorCtx,w=anchorCanvas.width,h=anchorCanvas.height,a=boat.anchor;
  c.fillStyle='#edf3e9';c.fillRect(0,0,w,h);c.fillStyle='#d5dfc9';c.fillRect(0,h-26,w,26);c.fillStyle='#8a9b7e';c.font='12px system-ui';
  if(a.mode==='stowed'||a.broken){c.fillText(a.broken?'Utracona kotwica':'Profil rode po opuszczeniu kotwicy',20,h/2);return;}
- const p=cleat(boat,'bow'),d=Math.hypot(p.x-a.x,p.y-a.y),height=Math.max(.4,a.z+.65+boat.heave);
+ const p=cleat(boat,'bow'),d=Math.hypot(p.x-a.x,p.y-a.y),floorDepth=Math.max(0,bottomAt(a.x,a.y).depth),height=Math.max(.4,floorDepth+.65+boat.heave),anchorAbove=Math.max(0,floorDepth-a.z);
  const maxX=Math.max(4,d,a.shape?.x??d),sx=(w-65)/maxX,sz=(h-50)/Math.max(2,height);
  const X=x=>25+x*sx,Z=z=>h-27-z*sz;
- const profile=a.z>=bottomAt(a.x,a.y).depth-.02?anchorProfile(a,boat):[{x:0,z:0,chain:true},{x:d,z:height,chain:a.length<=a.chainReserve}];
+ const profile=a.z>=bottomAt(a.x,a.y).depth-.02?anchorProfile(a,boat):[{x:0,z:anchorAbove,chain:true},{x:d,z:height,chain:a.length<=a.chainReserve}];
  for(let i=1;i<profile.length;i++){c.beginPath();c.moveTo(X(profile[i-1].x),Z(profile[i-1].z));c.lineTo(X(profile[i].x),Z(profile[i].z));c.strokeStyle=profile[i].chain?'#657a79':'#b28c48';c.lineWidth=3;c.stroke();}
- c.fillStyle='#45605c';c.fillText('⚓',X(0)-5,Z(0)+2);c.fillText('dziobowa rolka',Math.max(28,Math.min(w-100,X(d)-35)),Math.max(14,Z(height)-9));
- c.strokeStyle='#769c94';c.setLineDash([4,5]);const sea=Z(a.z);c.beginPath();c.moveTo(0,sea);c.lineTo(w,sea);c.stroke();c.setLineDash([]);
+ c.fillStyle='#45605c';c.fillText('⚓',X(0)-5,Z(anchorAbove)+2);c.fillText('dziobowa rolka',Math.max(28,Math.min(w-100,X(d)-35)),Math.max(14,Z(height)-9));
+ c.strokeStyle='#769c94';c.setLineDash([4,5]);const sea=Z(floorDepth);c.beginPath();c.moveTo(0,sea);c.lineTo(w,sea);c.stroke();c.setLineDash([]);
  c.fillStyle='#788b73';c.font='11px system-ui';c.fillText('łańcuch: szary · lina: złota · skale osi różne',20,h-9);
 }
 function telemetry(){
@@ -277,16 +281,18 @@ function telemetry(){
  $('#roll').textContent=(boat.roll*180/Math.PI).toFixed(1)+'°';$('#pitch').textContent=(boat.pitch*180/Math.PI).toFixed(1)+'°';$('#regime').textContent=boat.planing>.65?'Ślizg':boat.planing>.12?'Przejście do ślizgu':'Wypornościowo';$('#wave-value').textContent=waveHeight(env,boat.time).toFixed(2)+' m';const live=weatherAt(boat.time,env);for(const name of ['wind','current'])$('#'+name+'-live').textContent=`Teraz: ${live[name+'Speed'].toFixed(name==='wind'?1:2)} m/s · ${Math.round(live[name+'Direction'])}°`;
  if(boat.electrics.powered.sonar&&(boat.time-sonarTime>=.25||!sonarHistory.length)){sonarHistory.push({depth});if(sonarHistory.length>180)sonarHistory.shift();sonarTime=boat.time;}
  $('#propeller-health').innerHTML=boat.engines.map((en,i)=>`<div class="health-row"><span>${S.air?'Śmigło powietrzne':S.jet?'Wirnik':'Śruba'} ${boat.engines.length===2?(i?'P':'L'):''}</span><strong>${en.propDamage>0&&en.propDamage<1?(100-en.propDamage).toFixed(1):Math.round(100-en.propDamage)}%${en.propContact?' · DNO':''}</strong></div>`).join('');
- const a=boat.anchor;$('#anchor-state').textContent=a.status;$('#anchor-progress').value=a.length;$('#winch-speed').textContent=Math.abs(a.winchRate??0).toFixed(2)+' m/s';$('#anchor-state').classList.toggle('danger',a.broken||a.windlassBlocked);$('#anchor-length').textContent=a.length.toFixed(1)+' m';$('#anchor-scope').textContent=a.mode==='stowed'?'—':(a.length/(bottomAt(a.x,a.y).depth+.65)).toFixed(1)+':1';$('#anchor-tension').textContent=(a.tension/1000).toFixed(2)+' kN';$('#anchor-holding').textContent=(a.capacity/1000).toFixed(2)+' kN';$('#anchor-rode').textContent=`${S.anchorMass} kg · ${Math.min(a.length,a.chainReserve).toFixed(1)} m łańcucha + ${Math.max(0,a.length-a.chainReserve).toFixed(1)} m liny`;
- const advice=anchorAdvice(boat,env),adviceText=`Orientacyjnie ${advice.scope}:1 · ${advice.required} m rode (dno–rolka ${advice.height.toFixed(1)} m)${advice.limited?' · za mały zapas, wybierz płytsze miejsce':''}`;for(const id of ['anchor-advice','map-anchor-advice']){$('#'+id).textContent=adviceText;$('#'+id).classList.toggle('danger',advice.limited);}
+ const a=boat.anchor;$('#anchor-progress').value=a.length;$('#winch-speed').textContent=Math.abs(a.winchRate??0).toFixed(2)+' m/s';$('#map-anchor-state').classList.toggle('danger',a.broken||a.windlassBlocked);$('#anchor-length').textContent=a.length.toFixed(1)+' m';$('#anchor-scope').textContent=a.mode==='stowed'?'—':(a.length/(bottomAt(a.x,a.y).depth+.65)).toFixed(1)+':1';$('#anchor-tension').textContent=(a.tension/1000).toFixed(2)+' kN';$('#anchor-holding').textContent=(a.capacity/1000).toFixed(2)+' kN';$('#anchor-rode').textContent=`${S.anchorMass} kg · ${Math.min(a.length,a.chainReserve).toFixed(1)} m łańcucha + ${Math.max(0,a.length-a.chainReserve).toFixed(1)} m liny`;
+ const advice=anchorAdvice(boat,env),adviceText=`Orientacyjnie ${advice.scope}:1 · ${advice.required} m rode (dno–rolka ${advice.height.toFixed(1)} m)${advice.limited?' · za mały zapas, wybierz płytsze miejsce':''}`;for(const id of ['anchor-advice']){$('#'+id).textContent=adviceText;$('#'+id).classList.toggle('danger',advice.limited);}
+ const laidChain=a.shape?.chainLaid??Math.min(a.chainReserve,a.groundLength??0),laidRope=a.shape?.ropeLaid??Math.max(0,(a.groundLength??0)-a.chainReserve);$('#anchor-bottom-info').textContent=`Na dnie: ${laidChain.toFixed(1)} m łańcucha + ${laidRope.toFixed(1)} m liny · zawieszone ${Math.max(0,a.length-laidChain-laidRope).toFixed(1)} m · kotwica ${Math.max(0,a.z).toFixed(1)} m pod wodą`;
  $('#map-anchor-state').textContent=`${a.status} · ${a.length.toFixed(1)} m · ${(a.tension/1000).toFixed(2)} kN`;
  const focus=vehicle==='suv'?towRig.car:boat,wind=environment(boat.time,env,focus.x,focus.y).wind,windSpeed=Math.hypot(wind.x,wind.y),windHeading=(Math.atan2(wind.x,-wind.y)*180/Math.PI+360)%360,names=['N','NE','E','SE','S','SW','W','NW'];$('#wind-speed').textContent=(windSpeed*(flowUnits.wind==='km/h'?3.6:1)).toFixed(1)+' '+flowUnits.wind;$('#wind-heading').textContent=windSpeed<.05?'cisza':`${Math.round(windHeading)}° → ${names[Math.round(windHeading/45)%8]}`;$('#wind-arrow').style.transform=`rotate(${windHeading}deg)`;$('#wind-indicator').classList.toggle('calm',windSpeed<.05);const current=environment(boat.time,env,focus.x,focus.y).current,currentSpeed=Math.hypot(current.x,current.y),currentHeading=(Math.atan2(current.x,-current.y)*180/Math.PI+360)%360;$('#current-arrow').style.transform=`rotate(${currentHeading}deg)`;$('#current-arrow').style.opacity=currentSpeed<.005?'.25':'1';$('#current-speed').textContent=(currentSpeed*(flowUnits.current==='km/h'?3.6:1)).toFixed(flowUnits.current==='m/s'?2:1)+' '+flowUnits.current;$('#current-heading').textContent=currentSpeed<.005?'cisza':`${Math.round(currentHeading)}° → ${names[Math.round(currentHeading/45)%8]}`;
  const regions=[{name:'Port główny · slip',x:80,y:15},...REMOTE_HARBORS,...MAP_LABELS,...MAP_POIS.filter(q=>['euzebia','pilawa'].includes(q.id))],region=regions.reduce((a,q)=>Math.hypot(q.x-focus.x,q.y-focus.y)<Math.hypot(a.x-focus.x,a.y-focus.y)?q:a);$('#region-name').textContent='Okolica: '+region.name;
  const shore=shoreAt(vehicle==='suv'?towRig.car.x:boat.x,vehicle==='suv'?towRig.car.y:boat.y);$('#shore-distance').textContent=Math.max(0,shore.distance).toFixed(0)+' m';
- updateCockpit();updateTowCockpit();if(vehicle==='suv'){$('#speed').innerHTML=`${(Math.hypot(towRig.car.vx,towRig.car.vy)*(speedUnit==='kn'?1.94384:3.6)).toFixed(1)} <small>${speedUnit}</small>`;$('#water-speed').innerHTML='—';$('#heading').textContent=Math.round((towRig.car.a*180/Math.PI+450)%360)+'°';$('#yaw').innerHTML=`${(towRig.car.w*180/Math.PI).toFixed(1)} <small>°/s</small>`;}updateOperations();updatePowerPanel();updateRescue();fleetUI.refresh();if(boat.electrics.powered.sonar)drawSonar();drawAnchorProfile();
+ updateCockpit();updateTowCockpit();if(vehicle==='suv'){$('#speed').innerHTML=`${(Math.hypot(towRig.car.vx,towRig.car.vy)*(speedUnit==='kn'?1.94384:3.6)).toFixed(1)} <small>${speedUnit}</small>`;$('#water-speed').innerHTML='—';$('#heading').textContent=Math.round((towRig.car.a*180/Math.PI+450)%360)+'°';$('#yaw').innerHTML=`${(towRig.car.w*180/Math.PI).toFixed(1)} <small>°/s</small>`;}updateOperations();updatePowerPanel();updateRescue();fleetUI.refresh();if(boat.electrics.powered.sonar)drawSonar();if(!$('#anchor-picker').hidden)drawAnchorProfile();screenUI?.refreshFuel();
 }
 function frame(now){
- sound.update(vehicle==='suv'?towAudioBoat(towRig,boat):boat,env,!paused&&!$('#info').open&&!$('#setup-dialog').open&&!$('#fleet-dialog').open&&!($('#logbook-dialog')?.open||$('#navigation-legend')?.open)&&!document.hidden&&document.hasFocus());$('#sound-status').textContent=({waiting:'Włącz po dotknięciu ekranu',suspended:'Dotknij ekranu, aby włączyć dźwięk',interrupted:'Dotknij ekranu, aby wznowić dźwięk',unsupported:'Dźwięk niedostępny',muted:'Wyciszony'})[sound.state()]??'';$('#sound-toggle').dataset.state=sound.state();
+ if(now-soundAt>=33){soundAt=now;sound.update(vehicle==='suv'?towAudioBoat(towRig,boat):boat,env,!paused&&!$('#info').open&&!$('#setup-dialog').open&&!$('#fleet-dialog').open&&!($('#logbook-dialog')?.open||$('#navigation-legend')?.open)&&!document.hidden&&document.hasFocus(),{boats:fleet.boats,listener:vehicle==='suv'?towRig.car:boat,listenerId:vehicle==='suv'?'suv':boat.id,rescue:fleet.rescue});$('#sound-status').textContent=({waiting:'Włącz po dotknięciu ekranu',suspended:'Dotknij ekranu, aby włączyć dźwięk',interrupted:'Dotknij ekranu, aby wznowić dźwięk',unsupported:'Dźwięk niedostępny',muted:'Wyciszony'})[sound.state()]??'';$('#sound-toggle').dataset.state=sound.state();
+ }
  const dt=Math.min((now-last)/1000,.1);last=now;
  if(!paused&&!document.hidden&&!$('#info').open&&!$('#setup-dialog').open&&!$('#fleet-dialog').open&&!($('#logbook-dialog')?.open||$('#navigation-legend')?.open)){
   const steer=(keys.has('d')||keys.has('arrowright')?1:0)-(keys.has('a')||keys.has('arrowleft')?1:0),gas=(keys.has('w')||keys.has('arrowup')?1:0)-(keys.has('s')||keys.has('arrowdown')?1:0);
@@ -315,4 +321,6 @@ function continueSession(saved){
 let savedGame;try{savedGame=readAutosave(localStorage);}catch{savedGame={ok:false,message:'Przeglądarka blokuje zapis lokalny.'};}
 if(savedGame.ok){$('#continue-session').hidden=false;$('#begin-session').textContent='Rozpocznij nową próbę →';$('#resume-info').textContent=`Zapis ${new Date(savedGame.session.savedAt).toLocaleString('pl-PL')} · ${savedGame.session.fleet.boats.length} jednostek${savedGame.backup?' · odzyskana kopia':''}. Nowa próba zastąpi zapis.`;$('#continue-session').onclick=()=>continueSession(savedGame);}
 else if(savedGame.message)$('#resume-info').textContent=savedGame.message;
+restoreHistory=installRestoreHistory({restore:continueSession,toast,reference:savedGame?.session?.savedAt});
+screenUI=installScreenLayout({boat:()=>boat,save:saveGame});
 installMapAlerts();readEnv();renderRopes();syncControls();telemetry();requestAnimationFrame(frame);openSetup();

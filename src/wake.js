@@ -35,32 +35,39 @@ export function drawHullWake(ctx,history,time){
 // Sample the SAME propagating V fronts that are drawn. Neighbouring snapshots form
 // one crest, so overlapping segments are averaged rather than summed by frame rate.
 const wakeCache=new WeakMap(),CELL=20;
+function packetAt(descriptor,time,unbounded=false){
+ if(!unbounded&&descriptor.packetTime===time)return descriptor.packet;
+ const {a,b,factor,side,id}=descriptor,age=time-b.time;if(!unbounded&&(age<.35||age>LIFETIME))return null;
+ const from=wakeEdges(a,time,factor)[side],to=wakeEdges(b,time,factor)[side],dx=to.x-from.x,dy=to.y-from.y,length2=dx*dx+dy*dy;if(length2<.01)return null;
+ const length=Math.sqrt(length2),nx=-dy/length,ny=dx/length;
+ const packet={id,a,b,age,p:from,dx,dy,length2,nx,ny,sigma:.65+age*.04,speed:b.spread*factor*(side?1:-1)*(b.nx*nx+b.ny*ny),amplitude:b.amplitude*Math.exp(-age/13)*Math.max(0,1-age/LIFETIME)*(factor===1?1:.55)};
+ if(!unbounded){descriptor.packetTime=time;descriptor.packet=packet;}return packet;
+}
 function preparedWake(history,time){
- const last=history[history.length-1],first=history[0],cached=wakeCache.get(history);
- if(cached&&cached.time===time&&cached.length===history.length&&cached.last===last&&cached.first===first)return cached;
- const grid=new Map(),large=[];let id=0;
+ const last=history[history.length-1],first=history[0],epoch=Math.floor(time*10),cached=wakeCache.get(history);
+ if(cached&&cached.epoch===epoch&&cached.length===history.length&&cached.last===last&&cached.first===first)return cached;
+ const start=epoch/10,end=start+.1,grid=new Map(),large=[];let id=0;
  for(let i=1;i<history.length;i++){
-  const a=history[i-1],b=history[i],age=time-b.time;if(age<.35||age>LIFETIME||b.time-a.time>.55)continue;
-  const sigma=.65+age*.04,decay=Math.exp(-age/13)*Math.max(0,1-age/LIFETIME);
-  for(const factor of [.72,1]){const from=wakeEdges(a,time,factor),to=wakeEdges(b,time,factor);
-   for(let side=0;side<2;side++){const p=from[side],q=to[side],dx=q.x-p.x,dy=q.y-p.y,length2=dx*dx+dy*dy;if(length2<.01)continue;
-    const length=Math.sqrt(length2),nx=-dy/length,ny=dx/length,speed=b.spread*factor*(side?1:-1)*(b.nx*nx+b.ny*ny);
-    const packet={id:id++,a,b,age,p,dx,dy,length2,nx,ny,sigma,speed,amplitude:b.amplitude*decay*(factor===1?1:.55)};
-    const pad=sigma*4,loX=Math.floor((Math.min(p.x-dx*.1,q.x+dx*.1)-pad)/CELL),hiX=Math.floor((Math.max(p.x-dx*.1,q.x+dx*.1)+pad)/CELL),loY=Math.floor((Math.min(p.y-dy*.1,q.y+dy*.1)-pad)/CELL),hiY=Math.floor((Math.max(p.y-dy*.1,q.y+dy*.1)+pad)/CELL);
-    if((hiX-loX+1)*(hiY-loY+1)>4000){large.push(packet);continue;}
-    for(let ix=loX;ix<=hiX;ix++)for(let iy=loY;iy<=hiY;iy++){const key=ix+','+iy;let bucket=grid.get(key);if(!bucket){bucket=[];grid.set(key,bucket);}bucket.push(packet);}
-   }
+  const a=history[i-1],b=history[i],age=time-b.time;if(age<.25||age>LIFETIME+.1||b.time-a.time>.55)continue;
+  for(const factor of [.72,1])for(let side=0;side<2;side++){
+   const descriptor={id:id++,a,b,factor,side},frames=[packetAt(descriptor,start,true),packetAt(descriptor,end,true)].filter(Boolean);if(!frames.length)continue;
+   const pad=Math.max(...frames.map(q=>q.sigma))*4+.02,points=frames.flatMap(q=>[{x:q.p.x-q.dx*.1,y:q.p.y-q.dy*.1},{x:q.p.x+q.dx*1.1,y:q.p.y+q.dy*1.1}]);
+   const loX=Math.floor((Math.min(...points.map(q=>q.x))-pad)/CELL),hiX=Math.floor((Math.max(...points.map(q=>q.x))+pad)/CELL),loY=Math.floor((Math.min(...points.map(q=>q.y))-pad)/CELL),hiY=Math.floor((Math.max(...points.map(q=>q.y))+pad)/CELL);
+   if((hiX-loX+1)*(hiY-loY+1)>4000){large.push(descriptor);continue;}
+   for(let ix=loX;ix<=hiX;ix++)for(let iy=loY;iy<=hiY;iy++){const key=ix+','+iy;let bucket=grid.get(key);if(!bucket){bucket=[];grid.set(key,bucket);}bucket.push(descriptor);}
   }
  }
- const result={time,length:history.length,last,first,grid,large};wakeCache.set(history,result);return result;
+ const result={epoch,length:history.length,last,first,grid,large};wakeCache.set(history,result);return result;
 }
 // Exact packet equations, indexed by space and prepared once per history/time.
+// Broad-phase bounds cover 0.1 s; exact packets are evaluated at physical query time.
 // Physics frequency, front propagation, damping and reflected energy are unchanged.
 export function sampleHullWake(history,x,y,time,face=null){
  const path=face?(Array.isArray(face)?face:[face]):[],targets=[],out={eta:0,sx:0,sy:0,vx:0,vy:0,ax:0,ay:0};let weight=0;
  for(let i=path.length-1;i>=0;i--){const f=path[i];if(wallDistance({x,y},f)<=0)return out;const p=mirrorPoint({x,y},f);targets[i]=p;x=p.x;y=p.y;}
  const prepared=preparedWake(history,time),bucket=prepared.grid.get(Math.floor(x/CELL)+','+Math.floor(y/CELL))??[],packets=prepared.large.length?[...bucket,...prepared.large].sort((a,b)=>a.id-b.id):bucket;
- for(const packet of packets){
+ for(const descriptor of packets){
+  const packet=packetAt(descriptor,time);if(!packet)continue;
   const {a,b,age,p,dx,dy,length2,nx,ny,sigma,speed,amplitude}=packet,t=((x-p.x)*dx+(y-p.y)*dy)/length2;if(t<-.1||t>1.1)continue;
   if(path.length){const s=Math.max(0,Math.min(1,t));let source={x:a.x+(b.x-a.x)*s+a.currentX*age,y:a.y+(b.y-a.y)*s+a.currentY*age},valid=true;for(let j=0;j<path.length;j++){if(!wallHit(source,targets[j],path[j])){valid=false;break;}source=mirrorPoint(source,path[j]);}if(!valid)continue;}
   const d=(x-p.x)*nx+(y-p.y)*ny;if(Math.abs(d)>sigma*4)continue;
@@ -93,4 +100,11 @@ export function drawReflectedWake(ctx,history,time,faces){
    ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(q.x,q.y);ctx.stroke();
   }
  }
+}
+// Leading-order Stokes transport of the direct wake, separate from reversible
+// orbital flow. It is small and directed away from the generating path.
+export function sampleWakeTransport(history,x,y,time){
+ const prepared=preparedWake(history,time),list=prepared.grid.get(Math.floor(x/CELL)+','+Math.floor(y/CELL))??[];let vx=0,vy=0,weight=0;
+ for(const descriptor of [...list,...prepared.large]){const q=packetAt(descriptor,time);if(!q)continue;const t=((x-q.p.x)*q.dx+(y-q.p.y)*q.dy)/q.length2;if(t<-.1||t>1.1)continue;const z=((x-q.p.x)*q.nx+(y-q.p.y)*q.ny)/q.sigma;if(Math.abs(z)>4)continue;const gain=Math.min(.65,3*(q.amplitude/q.sigma)**2*Math.abs(q.speed)*Math.exp(-z*z)),sign=Math.sign(q.speed);vx+=gain*sign*q.nx;vy+=gain*sign*q.ny;weight++;}
+ return{x:weight?vx/weight:0,y:weight?vy/weight:0};
 }

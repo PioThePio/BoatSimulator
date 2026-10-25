@@ -1,7 +1,7 @@
 // Distributed cross-flow (Fossen strip theory). Each force uses velocity at its own arm.
 export {bankSuctionForce,passingInteraction} from './hydro-interactions.js';
 // Coefficients are approximate for these recreational hulls; no sea-trial calibration.
-export function hullLateralForces(S,u,v,r,planing,force,poweredTurn=0){
+export function hullLateralForces(S,u,v,r,planing,force,poweredTurn=0,sternBurst=0){
  const count=13,dx=S.length/count;
  // Small incidence keeps directional stability. During a hard powered turn the aft
  // strips lose lateral grip progressively; the immersed forward chine still grips.
@@ -11,7 +11,7 @@ export function hullLateralForces(S,u,v,r,planing,force,poweredTurn=0){
  for(let i=0;i<count;i++){
   const x=-S.length/2+(i+.5)*dx,local=v+r*x;
   const shape=(.65+.35*Math.cos(x/S.length*Math.PI))*(1-.50*x/S.length);
-  const aft=Math.max(0,-x/S.length*2),grip=(1-release*(.65+.33*aft))*(1-.38*poweredTurn*aft);
+  const aft=Math.max(0,-x/S.length*2),grip=(1-release*(.65+.33*aft))*(1-(.38*poweredTurn+.48*sternBurst)*aft);
   const cross=(S.air?.32:1)*.5*1000*S.draft*2.05*dx*shape*(1-.28*planing)*grip*Math.abs(local)*local;
   const stall=1/Math.sqrt(1+(local/(.45+Math.abs(u)*.12))**2);
   const slow=Math.max(0,Math.min(1,(Math.abs(u)-1)/2));

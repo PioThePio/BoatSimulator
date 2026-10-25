@@ -1,3 +1,4 @@
+import {anchorWinch} from '../src/anchor-winch.js';
 import {sandPosition,sandNormal,faceSand} from './shore-fixture.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -66,8 +67,8 @@ test('windlass retrieves an offset anchor without the stiff-chain overload deadl
   const b=createBoat('open',{profile});anchorCommand(b,'lower',20);run(b,40);b.x+=8;anchorCommand(b,'raise');let peak=0,lastLength=b.anchor.length;
   for(let i=0;i<160*120&&b.anchor.mode!=='stowed';i++){
    step(b,{},1/120);peak=Math.max(peak,b.anchor.tension);assert.equal(b.anchor.broken,false);
-   if(b.anchor.mode!=='stowed'){assert.ok(lastLength-b.anchor.length<=.35/120+.00001);lastLength=b.anchor.length;}
+   if(b.anchor.mode!=='stowed'){assert.ok(lastLength-b.anchor.length<=anchorWinch(b.spec).up/120+.00001);lastLength=b.anchor.length;}
   }
-  assert.equal(b.anchor.mode,'stowed',profile);assert.ok(peak<2210,`${profile}: ${peak}`);
+  assert.equal(b.anchor.mode,'stowed',profile);assert.ok(peak<anchorWinch(b.spec).force+10,`${profile}: ${peak}`);
  }
 });

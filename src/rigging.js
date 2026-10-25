@@ -1,3 +1,4 @@
+import {anchorWinch,windlassPowered} from './anchor-winch.js';
 import {mooringPoint,boomInverse,boomLoad} from './marina.js';
 import {BOLLARDS,bottomAt,clamp} from './world.js';
 import {BASE_CLEATS,localAttachment} from './attachment-points.js';
@@ -104,7 +105,7 @@ export function anchorProfile(a,b){
  return points;
 }
 export function updateAnchor(b,e,dt,notify){
- const a=b.anchor;if(a.mode==='stowed'||a.broken)return;
+ const a=b.anchor;a.electricalAmps=0;if(a.mode==='stowed'||a.broken)return;const winch=anchorWinch(b.spec),lostPower=!windlassPowered(b);if(lostPower&&['raising','lowering'].includes(a.mode))a.mode='holding';
  const p=cleat(b,'bow'),arm={x:p.x-b.x,y:p.y-b.y},floor=bottomAt(a.x,a.y);
  const deck=.65+b.heave,depth=Math.max(0,floor.depth),height=depth+deck;
  let dx=p.x-a.x,dy=p.y-a.y,d=Math.hypot(dx,dy);
@@ -112,19 +113,19 @@ export function updateAnchor(b,e,dt,notify){
  a.windlassBlocked=false;a.winchRate=0;
  const oldLength=a.length;
  if(a.mode==='lowering'){
-  a.length=Math.min(a.reserve,Math.max(a.length,Math.min(a.target,a.length+.65*dt)));
+  a.length=Math.min(a.reserve,Math.max(a.length,Math.min(a.target,a.length+winch.down*dt)));
   if(a.length>=a.target)a.mode='holding';
  }
  if(a.mode==='raising'){
-  const speed=Math.min(.35,650/Math.max(120,a.tension));
+  const speed=Math.min(winch.up,winch.power/Math.max(120,a.tension));
   const requested=Math.max(0,a.length-speed*dt);
   if(a.phase==='bottom'){
    const geometry=L=>catenary(d,Math.max(.05,height),Math.max(.01,L),a.chainReserve);
    const current=geometry(a.length);let candidate=geometry(requested),accepted=requested;
    // Never jump a stiff chain past the winch's force limit in one numerical step.
-   if(candidate.tension>2200){
-    if(current.tension>=2200){accepted=a.length;candidate=current;}
-    else {let lo=requested,hi=a.length;for(let i=0;i<14;i++){const mid=(lo+hi)/2;if(geometry(mid).tension>2200)lo=mid;else hi=mid;}accepted=hi;candidate=geometry(hi);}
+   if(candidate.tension>winch.force){
+    if(current.tension>=winch.force){accepted=a.length;candidate=current;}
+    else {let lo=requested,hi=a.length;for(let i=0;i<14;i++){const mid=(lo+hi)/2;if(geometry(mid).tension>winch.force)lo=mid;else hi=mid;}accepted=hi;candidate=geometry(hi);}
    }
    a.length=accepted;
    // Pullout is tested at the achievable load, before the motor overload can deadlock retrieval.
@@ -138,7 +139,7 @@ export function updateAnchor(b,e,dt,notify){
    }
   }else{
    const weight=(a.mass+Math.min(a.length,a.chainReserve)*1.4)*9.81;
-   a.windlassBlocked=weight>2200;
+   a.windlassBlocked=weight>winch.force;
    if(!a.windlassBlocked)a.length=requested;
   }
  }
@@ -174,7 +175,7 @@ export function updateAnchor(b,e,dt,notify){
   shape={H,tension:Math.hypot(H,weight),V:weight,V0:0,laid:0,anchorTension:0,angle:0};a.capacity=0;
  }
  a.shape=shape;a.tension=shape.tension;a.horizontal=shape.H;a.groundLength=shape.laid;
- a.winchRate=(a.length-oldLength)/dt;
+ a.winchRate=(a.length-oldLength)/dt;if(!winch.manual&&Math.abs(a.winchRate)>.001)a.electricalAmps=((a.winchRate>0?winch.power*.16:Math.min(winch.power,a.tension*Math.abs(a.winchRate))+winch.power*.15)/(.7*Math.max(10,b.battery.voltage)));if(lostPower)a.status='Brak zasilania windy · hamulec trzyma';
  if(shape.tension>b.spec.lineBreak*1.5){a.broken=true;a.status='Zerwane rode';a.mode='holding';a.shape=null;a.tension=0;a.horizontal=0;notify('Zerwano linę kotwiczną — kotwica utracona.');return;}
  if(d>.001&&a.length>.05){
   const n={x:-dx/d,y:-dy/d},sep=-((b.vx-b.w*arm.y)*n.x+(b.vy+b.w*arm.x)*n.y);
@@ -184,13 +185,13 @@ export function updateAnchor(b,e,dt,notify){
  if(a.mode==='raising'&&a.length<.08&&d<.15){b.anchor=createAnchor(b.spec);notify('Kotwica na pokładzie.');}
 }
 export function anchorCommand(b,command,target){
- const a=b.anchor;if(a.broken)return{ok:false,message:'Utracona kotwica. Rozpocznij nową próbę.'};
+ const a=b.anchor,winch=anchorWinch(b.spec);if(command!=='hold'&&!windlassPowered(b))return{ok:false,message:'Włącz zasilanie windy i sprawdź akumulator.'};if(a.broken)return{ok:false,message:'Utracona kotwica. Rozpocznij nową próbę.'};
  if(target!==undefined)a.target=clamp(target,1,a.reserve);
  if(command==='hold'){if(a.mode!=='stowed')a.mode='holding';return{ok:true,message:'Winda zatrzymana; hamulec trzyma rode.'};}
  if(command==='lower'){
   if(a.mode==='stowed'){const p=cleat(b,'bow');a.x=p.x;a.y=p.y;a.z=-.65-b.heave;a.phase='falling';a.vx=b.vx;a.vy=b.vy;}
-  a.mode='lowering';return{ok:true,message:'Winda wydaje łańcuch, następnie linę: 0,65 m/s.'};
+  a.mode='lowering';return{ok:true,message:`Wydawanie: ${winch.down.toFixed(2)} m/s · ${winch.manual?'ręcznie':'elektrycznie'}.`};
  }
- if(command==='raise'&&a.mode!=='stowed'){a.mode='raising';return{ok:true,message:'Winda wybiera do 0,35 m/s, maks. uciąg 2,2 kN.'};}
+ if(command==='raise'&&a.mode!=='stowed'){a.mode='raising';return{ok:true,message:`Wybieranie do ${winch.up.toFixed(2)} m/s · uciąg ${(winch.force/1000).toFixed(1)} kN.`};}
  return{ok:false,message:'Kotwica jest na pokładzie.'};
 }

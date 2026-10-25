@@ -20,7 +20,7 @@ export function createFleet(boat){
 export function syncFleetWorld(fleet){
  const owner=rigBoat(fleet),world=fleet.boats[0];
  for(const b of fleet.boats){b.booms=world.booms;b.buoys=world.buoys;b.traffic=world.traffic;b.worldRig=owner.towRig;b.occupied=b.id===fleet.activeId;
-  b.wakeSources=fleet.boats.filter(q=>q!==b).map(q=>({id:q.id,history:q.wake}));
+  b.wakeSources=fleet.boats.filter(q=>q!==b).map(q=>({id:q.id,history:q.wake,braking:q.brakingWaves}));
  }
 }
 function overlaps(a,b,margin=.18){

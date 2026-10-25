@@ -20,14 +20,21 @@ podnoszony napęd do końca. Wybór nowej próby zastępuje aktualną sesję.
 Jeżeli istnieje lokalny zapis, **Kontynuuj** przywraca go w pauzie. Naciśnij
 ▷ lub P, aby wznowić. Nieobecność nie zużywa paliwa ani akumulatora i nie
 nalicza motogodzin. Przycisk Nowa próba lub R otwiera ponownie wybór,
-zachowując wcześniejsze parametry do edycji.
+zachowując wcześniejsze parametry do edycji. Obok Kontynuuj są punkty
+przywracania około 30 s, 3 min i 5 min przed ostatnim stanem. Przycisk
+jest dostępny dopiero po zgromadzeniu odpowiednio starego zapisu; jego
+podpowiedź pokazuje faktyczną godzinę. Odczyt punktu także zaczyna w pauzie.
 
 ## Ekran i mapa
 
-Pod mapą są obok siebie: kierownica, napęd, zegary i węższy panel stanu
+Mapa zaczyna się przy górnej krawędzi. Znak ? przy nazwie jeziora otwiera
+pomoc. Pod mapą są obok siebie: kierownica, napęd, zegary i węższy panel stanu
 z profilem zanurzenia oraz uszkodzeniami. Wybór stanowiska jest pod
-sterowaniem. Na telefonie elementy są kompaktowe; nie trzeba obracać
-urządzenia, ale widok poziomy ułatwia manewry.
+sterowaniem, a pod nim regulacja dźwięku. Strona mieści się w wysokości
+ekranu; na bardzo niskim ekranie przewija się tylko konsola lub otwarte
+okno. Przycisk Rejs otwiera liczniki, GPS, bilans instalacji i ustawienie
+slipu w SUV-ie, pozostawiając sterowanie aktywne. Na telefonie elementy
+są kompaktowe; widok poziomy ułatwia manewry.
 
 Pasek mapy pokazuje odległość od brzegu, prędkość względem brzegu i wody,
 kurs oraz prędkość obrotu. Kliknięcie paska przełącza km/h i węzły.
@@ -115,7 +122,9 @@ silnika daje ciągły sygnał; wyłączenie zapłonu go ucisza. SUV nie ma tego
 alarmu. Po zimnym rozruchu obroty lekko falują.
 
 Pod napędem są przełączniki głównego zasilania, instrumentów, pompy,
-strumieniowych, GPS i echosondy. Główne OFF odcina urządzenia i silniki.
+strumieniowych, GPS, echosondy i świateł nawigacyjnych. Główne OFF
+odcina urządzenia i gasi silniki, zachowując kluczyki w I. Nie obraca
+ich do 0. Ponowne zasilenie wymaga ponownego START; silnik sam nie ruszy.
 Urządzenia działają bez zapłonu, jeśli mają zasilanie i energię.
 Strumieniowe wymagają także zamontowania ich podczas konfiguracji.
 
@@ -125,9 +134,18 @@ uruchomi silnika. Wskaźnik pokazuje V i pozostały procent. Wyłączenie
 samego odbiornika zachowuje jego ustawienie przy następnym zasileniu.
 
 Zegary pokazują RPM (osobne dla dwóch silników), prędkość, paliwo, trym,
-temperaturę i napięcie. Przy paliwie jest L/h. Profil obok pokazuje
+temperaturę i napięcie. RPM L/P, TRIM, L/h i SOC są na tarczach.
+Wyłączenie instrumentów opuszcza wskazówki poza BAT; wyłączenie głównego
+zasilania opuszcza również BAT. Wyłączone odczyty cyfrowe pokazują kreskę. Profil obok pokazuje
 uniesienie dziobu, położenie napędu, zanurzenie śruby i dno na płytkiej
 wodzie. Panel stanu pokazuje zanurzenie kadłuba i wodę w zęzie.
+
+Nagłe otwarcie gazu na mocno skręconym zaburtowym/Z-drive lub skuterze
+przy małej prędkości chwilowo zwiększa poślizg rufy. Powolne dodawanie
+gazu daje słabszy efekt; przy większej prędkości zanika. Wiosłówka/kajak
+skręcają różnicą pracy wioseł; pełny skręt pozwala obracać się z małym
+ruchem naprzód, a N zatrzymuje wiosłowanie. Skuter ma przednie ucho
+holownicze, widoczne i dostępne z menu cumowania.
 
 ## Trym, ślizg i chłodzenie
 
@@ -224,9 +242,14 @@ Pilawa ma ciasne przejścia między różnymi zacumowanymi łodziami.
 
 ## Kotwica
 
-Kliknij dziób lub ⚓ Kotwica. Okno można przesuwać; podstawowy panel
-pozostaje dostępny na dole. Wydawanie i wybieranie uruchamiają windę
-o ograniczonym uciągu. Łańcuch i lina mają ciężar, długość i sprężystość,
+Kliknij dziób lub ⚓ Kotwica. Jedyne okno kotwicy jest na mapie i można
+je przesuwać. Kompaktowy profil i wartości pokazują odcinek łańcucha/liny
+na dnie, część zawieszoną, głębokość kotwicy i trzymanie albo wleczenie.
+Wydawanie i wybieranie uruchamiają windę o ograniczonym uciągu. Prędkość
+wydawania wynosi 0,55–0,75 m/s, wybierania do 0,28–0,42 m/s zależnie
+od wielkości łodzi; obciążenie spowalnia wybieranie. Kotwice ręczne na
+jednostkach bez napędu i skuterze działają wolniej. Elektryczna winda
+pobiera prąd i po utracie zasilania zatrzymuje się na hamulcu. Łańcuch i lina mają ciężar, długość i sprężystość,
 a kotwica opada, chwyta dno albo jest wleczona.
 
 Podpowiedź daje zwykle 5× odległość od dna do rolki dziobowej, przy
@@ -268,7 +291,8 @@ kabinowa 95, wypornościowa 126. Napięcie wpływa na faktyczną wydajność.
 
 Tankuj burtą przy oznaczonym pomoście paliwowym w Ryni albo ORLEN w Pilawie.
 Wymagana jest przynajmniej jedna cuma do **tego** stanowiska, postój oraz
-wyłączone silniki i zapłon. Tankuj uruchamia/przerywa napełnianie.
+wyłączone silniki i zapłon. Kliknij dystrybutor na mapie: małe okno
+pokazuje warunki i poziom paliwa. Jego Tankuj uruchamia/przerywa napełnianie.
 
 Serwis jest przy slipie portu głównego. Przycumuj do jego pomostu,
 zatrzymaj łódź, wyłącz silniki i zapłon. Przycisk Napraw pojawia się
@@ -313,28 +337,39 @@ chroniona przed usunięciem, aby zachować zestaw i co najmniej jedną łódź.
 
 ## Ratownictwo — koło i manekin MOB
 
-Rozwiń Ratownictwo pod sterowaniem. Wybierz koło lub manekin treningowy,
-burtę i Wyrzuć. Obiekt dziedziczy ruch łodzi, następnie dryfuje w prądzie
-i wietrze, faluje i może osiąść przy brzegu. Rzut jest blokowany w stronę
-pobliskiego pomostu/lądu i z łodzi na przyczepie.
+Kliknij SAR obok Floty. Menu po lewej pozwala wybrać koło lub manekin
+i Wyrzuć teraz. Burta jest losowa, z próbą drugiej strony, jeśli pierwszą
+zajmuje pomost lub ląd. Losowy alarm wyrzuca wybrany obiekt po 30–180 s
+aktywnej symulacji i daje trzy sygnały. Ponowne kliknięcie tego polecenia
+anuluje oczekiwanie. Pauza i nieobecność nie odliczają czasu.
+
+Obiekt dziedziczy ruch łodzi, następnie dryfuje, kołysze się i może osiąść
+przy brzegu. Reaguje również na docierający kilwater, falę gwałtownego
+hamowania oraz lokalny strumień śruby lub strumieniowych. Rzut z łodzi
+na przyczepie jest blokowany.
 
 Wybierz obiekt z listy, Pokaż centruje jego okolicę. Podejdź burtą na
-mniej niż 1,7 m, ustaw obie manetki na N i zmniejsz prędkość względem
-obiektu poniżej 0,55 m/s. Wtedy Podejmij kończy próbę dla tego obiektu.
+mniej niż 1,7 m i zmniejsz prędkość względem obiektu poniżej 0,55 m/s
+(1,98 km/h). Zalecany jest N lub wyłączone silniki. Podejmij działa także
+na biegu, lecz odejmuje 30 punktów i zapisuje ten stan w logu.
 Linia na mapie prowadzi od kadłuba do wybranego obiektu. Karta SAR
 podaje odległość od burty, podpisane zbliżanie (+ do obiektu, − oddalanie),
 pełną prędkość względną oraz maksymalną szacowaną siłę kontaktu w N/kN.
-Przycisk Podejmij jest też na mapie. Trzeba poczekać na rzeczywiste N
-obu napędów; samo przesunięcie manetek nie wystarcza podczas zmiany biegu.
+Przycisk Podejmij jest też na mapie. Do oceny N liczą się rzeczywiste biegi
+i polecenia manetek; przesunięcie manetki podczas zmiany biegu nie daje
+od razu pełnej punktacji.
 
 Wynik 0–100 uwzględnia prędkość podjęcia, najmocniejszy kontakt i kontakt
-na biegu F/R. Pokazuje osobno N/F/R i pracę/wyłączenie każdego silnika.
+na biegu F/R oraz samo podjęcie na biegu. Pokazuje osobno N/F/R i pracę/wyłączenie każdego silnika.
 Siła jest oszacowaniem miękkiego kontaktu z obiektem treningowym, nie
 pomiarem sił ani oceną obrażeń człowieka. Czas ćwiczenia jest fizyczny.
 Rozpoczęcie i zakończenie z wynikiem trafiają do Logbooka; wybrany obiekt
 i wynik pozostają w autozapisie.
 Maksymalnie 12 obiektów może jednocześnie być na wodzie. Ich stan jest
-objęty lokalnym zapisem. To ćwiczenie z obiektem, bez fizjologii ani AI.
+objęty lokalnym zapisem. To ćwiczenie z obiektem, bez fizjologii ani AI. Progi 1,7 m i 0,55 m/s
+są kalibracją gry, nie potwierdzoną normą ratowniczą. Aktualna weryfikacja
+publikacji RNLI/RYA pozostaje niedokończona z powodu blokady sieci
+środowiska; nie przypisujemy tym organizacjom tych wartości.
 
 ## SUV, parking, slip i przyczepa
 
@@ -399,6 +434,10 @@ Uszkodzone dane dziennika nie blokują kontynuacji samej gry.
 
 Autosave zapisuje całą sesję co 30 s, przy ukrywaniu/opuszczaniu strony
 i po ważnych operacjach floty. Zachowuje zapasową poprzednią kopię.
+Osobna, kompresowana historia tworzy dodatkowe punkty w odstępach około
+30 s. Historia jest ograniczona pojemnością przeglądarki; nie blokuje
+głównego zapisu. Ostatnie zamknięcie strony zawsze próbuje zapisać bieżący
+stan synchronicznie, nawet gdy kompresowanie historii nie zdąży się skończyć.
 Zapis jest w danych tej przeglądarki dla tego adresu: nie przenosi się
 między Chrome/Firefox, telefonem/komputerem ani różnymi domenami.
 Wyczyszczenie danych strony lub zakończenie trybu prywatnego może go
@@ -407,7 +446,9 @@ usunąć. Nie ma konta, synchronizacji ani eksportu do pliku.
 Dźwięk rusza po pierwszym kliknięciu/dotyku zgodnie z zasadami przeglądarki.
 Jest suwak ogólny i osobny silników. Silniki reagują na obroty, obciążenie
 i typ; słychać rozruch, bieg, trym, wodę, poślizg SUV-a, strumieniowe,
-uderzenia i alarmy. To synteza proceduralna, nie nagrania konkretnych modeli.
+uderzenia i alarmy. Pozostawione włączone silniki innych jednostek
+słychać ciszej, do około 140 m, z płynnym zanikiem i położeniem stereo.
+To synteza proceduralna, nie nagrania konkretnych modeli.
 Pauza i ukrycie strony wstrzymują symulację oraz dźwięk.
 
 Przy słabym działaniu zamknij inne karty, zmniejsz liczbę jednostek,

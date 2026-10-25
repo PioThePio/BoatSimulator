@@ -171,6 +171,19 @@ BOV z szumu. Wygasające obroty bez kolejnej zmiany polecenia nie powtarzają
 syku. To dodatkowe głosy audio; dawne głosy silników, kliknięć i stacyjki
 zostają. Pauza/wyciszenie oraz głośność silników obejmują nowy napęd.
 
+Niskoprędkościowy impuls mocy (`maneuver-transient.js`) odczytuje wzrost
+rzeczywistej bocznej składowej ciągu, nie same położenie manetki.
+Pamięć impulsu wygasa ze stałą 0,75 s. Normalizacja narastania to
+`mass × 2.2`; wzmocnienie zanika jak `(1-(|u|/5)^2)^2` do 5 m/s
+i rośnie z wychyleniem steru. Zmniejsza opór poprzeczny tylnych sekcji
+(maksymalny dodatkowy współczynnik 0,48) i opór obrotowy (do 42%).
+Nie dodaje drugiego ciągu ani sztucznego momentu; każda sekcja nadal
+odbiera energię ruchowi. Szybki wzrost ciągu mocniejszego napędu powoduje
+większą odpowiedź niż powolne otwieranie gazu. Wał i airboat zachowują
+własne istniejące modele. Wiosła dają dwa podłużne wysiłki po przeciwnych
+burtach: suma maleje z wychyleniem, różnica obraca kadłub. Limit 90 N /
+85 W; pełny skręt daje pracę przeciwną obu wioseł, N daje zerową siłę.
+
 ## Trym, wentylacja, grafika i temperatura
 
 Trym zmienia geometrię nogi, pionową składową ciągu, położenie śruby,
@@ -222,6 +235,14 @@ obciążonego napięcia; minimum 185 RPM i ograniczony czas próby powodują,
 że słaby akumulator może zacząć kręcić, lecz nie uruchomić silnika.
 Przełączniki i główne OFF korzystają z tego samego modelu co pompa,
 strumieniowe, GPS i instrumenty. Strumieniowe nie wymagają zapłonu.
+Master OFF gasi silnik, zachowując kluczyk w I i zapobiegając samoczynnemu
+rozruchowi po powrocie zasilania. Zwarcie od zalania nadal ma osobny
+zatrzask i wyłącza kluczyki. Winda jest kolejnym odbiornikiem tego samego
+akumulatora: moc / (0,7 × napięcie), z małym poborem przy wydawaniu.
+Przycisk pompy zmienia tylko OFF→AUTO→ON; odświeżenie telemetryczne nie
+podmienia jego dzieci bez zmiany trybu, więc nie gubi kliknięcia.
+Wyłączone instrumenty mają wskazówki na minimum (BAT pozostaje czynny),
+a master OFF wyłącza także BAT. Odczyty cyfrowe wtedy pokazują kreskę.
 
 Zużycie silnika [l/h] jest empiryczne:
 `0.45 + 0.003×KM + 0.29×KM×n^3×(0.55+0.45×load)`.
@@ -296,7 +317,19 @@ Kotwica ma ciężar i opadanie, model łańcucha z liną, zwis, odcinek dna,
 ograniczony uciąg windy, trzymanie oraz wleczenie zależne od podłoża
 i kąta. Współczynniki trzymania piasek/muł/kamienie: 28/12/3 w umownej
 skali. Zalecenie 5:1 lub 7:1 liczy wysokość rolki nad dnem, a nie sam
-odczyt sondy; nie gwarantuje trzymania. Brak pełnej dynamiki każdego ogniwa.
+odczyt sondy; nie gwarantuje trzymania. Brak pełnej dynamiki każdego ogniwa. `anchor-winch.js` dobiera parametry:
+
+| Jednostka | Moc / uciąg | Wydawanie / wybieranie maks. |
+|---|---|---|
+| Ręczna: bez napędu / skuter | 65 W / 450 N | 0,35 / 0,18 m/s |
+| Długość <4,8 m | 350 W / 1400 N | 0,55 / 0,28 m/s |
+| 4,8–7,2 m | 650 W / 2200 N | 0,65 / 0,35 m/s |
+| ≥7,2 m | 900 W / 3500 N | 0,75 / 0,42 m/s |
+
+Wybieranie ogranicza także moc/napięcie liny. Elektryczna winda wymaga
+master ON, SOC>4% i V>10,2. Po utracie prądu hamulec utrzymuje rode;
+siły kotwicy pozostają aktywne. Są to parametry symulatora, nie dane
+konkretnego katalogowego modelu windy.
 
 Uszkodzenia wynikają z normalnej energii kontaktu `0.5×m_eff×vn²` oraz
 lokalnej ochrony. Przedziały opisowe kontaktu nie są automatycznym
@@ -441,10 +474,33 @@ Czysty integrator `advanceRescueObject` nie mutuje argumentów. Koło:
 2,5 kg, 0,8 m, draft 0,05 m. Manekin: 80 kg, 1,7×0,5 m, draft 0,18 m.
 Masa z umowną masą dodaną ×1,7, kwadratowy opór względem prądu/oscylacji
 wody, siła wiatru, heave/roll i tarcie przy osiadaniu na lądzie.
-Rzut dziedziczy prędkość łodzi i dodaje 1,5 m/s na wybraną burtę.
+Rzut dziedziczy prędkość łodzi i dodaje 1,5 m/s na losowo wybraną burtę;
+druga burta jest próbą awaryjną przy przeszkodzie. Losowy alarm używa
+czasu fizycznego, 30–180 s, zapisuje oczekujące zdarzenie i uruchamia trzy
+impulsy audio z odstępem 0,22 s. Odczyt istniejącego obiektu nie powtarza alarmu.
+
+Lokalny prąd (`local-water.js`) jest sumą istniejącego prądu, rozchodzących
+się strug śrub/strumieniowych, małego transportu wake i fali hamowania.
+Strugi używają rzeczywistego ciągu, kąta, biegu i zanurzenia każdego
+napędu. Prędkość wylotowa `sqrt(2T/(rho×A))` jest ograniczona do 8 m/s,
+struga poszerza się o 0,16 m/m i słabnie z odległością. Zasięg śruby do
+18 m, strumieniowego do 7 m; wypadkowy prąd lokalny ograniczono do 8 m/s.
+Strumieniowy wypycha wodę przeciwnie do reakcji kadłuba. Airboat nie ma
+strugi podwodnej. Prąd napędza istniejący opór obiektu, nie teleportuje go.
+Wymuszenie przyspieszeniem fali ma mnożnik 0,42 (z umownej masy dodanej),
+a orbitalny przepływ 0,85. Te efekty nie tworzą drugiej siły na łodzi.
+
+`braking-waves.js` emituje ograniczony impuls dziobowy po hamowaniu
+>1,2 m/s² z prędkości >2 m/s, nie częściej niż co 0,8 s. Maksymalna
+amplituda 0,42 m, prędkość frontu 2–4,8 m/s, czas życia 14 s, limit
+16 impulsów. Front ma ograniczoną szerokość, silniejszy przód i tłumienie
+wykładnicze/geometr. Z daleka obiekt reaguje dopiero po nadejściu fali.
+Transport bezpośredniego wake jest rzędu `3×(A/sigma)^2×c`, ograniczony do
+0,65 m/s i uśredniany między nakładającymi się segmentami. To przybliżenie
+ruchu pływającego obiektu, nie model CFD ani ocena sił działających na człowieka.
 
 Podejmowanie wymaga ≤1,7 m od obrysu kadłuba, względnej prędkości
-≤0,55 m/s i obu manetek na N. Limit 12 aktywnych obiektów, ograniczona
+≤0,55 m/s. Podjęcie na biegu jest dozwolone, z karą 30 pkt. Limit 12 aktywnych obiektów, ograniczona
 historia 16 podjętych. Kontakt z kadłubem odpycha lekki obiekt i jest
 liczony w treningu; nie uszkadza automatycznie łodzi. Telemetria używa
 prędkości punktu podejmowania (`v + omega × arm`), a zbliżanie jest
@@ -461,11 +517,16 @@ istniejącego odepchnięcia obiektu i sił kadłuba. Każda łódź ma oddzielne
 kontakty z obiektem; ciągły kontakt nie jest nowym uderzeniem co klatkę.
 
 Wynik to 100 minus: do 40 pkt za kwadrat prędkości podjęcia / 0,55 m/s,
-do 50 pkt za siłę szczytową / 1000 N oraz 10 pkt za kontakt na biegu.
+do 50 pkt za siłę szczytową / 1000 N oraz 10 pkt za kontakt na biegu i 30 pkt za podjęcie bez N.
 Wynik, czas fizyczny, prędkość, siła i kluczyki/biegi silników są zapisane
 w stanie SAR oraz zdarzeniu Logbooka. Zachowano klucz i wersję autozapisu;
 dodatkowe pola są opcjonalne dla starych sesji. Obiekty korzystają
-ze wspólnego pola fal i wake. To nie jest symulacja zachowania człowieka.
+ze wspólnego pola fal i wake. Limity podjęcia są kalibracją gry.
+Weryfikacja publikacji RNLI/RYA/BoatUS nie została ukończona: proxy
+środowiska odrzuca te domeny (CONNECT 403), a zapisany projekt ich
+dopuszczenia wymaga publikacji konfiguracji środowiska. Nie twierdzimy,
+że 0,55 m/s albo 1,7 m stanowią zalecenie którejkolwiek z tych organizacji.
+To nie jest symulacja zachowania człowieka.
 
 Stały odczyt nacisku na dno jest `groundLoad / 9.81` kg; nie dodaje
 nowej siły ani obciążenia. Chłodzenie korzysta z zanurzenia wlotu
@@ -600,6 +661,15 @@ Zapis co 30 s i przy istotnych zdarzeniach ma poprzednią kopię zapasową.
 Walidacja odrzuca niezgodną skalę/schemat, błędne liczby, nadmierny
 rozmiar i niebezpieczne pola. Nic nie jest naliczane za czas offline.
 Nie ma synchronizacji, konta ani pliku eksportowego.
+`restore-history.js` dodaje osobny klucz `przystan-restore-history-v1`:
+co najmniej 29 s między punktami, maksymalnie 13 punktów, gzip/base64 przez
+CompressionStream (surowy zapis jako fallback). Budżet 1,4 mln znaków,
+priorytet punktów bliskich 30/180/300 s przed ostatnim zapisem. Przycisk
+nie wybiera kopii starszej od celu o ponad 45 s. Błąd kompresji/limitu
+nie usuwa podstawowego zapisu. Przy zamknięciu strony synchronizowany
+jest przede wszystkim bieżący stan; asynchroniczna historia może nie
+zdążyć się dopisać. Walidacja podczas zapisu używa tych samych warunków
+co odczyt, bez tworzenia całego świata wyłącznie na potrzeby sprawdzania.
 
 Polery nowych miejsc są wyłącznie dopisywane. Wszystkie 332 wcześniejsze
 indeksy i współrzędne są sprawdzane przez fixture; stare cumy nie
@@ -607,7 +677,7 @@ przeskakują do nowego portu. Odczyt starego zapisu zachowuje stan
 wcześniejszych łodzi portowych po ID i dopisuje nowe, brakujące ciała.
 Brak ratownictwa w starym zapisie daje pusty stan treningowy.
 
-Czyste nowe obliczenia: `hydro-interactions.js`, `rescue.js` oraz
+Odizolowane obliczenia: `hydro-interactions.js`, `rescue.js` oraz
 rozszerzenia `towable-water.js`. Osobne adaptery sceny podają brzeg,
 inne ciała i środowisko; UI nie liczy sił. Zasilanie, silniki, cumy,
 kotwica i główny zapis nie mają równoległych konkurencyjnych modeli.
@@ -658,11 +728,19 @@ zamiast tylko wyszukiwania funkcji w kodzie. `npm run benchmark`
 mierzy czas CPU kroku floty i 8000 zapytań o pole wake; opcjonalnie
 może wskazywać katalog `src` innego checkoutu. Wynik zależy od sprzętu
 i obciążenia. Nie jest pomiarem FPS użytkownika ani obietnicą płynności.
+Porównanie z poprzednim stanem na tym samym środowisku: krok floty w
+skrypcie CPU około 2,99→1,43 ms; samo renderowanie Canvas 1400×600
+z wiatrem 7 m/s i kilwaterem około 7,49→5,26 ms. Test 8000 zapytań
+pola przy jednym stałym czasie wyniósł około 17,6→21,4 ms (ten mikrotest
+nie poprawił się); suma kontrolna pola pozostała zgodna do 1e-12.
+To pojedyncze pomiary, bez gwarancji tych wartości na innym komputerze.
 
 Program i style są budowane do jednego HTML. Nie ma streamingu mapy,
 zdjęć ani sampli audio podczas rejsu. Ograniczenia to CPU fizyki i
 rysowanie Canvas. Wake ma indeks przestrzenny i cache tej samej
-geometrii na dany czas, bez zmiany równań; test porównuje je ze
+geometrii w konserwatywnych przedziałach 0,1 s; dokładne fronty
+są nadal liczone w fizycznym czasie zapytania i współdzielone dla
+identycznego czasu, bez zmiany równań; test porównuje je ze
 starszym niezależnym wzorcem. Minimapę odświeża się 10 Hz.
 
 Nowe ciała Pilawy próbkują zewnętrzne pola wiatru/fal 20 Hz, a siły
@@ -670,6 +748,23 @@ kontaktu, bezwładność i cumy nadal integrują się co 1/120 s. Stare
 łodzie zachowują pełne próbkowanie. Odrzucanie odległych kolizji
 i niewidocznych grafik ogranicza koszt większej przystani. Nie
 przyspiesza to zegara fizyki, pomp, propagacji ani ruchu.
+Kontakty odrzucają odległe prostokąty/Y-bomy przed dokładnym solverem.
+Nabrzeża mają indeks przestrzenny; obrys wody i wysp korzysta z Path2D,
+drobne zmarszczki z dwóch zbiorczych ścieżek zamiast osobnego stroke na
+każdy fragment. Niewidoczny raster płycizn Euzebii nie jest generowany.
+Schemat kontaktów pomija niezmienione atrybuty DOM, zachowując animację
+błysku 20 Hz. Aktualizacja parametrów audio jest 30 Hz, z ograniczaniem
+kolejki AudioParam. Cztery dodatkowe głosy silników mają zanik
+`0.55/(1+(distance/18)^2)` i zasięg 140 m, bez dublowania szumu środowiska.
+
+`helm-sar-refinements.test.js` sprawdza impuls/rampę i brak dodawania energii,
+rzeczywisty obrót i poślizg, różnicowe wiosła, kierunek/zanik strug, reakcję
+koła, opóźnioną falę hamowania, losowy alarm, karę i log za bieg, kompresję
+oraz wybór kopii, pobór windy i hamulec, dźwięk zależny od dystansu,
+ucho skutera i zgodność pola wake wewnątrz przedziału cache. Odpowiedni
+plik `.spec.js` bada brak przewijania strony, pompę podczas odświeżania,
+opadanie wskazówek, zachowanie kluczyka, światła, SAR, odczyt wybranej
+kopii i rzeczywiste próbki Web Audio.
 
 ## Źródła i pochodzenie założeń
 
