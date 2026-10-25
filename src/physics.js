@@ -48,7 +48,7 @@ export function step(b,e,dt,{sharedStep=true}={}){
   if(b.engines.length===2)b.engines[1].trimTarget=b.engines[0].trimTarget;
   for(const [i,en]of b.engines.entries()){
    propellerContact(b,en,dt,m=>event(b,m),e);
-   updateEngine(en,i?b.throttle2:b.throttle,0,dt,b.damage,{starterVoltage:b.battery.voltage,noFuel:b.fuel.litres<=0,jet:S.jet,air:S.air,racing:!!S.racing,fixedDrive:S.propulsion==='inboard',moored:true,onTrailer:true,speed:0,immersion:en.immersion,intake:en.intake});
+   updateEngine(en,i?b.throttle2:b.throttle,0,dt,b.damage,{starterVoltage:b.battery.voltage,noFuel:b.fuel.litres<=0,jet:S.jet,air:S.air,racing:!!S.racing,fixedDrive:S.propulsion==='inboard',moored:true,onTrailer:true,speed:0,immersion:en.immersion,intake:en.intake,intakeBlocked:en.intakeBlocked});
    const steering=engineSteering(b,en,dt);en.forceSteer=steering;
    const delta=S.air||S.propulsion==='inboard'?0:steering,T=en.thrust*(S.jet||S.air||S.propulsion==='inboard'?1:Math.cos(trimAngle(en.trim)));en.effectiveThrust=T;
    const air=airRudderForce(S,T,b.actualSteer),X=S.air?air.x:T*Math.cos(delta),Y=S.air?air.y:-T*Math.sin(delta),fx=c*X-s*Y,fy=s*X+c*Y;
@@ -135,7 +135,7 @@ export function step(b,e,dt,{sharedStep=true}={}){
   engine.lastSurface=g.surface;
   const vertical=b.heaveVelocity+g.mountX*Math.cos(b.pitch)*b.pitchVelocity+engine.y*Math.cos(b.roll)*b.rollVelocity;
   const waveLoad=clamp(2.5*Math.abs(u)*Math.max(0,surfaceRate-vertical)/(9.81*S.length),0,.25);
-  let thrust=updateEngine(engine,i===0?b.throttle:b.throttle2,inflow,dt,b.damage,{starterVoltage:b.battery.voltage,noFuel:b.fuel.litres<=0,jet:S.jet,air:S.air,racing:!!S.racing,fixedDrive:S.propulsion==='inboard',onTrailer:onSupports,grounded:b.grounded,moored:b.ropes.length>0,raised:b.enginesRaised,speed:Math.hypot(ur,vr),immersion:engine.immersion,intake:engine.intake,crossflow:lateral,waveLoad});
+  let thrust=updateEngine(engine,i===0?b.throttle:b.throttle2,inflow,dt,b.damage,{starterVoltage:b.battery.voltage,noFuel:b.fuel.litres<=0,jet:S.jet,air:S.air,racing:!!S.racing,fixedDrive:S.propulsion==='inboard',onTrailer:onSupports,grounded:b.grounded,moored:b.ropes.length>0,raised:b.enginesRaised,speed:Math.hypot(ur,vr),immersion:engine.immersion,intake:engine.intake,intakeBlocked:engine.intakeBlocked,crossflow:lateral,waveLoad});
   if(b.enginesRaised){thrust=0;engine.thrust=0;}
   thrust*=S.jet||S.air||S.propulsion==='inboard'?1:Math.cos(trimAngle(engine.trim));
   engine.effectiveThrust=thrust;

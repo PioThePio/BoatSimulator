@@ -446,8 +446,33 @@ Rzut dziedziczy prędkość łodzi i dodaje 1,5 m/s na wybraną burtę.
 Podejmowanie wymaga ≤1,7 m od obrysu kadłuba, względnej prędkości
 ≤0,55 m/s i obu manetek na N. Limit 12 aktywnych obiektów, ograniczona
 historia 16 podjętych. Kontakt z kadłubem odpycha lekki obiekt i jest
-liczony w treningu; nie uszkadza automatycznie łodzi. Obiekty korzystają
+liczony w treningu; nie uszkadza automatycznie łodzi. Telemetria używa
+prędkości punktu podejmowania (`v + omega × arm`), a zbliżanie jest
+rzutem względnej prędkości na linię kadłub–obiekt. Luz sprawdza rzeczywisty
+bieg i polecenia obu manetek.
+
+`rescue-metrics.js` odczytuje prędkość normalną przed miękkim odepchnięciem.
+Siła szczytowa jest szacowana przez `m_eff × v_normal² / d`, gdzie masa
+obiektu uwzględnia istniejącą masę dodaną ×1,7, a `m_eff` jest masą
+zredukowaną łódź–obiekt. Umowna droga ugięcia: koło 0,08 m, manekin
+0,12 m. Jest to niezależne od kroku czasu oszacowanie trójkątnego impulsu
+siły, nie pomiar siły ze sztywnego solvera ani model urazów. Nie zmienia
+istniejącego odepchnięcia obiektu i sił kadłuba. Każda łódź ma oddzielne
+kontakty z obiektem; ciągły kontakt nie jest nowym uderzeniem co klatkę.
+
+Wynik to 100 minus: do 40 pkt za kwadrat prędkości podjęcia / 0,55 m/s,
+do 50 pkt za siłę szczytową / 1000 N oraz 10 pkt za kontakt na biegu.
+Wynik, czas fizyczny, prędkość, siła i kluczyki/biegi silników są zapisane
+w stanie SAR oraz zdarzeniu Logbooka. Zachowano klucz i wersję autozapisu;
+dodatkowe pola są opcjonalne dla starych sesji. Obiekty korzystają
 ze wspólnego pola fal i wake. To nie jest symulacja zachowania człowieka.
+
+Stały odczyt nacisku na dno jest `groundLoad / 9.81` kg; nie dodaje
+nowej siły ani obciążenia. Chłodzenie korzysta z zanurzenia wlotu
+i `intakeClearance = bottomDepth + intakeZ`; wlot poniżej dna ogranicza
+przepływ do 20%. Samo `grounded` nie ogranicza chłodzenia; nadal zwiększa
+obciążenie termiczne przy pracy na dużym gazie w miejscu. Ostrzeżenie
+nie radzi opuszczać napędu, gdy niskie położenie nie jest przyczyną.
 
 ## SUV, przyczepa i slipowanie
 
@@ -608,6 +633,15 @@ Audyt nowych miejsc obejmuje ląd/wodę, nasady pomostów, polery,
 cumowane ciała, paliwo, starty i kompatybilność starego zapisu.
 Testy przeglądarkowe obejmują dostęp do nowych miejsc i ratownictwa
 oraz działające aktualne odnośniki dokumentacji.
+
+`sar-feedback.test.js` weryfikuje chłodzenie przy rzeczywistym osiadaniu
+w szuwarach, kontakt wlotu z dnem, zbliżanie i obrót punktu podejmowania,
+rzeczywiste N, siłę kontaktu, scoring, Logbook i kompatybilny zapis SAR.
+`sar-feedback.spec.js` sprawdza stały nacisk kg, położenie ostrzeżeń na
+telefonie/desktopie, linię celu, podjęcie z mapy, wynik i Kontynuuj.
+Dawne testy dolnego panelu cumowania używają teraz prawdziwego klikania
+polerów i knag na mapie, z zachowaniem testów wybierania/luzowania,
+serwisu i tankowania.
 
 `development.test.js` sprawdza wiatr, audio, osiągi i trym wyścigowej,
 limity napędów, domyślne strumieniowe, usuwanie floty, trwałe sumy Logbooku,

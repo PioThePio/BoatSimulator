@@ -6,7 +6,7 @@ export function propellerPoint(b,engine){const g=driveGeometry(b,engine);return{
 export function propellerContact(b,engine,dt,notify,env={}){
  if(b.spec.passive){engine.propContact=false;engine.propClearance=10;engine.immersion=engine.intake=0;return;}
  const g=driveGeometry(b,engine,env),p=g,floor=g.floor,clearance=g.clearance;
- engine.propClearance=clearance;engine.immersion=g.immersed;engine.intake=g.intake;engine.propDepth=g.propDepth;engine.drive=g;
+ engine.propClearance=clearance;engine.immersion=g.immersed;engine.intake=g.intake;engine.intakeBlocked=g.intakeClearance<0&&g.intake>.05;engine.propDepth=g.propDepth;engine.drive=g;
  if(b.spec.air){engine.propContact=false;engine.immersion=engine.intake=1;return;}
  const penetration=Math.max(0,-clearance),touching=penetration>0&&!b.enginesRaised;
  const speed=Math.hypot(b.vx-b.w*(p.y-b.y),b.vy+b.w*(p.x-b.x));

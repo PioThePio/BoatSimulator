@@ -1,3 +1,4 @@
+import {rescueApproach,validRescueResult} from './rescue-metrics.js';
 // Training objects, not people/AI. SI units and physical seconds only.
 export const RESCUE_TYPES={ring:{name:'Koło ratunkowe',mass:2.5,length:.8,beam:.8,draft:.05,windArea:.025},mob:{name:'Manekin MOB',mass:80,length:1.7,beam:.5,draft:.18,windArea:.06}};
 export const createRescue=()=>({objects:[],nextId:1,recovered:0,contacts:0});
@@ -17,13 +18,15 @@ export function advanceRescueObject(o,flow,wave,floor,dt){
 }
 export function pickupStatus(b,o){
  if(!o||o.recovered)return{ok:false,message:'Wybierz obiekt na wodzie.'};
- const dx=o.x-b.x,dy=o.y-b.y,c=Math.cos(b.a),s=Math.sin(b.a),x=dx*c+dy*s,y=-dx*s+dy*c;
- const distance=Math.hypot(Math.max(0,Math.abs(x)-b.spec.length*.5),Math.max(0,Math.abs(y)-b.spec.beam*.5));
+ const {distance,relativeSpeed,neutral}=rescueApproach(b,o);
  if(distance>1.7)return{ok:false,distance,message:'Podejdź burtą na mniej niż 1,7 m od obiektu.'};
- if(Math.hypot(b.vx-o.vx,b.vy-o.vy)>.55||Math.abs(b.throttle)>.035||Math.abs(b.throttle2)>.035)return{ok:false,distance,message:'Zwolnij względem obiektu i ustaw obie manetki na luz.'};
+ if(relativeSpeed>.55||!neutral)return{ok:false,distance,message:'Zwolnij względem obiektu i poczekaj na luz N obu napędów.'};
  return{ok:true,distance,message:'Można podjąć obiekt.'};
 }
 export function validRescueState(state){
  const finite=(x,lo=-1e8,hi=1e8)=>Number.isFinite(x)&&x>=lo&&x<=hi;
- return state&&Array.isArray(state.objects)&&state.objects.length<=28&&Number.isInteger(state.nextId)&&state.nextId>0&&state.nextId<1e7&&finite(state.recovered,0,1e7)&&finite(state.contacts,0,1e7)&&new Set(state.objects.map(o=>o.id)).size===state.objects.length&&state.objects.every(o=>/^rescue-\d+$/.test(o.id)&&RESCUE_TYPES[o.kind]&&finite(o.x)&&finite(o.y)&&finite(o.a)&&finite(o.vx,-30,30)&&finite(o.vy,-30,30)&&finite(o.thrownAt,0)&&finite(o.heave,-5,5)&&finite(o.roll,-3,3));
+ const metrics=m=>m&&typeof m==='object'&&!Array.isArray(m)&&Object.keys(m).length<=8&&Object.values(m).every(q=>q&&finite(q.contacts,0)&&finite(q.peakForce,0)&&finite(q.peakSpeed,0)&&finite(q.lastAt,0)&&typeof q.inGear==='boolean');
+ return state&&Array.isArray(state.objects)&&state.objects.length<=28&&Number.isInteger(state.nextId)&&state.nextId>0&&state.nextId<1e7&&finite(state.recovered,0,1e7)&&finite(state.contacts,0,1e7)
+  &&(state.targetId==null||typeof state.targetId==='string'&&state.objects.some(o=>o.id===state.targetId))&&(!state.lastResult||validRescueResult(state.lastResult))
+  &&new Set(state.objects.map(o=>o.id)).size===state.objects.length&&state.objects.every(o=>/^rescue-\d+$/.test(o.id)&&RESCUE_TYPES[o.kind]&&finite(o.x)&&finite(o.y)&&finite(o.a)&&finite(o.vx,-150,150)&&finite(o.vy,-150,150)&&finite(o.thrownAt,0)&&finite(o.heave,-5,5)&&finite(o.roll,-3,3)&&(!o.result||validRescueResult(o.result))&&(!o.contactMetrics||metrics(o.contactMetrics)));
 }

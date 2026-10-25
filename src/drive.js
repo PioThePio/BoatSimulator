@@ -18,7 +18,7 @@ export function driveGeometry(b,en,env={}){
  const propDepth=surface-propZ,ratio=clamp(propDepth/verticalRadius,-1,1);
  const immersed=.5+(Math.asin(ratio)+ratio*Math.sqrt(Math.max(0,1-ratio*ratio)))/Math.PI;
  const intakeZ=propZ+(S.jet?0:.15)*Math.cos(angle),intake=clamp((surface-intakeZ)/.08,0,1);
- return{x,y,localX,localY,mountX,mountZ,shaft,radius,verticalRadius,angle,surface,floor,propZ,propDepth,immersed,intake,clearance:floor.depth+propZ-verticalRadius};
+ return{x,y,localX,localY,mountX,mountZ,shaft,radius,verticalRadius,angle,surface,floor,propZ,propDepth,immersed,intake,intakeClearance:floor.depth+intakeZ,clearance:floor.depth+propZ-verticalRadius};
 }
 export function anchorAdvice(b,env={}){
  const anchor=b.anchor,at=anchor.mode==='stowed'?{x:b.x+Math.cos(b.a)*b.spec.length*.39,y:b.y+Math.sin(b.a)*b.spec.length*.39}:anchor;

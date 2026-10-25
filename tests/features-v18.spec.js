@@ -1,3 +1,4 @@
+import {attachBow,openBollard} from './helpers/mooring.js';
 import {test,expect} from '@playwright/test';
 
 test('phone keeps helm, propulsion and the immersion graphic in one row, with a minimal header and station selection below',async({page})=>{
@@ -20,7 +21,7 @@ test('centre of the compact ignition reliably starts an engine and its left side
 });
 
 test('water repair can be used at the separate pier after attaching a line and rejects an unmoored boat',async({page})=>{
- await page.goto('/');await page.locator('#start-location').selectOption('service');await page.locator('#begin-session').click();await page.locator('#repair').click();await expect(page.locator('#toast')).toContainText('Przycumuj');await page.locator('#bollard-bow').selectOption({label:'SER22 · Serwis przy slipie · 22'});await page.locator('#ropes [data-rope=bow][data-action=attach]').click();await page.locator('#repair').click();await expect(page.locator('#toast')).toContainText('nie wymagają naprawy');await expect(page.locator('#condition-tag')).not.toHaveText('NA MIELIŹNIE');
+ await page.goto('/');await page.locator('#start-location').selectOption('service');await page.locator('#begin-session').click();await page.locator('#repair').click();await expect(page.locator('#toast')).toContainText('Przycumuj');await attachBow(page,'SER22');await page.locator('#close-mooring').click();await page.locator('#repair').click();await expect(page.locator('#toast')).toContainText('nie wymagają naprawy');await expect(page.locator('#condition-tag')).not.toHaveText('NA MIELIŹNIE');
 });
 
 test('bollards have no permanent map identifiers; selection reveals only the selected identifier',async({page})=>{

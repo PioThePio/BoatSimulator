@@ -151,6 +151,11 @@ i przeciążeniu na cumach/mieliźnie. Od 95°C jest ostrzeżenie, 105°C alarm,
 120°C przegrzanie; moc stopniowo maleje. Przy 145°C silnik jest ochronnie
 wyłączany. Opuść napęd, zmniejsz obciążenie, poczekaj na ochłodzenie.
 Model nie dodaje trwałego zatarcia. Ponowny rozruch wymaga ≤110°C.
+Samo osiadanie dziobu lub szuwary nie oznaczają utraty chłodzenia. Liczy
+się zanurzenie wlotu i jego rzeczywisty kontakt z dnem. Komunikat rozróżnia
+podniesiony napęd, wynurzenie rufy oraz wlot przy dnie; obserwuj wypływ.
+Żółte/czerwone ostrzeżenia są na dole mapy między sonarem a zoomem.
+Nacisk na dno jest stale pokazywany w kg obok zanurzenia (siła / 9,81).
 
 ## Pogoda, woda i manewrowanie
 
@@ -190,6 +195,7 @@ Wybierz knagę, aby rzucić linę. Rzut na brzeg ma zasięg 6 m od knagi
 i zostawia luz — nie przyciąga od razu łodzi. Przytrzymuj przyciski
 wybierania/luzowania przy danej linie; puszczenie zatrzymuje pracę.
 X odłącza ją. Wybór kolejnego polera zmienia cel w tym samym oknie.
+Obsługa odbywa się na mapie; dolny, powielony panel cumowania usunięto.
 
 | Kolor punktu z liną | Znaczenie |
 | --- | --- |
@@ -315,7 +321,18 @@ pobliskiego pomostu/lądu i z łodzi na przyczepie.
 Wybierz obiekt z listy, Pokaż centruje jego okolicę. Podejdź burtą na
 mniej niż 1,7 m, ustaw obie manetki na N i zmniejsz prędkość względem
 obiektu poniżej 0,55 m/s. Wtedy Podejmij kończy próbę dla tego obiektu.
-Panel podaje odległość, czas fizyczny i liczbę podjęć/kontaktów kadłubem.
+Linia na mapie prowadzi od kadłuba do wybranego obiektu. Karta SAR
+podaje odległość od burty, podpisane zbliżanie (+ do obiektu, − oddalanie),
+pełną prędkość względną oraz maksymalną szacowaną siłę kontaktu w N/kN.
+Przycisk Podejmij jest też na mapie. Trzeba poczekać na rzeczywiste N
+obu napędów; samo przesunięcie manetek nie wystarcza podczas zmiany biegu.
+
+Wynik 0–100 uwzględnia prędkość podjęcia, najmocniejszy kontakt i kontakt
+na biegu F/R. Pokazuje osobno N/F/R i pracę/wyłączenie każdego silnika.
+Siła jest oszacowaniem miękkiego kontaktu z obiektem treningowym, nie
+pomiarem sił ani oceną obrażeń człowieka. Czas ćwiczenia jest fizyczny.
+Rozpoczęcie i zakończenie z wynikiem trafiają do Logbooka; wybrany obiekt
+i wynik pozostają w autozapisie.
 Maksymalnie 12 obiektów może jednocześnie być na wodzie. Ich stan jest
 objęty lokalnym zapisem. To ćwiczenie z obiektem, bez fizjologii ani AI.
 

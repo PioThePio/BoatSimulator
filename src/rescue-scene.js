@@ -2,6 +2,8 @@ import {createRescue,RESCUE_TYPES,advanceRescueObject,pickupStatus} from './resc
 import {environment,bottomAt,SOLIDS} from './world.js';
 import {point} from './rigging.js';
 import {sampleWater} from './wave-field.js';
+import {rescueResult,rescueContactMeasurement,rescueEngineState} from './rescue-metrics.js';
+import {voyageEvent} from './voyage-events.js';
 export function throwRescue(fleet,b,kind='ring',side=1){
  fleet.rescue??=createRescue();const state=fleet.rescue,p=RESCUE_TYPES[kind];
  if(!p)return{ok:false,message:'Wybierz koło lub manekin treningowy.'};
@@ -10,21 +12,30 @@ export function throwRescue(fleet,b,kind='ring',side=1){
  const sign=side<0?-1:1,pos=point(b,0,sign*(b.spec.beam*.5+1.2)),c=Math.cos(b.a),s=Math.sin(b.a);
  if(bottomAt(pos.x,pos.y).depth<=0||SOLIDS.some(d=>pos.x>d.x-p.beam*.5&&pos.x<d.x+d.w+p.beam*.5&&pos.y>d.y-p.beam*.5&&pos.y<d.y+d.h+p.beam*.5))return{ok:false,message:'Po tej stronie jest ląd lub pomost. Wybierz drugą burtę.'};
  const o={id:'rescue-'+state.nextId++,kind,...pos,a:b.a,vx:b.vx-sign*s*1.5,vy:b.vy+sign*c*1.5,heave:0,roll:0,thrownAt:fleet.time,recovered:false,contactAt:-10};
- state.objects=[...state.objects.filter(q=>!q.recovered),...state.objects.filter(q=>q.recovered).slice(-15),o];return{ok:true,object:o,message:p.name+' · wyrzucono z '+(sign<0?'lewej':'prawej')+' burty.'};
+ state.objects=[...state.objects.filter(q=>!q.recovered),...state.objects.filter(q=>q.recovered).slice(-15),o];state.targetId=o.id;
+ voyageEvent(b,{type:'sar',rescueId:o.id,message:'Ćwiczenie SAR · rozpoczęto · '+p.name});
+ return{ok:true,object:o,message:p.name+' · wyrzucono z '+(sign<0?'lewej':'prawej')+' burty.'};
 }
 export function recoverRescue(fleet,b,id){
  const o=fleet.rescue?.objects.find(o=>o.id===id),status=pickupStatus(b,o);if(!status.ok)return status;
- o.recovered=true;o.recoveredAt=fleet.time;o.elapsed=fleet.time-o.thrownAt;fleet.rescue.recovered++;return{ok:true,message:'Podjęto: '+RESCUE_TYPES[o.kind].name+' · '+Math.round(o.elapsed)+' s.'};
+ const result=rescueResult(b,o,fleet.time);o.result=result;o.recovered=true;o.recoveredAt=fleet.time;o.elapsed=result.elapsed;fleet.rescue.lastResult=result;fleet.rescue.recovered++;
+ fleet.rescue.targetId=fleet.rescue.objects.find(q=>!q.recovered)?.id??null;
+ voyageEvent(b,{type:'sar',rescueId:o.id,result,message:`Ćwiczenie SAR · podjęto ${RESCUE_TYPES[o.kind].name} · ${result.score}/100 · ${result.elapsed.toFixed(1)} s · podjęcie ${(result.pickupSpeed*3.6).toFixed(2)} km/h · kontakt szac. ${Math.round(result.peakForce)} N · biegi ${result.enginesNeutral?'N':'F/R'} · pracujących silników ${result.enginesRunning}`});
+ return{ok:true,result,message:`Podjęto: ${RESCUE_TYPES[o.kind].name} · ${Math.round(o.elapsed)} s · wynik ${result.score}/100.`};
 }
 export function rescueStep(fleet,e,dt){
  const state=fleet.rescue??=createRescue(),world=fleet.boats[0];
  for(let i=0;i<state.objects.length;i++){
   let o=state.objects[i];if(o.recovered)continue;
+  if(o.contactMetrics)for(const id of Object.keys(o.contactMetrics))if(!fleet.boats.some(b=>b.id===id))delete o.contactMetrics[id];
   const flow=environment(fleet.time,e,o.x,o.y),wave=sampleWater(world,o.x,o.y,e),floor=bottomAt(o.x,o.y);
   Object.assign(o,advanceRescueObject(o,flow,wave,floor,dt));
   // Soft contact with hulls; a floating training object yields to the boat.
   for(const b of fleet.boats){if(Math.hypot(o.x-b.x,o.y-b.y)>b.spec.length+1)continue;const c=Math.cos(b.a),s=Math.sin(b.a),dx=o.x-b.x,dy=o.y-b.y,x=dx*c+dy*s,y=-dx*s+dy*c,r=RESCUE_TYPES[o.kind].beam*.5,rx=b.spec.length*.45,ry=b.spec.beam*.48,n=Math.hypot(x/(rx+r),y/(ry+r));if(n>=1)continue;
    const nx=n<.001?0:x/((rx+r)**2),ny=n<.001?1:y/((ry+r)**2),d=Math.hypot(nx,ny),wx=(c*nx-s*ny)/d,wy=(s*nx+c*ny)/d,depth=(1-n)*Math.min(rx+r,ry+r),rel=(o.vx-b.vx)*wx+(o.vy-b.vy)*wy;
+   const hit=rescueContactMeasurement(b,o,{x:wx,y:wy},RESCUE_TYPES[o.kind].mass),id=b.id??'boat';o.contactMetrics??={};
+   const old=o.contactMetrics[id],newEpisode=!old||fleet.time-old.lastAt>.35,metric=old??{contacts:0,peakForce:0,peakSpeed:0,inGear:false};
+   if(newEpisode)metric.contacts++;metric.lastAt=fleet.time;metric.peakForce=Math.max(metric.peakForce,hit.force);metric.peakSpeed=Math.max(metric.peakSpeed,hit.speed);metric.inGear||=!rescueEngineState(b).neutral;o.contactMetrics[id]=metric;
    o.vx+=wx*Math.max(0,-rel+depth*3);o.vy+=wy*Math.max(0,-rel+depth*3);if(fleet.time-o.contactAt>2){state.contacts++;o.contactAt=fleet.time;}
   }
   for(const d of SOLIDS){const x=Math.max(d.x,Math.min(o.x,d.x+d.w)),y=Math.max(d.y,Math.min(o.y,d.y+d.h)),dx=o.x-x,dy=o.y-y,r=RESCUE_TYPES[o.kind].beam*.5,dist=Math.hypot(dx,dy);if(dist>.001&&dist<r){const nx=dx/dist,ny=dy/dist,rel=o.vx*nx+o.vy*ny;o.x+=nx*(r-dist);o.y+=ny*(r-dist);if(rel<0){o.vx-=rel*nx;o.vy-=rel*ny;}}}

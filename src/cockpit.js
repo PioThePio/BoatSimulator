@@ -4,7 +4,7 @@ import {engineKey} from './craft.js';
 import {trimStep} from './drive.js';
 import {gauge,attitudeMarkup,updateAttitude} from './instruments.js';
 import {requestRefuel} from './systems.js';
-import {thermalStage} from './thermal.js';
+import {thermalStage,coolingWarning} from './thermal.js';
 import {requestRepair} from './service.js';
 import {conditionMarkup,updateContactInstrument} from './contact-instrument.js';
 const $=s=>document.querySelector(s);
@@ -49,7 +49,7 @@ export function installCockpit(api){
   const q=b.bilge;updateBilgePanel(b);const warnings=[];if(b.electrics.floodFault)warnings.push('ZWARCIE · instalacja zalana · brak zasilania');if(b.sunken)warnings.push('ŁÓDŹ ZATOPIONA');else if(b.swamped)warnings.push('Zalany pokład · pompuj i wracaj do serwisu');if(q.alarm)warnings.push('UWAGA — WODA W ZĘZIE');
   const stage=thermalStage(temperature);
   if(stage!=='normal'||en.some(e=>e.thermalTrip))warnings.push(({high:'HIGH TEMP',alarm:'ALARM TEMPERATURY',overheat:'OVERHEAT'})[stage]+' · zmniejsz gaz i sprawdź chłodzenie'+(en.some(e=>e.thermalTrip)?' · silnik zatrzymany':''));
-  else if(en.some(e=>e.key==='running'&&e.cooling<.25))warnings.push('Brak chłodzenia — opuść napęd');
+  else{const cooling=coolingWarning(b);if(cooling)warnings.push(cooling);}
   if(en.some(e=>e.key==='running'&&e.ventilation>.15))warnings.push(S.jet?'Zapowietrzony wlot — zmniejsz gaz i zanurz wlot':'Napowietrzona struga — zmniejsz trym');if(b.fuel.litres<b.fuel.capacity*.1)warnings.push('Rezerwa paliwa');if(b.battery.voltage<11.5)warnings.push('Niskie napięcie');if(en.some(e=>e.startFailure))warnings.push('Rozruch nieudany · słaby akumulator, wyłącz odbiorniki i doładuj');if(b.reeds>.2)warnings.push('Szuwary · większy opór');
   $('#engine-warning').hidden=!warnings.length;$('#engine-warning').textContent=warnings.join(' · ');$('#engine-warning').classList.toggle('critical',b.sunken||q.alarm||en.some(e=>e.overheated||e.thermalTrip));
   for(const [i,e]of en.entries()){

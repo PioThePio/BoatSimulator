@@ -1,3 +1,4 @@
+import {attachBow,openBollard} from './helpers/mooring.js';
 import {test,expect} from '@playwright/test';
 
 test('wind and current have independent arrows even when wind is calm',async({page})=>{
@@ -20,7 +21,7 @@ test('restraints can be secured again while the boat engine is running',async({p
 });
 
 test('mooring diagram and live bars consistently show rope tension',async({page})=>{
- await page.clock.install();await page.goto('/');await page.locator('#start-location').selectOption('berth');await page.locator('#begin-session').click();await page.locator('#bollard-bow').selectOption('4');await page.locator('[data-rope=bow][data-action=attach]').click();await page.clock.runFor(150);await expect(page.locator('#load-bow')).toHaveAttribute('data-load','slack');await expect(page.locator('#load-bow')).toContainText('Za luźna');await expect(page.locator('.load-legend')).toContainText('Kolor knagi i paska pokazuje napięcie');
+ await page.clock.install();await page.goto('/');await page.locator('#start-location').selectOption('berth');await page.locator('#begin-session').click();await attachBow(page,4);await page.clock.runFor(150);await expect(page.locator('#map-load-bow')).toHaveAttribute('data-load','slack');await expect(page.locator('#map-load-bow')).toContainText('Za luźna');await expect(page.locator('.load-legend')).toContainText('Kolor knagi i paska pokazuje napięcie');
 });
 
 test('swamp boat has single air propulsion with no tilt or reverse and an air-propeller status',async({page})=>{

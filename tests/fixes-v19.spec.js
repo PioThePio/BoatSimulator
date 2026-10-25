@@ -1,3 +1,4 @@
+import {attachBow,openBollard} from './helpers/mooring.js';
 import {test,expect} from '@playwright/test';
 
 test('wheel, propulsion, gauges and information share the same row on phone and desktop, including twin engines',async({page})=>{
@@ -10,7 +11,7 @@ test('craft restricts available drives and the adjustable maximum-steering selec
 });
 test('map repair recognises the ordinary bollards on both sides of the slip from the real retrieval start',async({page})=>{
  await page.clock.install();await page.goto('/');await page.locator('#start-location').selectOption('retrieve');await page.locator('#begin-session').click();await page.clock.runFor(300);await expect(page.locator('#service-map #repair')).toBeVisible();
- for(const side of ['L','P']){await page.locator('#bollard-bow').selectOption({label:`R2${side} · Serwis · poler 2 ${side}`});await page.locator('#ropes [data-rope=bow][data-action=attach]').click();await page.locator('#repair').click();await expect(page.locator('#toast')).toContainText('nie wymagają naprawy');await page.locator('#ropes [data-rope=bow][data-action=detach]').click();}
+ for(const side of ['L','P']){await attachBow(page,`R2${side}`);await page.locator('#close-mooring').click();await page.locator('#repair').click();await expect(page.locator('#toast')).toContainText('nie wymagają naprawy');await openBollard(page,`R2${side}`);await page.locator('#map-ropes [data-rope=bow][data-action=detach]').click();}
 });
 test('actual automatic pumping changes the propulsion button to ON and back to OFF while water information stays in the right panel',async({page})=>{
  await page.clock.install();await page.goto('/');await page.locator('#begin-session').click();await page.locator('#pause').click();const states=await page.evaluate(async()=>{const{createBoat}=await import('/src/physics.js'),{systemsStep}=await import('/src/systems.js'),{updateBilgePanel}=await import('/src/cockpit.js');const b=createBoat('lake',{coldStart:true});b.bilge.litres=20;systemsStep(b,1/120);updateBilgePanel(b);const on={text:document.querySelector('#bilge-pump').textContent,mode:document.querySelector('#bilge-pump').dataset.mode,pressed:document.querySelector('#bilge-pump').getAttribute('aria-pressed')};b.bilge.litres=1;systemsStep(b,1/120);updateBilgePanel(b);return{on,off:document.querySelector('#bilge-pump').textContent};});expect(states.on).toEqual({text:'POMPA AUTO',mode:'auto',pressed:'true'});expect(states.off).toBe('POMPA AUTO');
