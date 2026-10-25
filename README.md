@@ -1,6 +1,6 @@
 # Przystań — symulator manewrów na Zegrzu
 
-**[Uruchom w przeglądarce](https://piothepio.github.io/BoatSimulator/?v=28.0.0)** · komputer, telefon lub tablet, bez konta i instalowania gry.
+**[Uruchom w przeglądarce](https://piothepio.github.io/BoatSimulator/?v=29.0.0)** · komputer, telefon lub tablet, bez konta i instalowania gry.
 
 Symulator z widokiem z góry do ćwiczenia manewrów, cumowania, kotwiczenia,
 holowania i wodowania z przyczepy. Ma dziewięć profili łodzi, pięć rodzajów
@@ -16,9 +16,9 @@ Wyścigowa ma dwa turbodoładowane diesle do 600 KM każdy. Logbook zbiera
 SAR działa z menu mapy, a obiekty reagują na fale i strumienie napędów.
 
 Mapa jest interpretacją Jeziora Zegrzyńskiego w skali odległości 50%,
-z portami, mostami, ujściami rzek i wyspami. Euzebia oraz treningowy układ
-Pilawy z oznaczonym stanowiskiem ORLEN są opisane wraz z ograniczeniami
-dokładności w dokumentacji. Geografia i głębokości nie są mapą nawigacyjną;
+z portami, mostami, ujściami rzek i wyspami. Euzebia i Pilawa korzystają z danych OSM/PRNG: poprawny obrys wyspy,
+północne wejście do portu, ukośne pomosty i dostęp do ORLEN. W obrębie
+mariny zachowano fizyczne rozmiary konstrukcji i przejść. Geografia i głębokości nie są mapą nawigacyjną;
 model fizyczny nie jest skalibrowany dla konkretnej rzeczywistej łodzi.
 
 ## Dokumentacja do przekazania dalej

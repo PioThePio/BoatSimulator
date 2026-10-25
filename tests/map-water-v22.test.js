@@ -1,3 +1,4 @@
+import {solidPoint} from '../src/solid-geometry.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createBoat,step,attachRope} from '../src/physics.js';
@@ -35,7 +36,7 @@ test('every remote pier reaches land and water; the four legacy piers now join r
  assert.equal(DOCKS[6].site,'beach');assert.equal(DOCKS[8].site,'island');
 });
 test('main port access and service finger touch land; slip crosses the real wet/dry line; fuel stays on its own pier',()=>{
- for(const d of DOCKS.filter(q=>q.access)){assert.ok(shoreAt(d.x,d.y).land);assert.ok(!shoreAt(d.x+d.w/2,d.y+d.h).land);}
+ for(const d of DOCKS.filter(q=>q.access)){const a=d.pose?solidPoint(d,-d.pose.length/2,0):{x:d.x,y:d.y},b=d.pose?solidPoint(d,d.pose.length/2,0):{x:d.x+d.w/2,y:d.y+d.h};assert.ok(shoreAt(a.x,a.y).land,d.id);assert.ok(!shoreAt(b.x,b.y).land,d.id);}
  const s=SERVICE_STATION.slip;assert.ok(bottomAt(s.x+s.w/2,s.y).depth<0);assert.ok(bottomAt(s.x+s.w/2,s.y+s.h).depth>2);
  assert.ok(DOCKS.some(d=>d.service&&d.x===130.5&&d.h===33));
  assert.ok(DOCKS.some(d=>Math.abs(d.x+d.w-FUEL_STATION.x)<1e-8&&d.y<FUEL_STATION.y&&d.y+d.h>FUEL_STATION.y));

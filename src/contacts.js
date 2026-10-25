@@ -1,3 +1,4 @@
+import {circleSolidHit as rectHit} from './solid-geometry.js';
 import {SOLIDS,DOCKS,clamp} from './world.js';
 import {point,inverseMass,impulse} from './rigging.js';
 import {recordImpact} from './impacts.js';
@@ -7,13 +8,6 @@ import {fenderContactShape} from './fender-geometry.js';
 import {boomPoint} from './marina.js';
 const notify=b=>message=>{if(!b.events)return;b.events.unshift({time:b.time,message});b.events.splice(12);};
 const dockSolids=new Set(DOCKS);
-function rectHit(p,radius,rect){
- if(p.x+radius<=rect.x||p.x-radius>=rect.x+rect.w||p.y+radius<=rect.y||p.y-radius>=rect.y+rect.h)return null;
- const near={x:clamp(p.x,rect.x,rect.x+rect.w),y:clamp(p.y,rect.y,rect.y+rect.h)},dx=p.x-near.x,dy=p.y-near.y,d=Math.hypot(dx,dy);let depth=radius-d,n;
- if(depth<=0)return null;
- if(d<1e-8){const faces=[{v:p.x-rect.x,x:-1,y:0},{v:rect.x+rect.w-p.x,x:1,y:0},{v:p.y-rect.y,x:0,y:-1},{v:rect.y+rect.h-p.y,x:0,y:1}].sort((a,b)=>a.v-b.v);n={x:faces[0].x,y:faces[0].y};depth=radius+faces[0].v;}else n={x:dx/d,y:dy/d};
- return{n,depth,near};
-}
 export function contacts(b,dt,indices=null){
  const candidates=indices??SOLIDS.map((_,i)=>i);
  if(b.fenders)for(const g of fenderGeometry(b.spec)){const p=point(b,g.x,g.y),extent=g.length/2+g.radius;for(const k of candidates){const rect=SOLIDS[k];if(!dockSolids.has(rect)&&!rect.fender||p.x+extent<rect.x||p.x-extent>rect.x+rect.w||p.y+extent<rect.y||p.y-extent>rect.y+rect.h)continue;let best=null;for(const sample of fenderContactShape(g)){const hit=rectHit(point(b,sample.x,sample.y),g.radius,rect);if(hit&&(!best||hit.depth>best.depth))best={...hit,sample};}if(best)fenderContact(b,best.sample,{...best,target:rect.id??'solid-'+k},dt,notify(b));}}

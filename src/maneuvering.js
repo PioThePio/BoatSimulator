@@ -1,3 +1,4 @@
+import {closestSolidPoint} from './solid-geometry.js';
 import {DOCKS,bottomAt,clamp} from './world.js';
 export function airRudderForce(S,thrust,delta){
  const sharp=clamp((Math.abs(delta)/S.maxSteer-.65)/.35,0,1),s=Math.sin(delta);
@@ -15,7 +16,7 @@ export function bankInfluence(b){
  const range=b.spec.length*2;
  let distance=range,nx=0,ny=0;
  const consider=(x,y)=>{const dx=x-b.x,dy=y-b.y,d=Math.hypot(dx,dy);if(d>.1&&d<distance){distance=d;nx=dx/d;ny=dy/d;}};
- for(const r of DOCKS)consider(clamp(b.x,r.x,r.x+r.w),clamp(b.y,r.y,r.y+r.h));
+ for(const r of DOCKS){const p=closestSolidPoint(r,b.x,b.y);consider(p.x,p.y);}
  for(let i=0;i<16;i++){
   const a=i*Math.PI/8;
   for(const radius of [.4,.8,1.3,2]){const x=b.x+Math.cos(a)*radius*b.spec.length,y=b.y+Math.sin(a)*radius*b.spec.length;if(bottomAt(x,y).depth<=0){consider(x,y);break;}}

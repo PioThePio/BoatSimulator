@@ -456,7 +456,7 @@ mniejszą boczną masę dodaną, opory planujące oraz zamkniętą wyporność.
 
 Hol to jednostronna sprężysta lina, nie więz teleportujący. Siły
 w punktach zaczepienia są równe i przeciwne, dają momenty obu ciał.
-Długość 0,6–60 m, rzut 25 m, ręczne wybieranie do 450 N/65 W,
+Długość 0,6–60 m, podłączenie do 20 m, ręczne wybieranie do 450 N/65 W,
 limit długości zmienianej w trzymanym przycisku. Wytrzymałość jest
 minimum wybranej liny i obu punktów zaczepienia. Nagły skok napięcia
 może zerwać hol, co zatrzymuje przekaz siły i daje komunikat.
@@ -500,7 +500,14 @@ Transport bezpośredniego wake jest rzędu `3×(A/sigma)^2×c`, ograniczony do
 ruchu pływającego obiektu, nie model CFD ani ocena sił działających na człowieka.
 
 Podejmowanie wymaga ≤1,7 m od obrysu kadłuba, względnej prędkości
-≤0,55 m/s. Podjęcie na biegu jest dozwolone, z karą 30 pkt. Limit 12 aktywnych obiektów, ograniczona
+≤0,55 m/s dla pewnego podjęcia na N. `rescue-attempts.js` oddziela
+możliwość kliknięcia od szansy powodzenia. W zasięgu ≤1,7 m próba jest
+możliwa także przy nadmiernej prędkości. Prawdopodobieństwo na N wynosi
+`1-smoothstep((v_rel-0.55)/0.85)`, ograniczone do [0,1]: 100% do
+0,55 m/s, 0% od 1,4 m/s. Na F/R mnożnik wynosi 0,8. Losowanie jest
+wstrzykiwane do funkcji, aby testy były deterministyczne. Niepowodzenie
+nie zmienia pozycji/sił obiektu i nie oznacza podjęcia; ponowienie po
+1,2 s fizycznego czasu. Udane podjęcie na biegu nadal kosztuje 30 pkt. Limit 12 aktywnych obiektów, ograniczona
 historia 16 podjętych. Kontakt z kadłubem odpycha lekki obiekt i jest
 liczony w treningu; nie uszkadza automatycznie łodzi. Telemetria używa
 prędkości punktu podejmowania (`v + omega × arm`), a zbliżanie jest
@@ -518,14 +525,27 @@ kontakty z obiektem; ciągły kontakt nie jest nowym uderzeniem co klatkę.
 
 Wynik to 100 minus: do 40 pkt za kwadrat prędkości podjęcia / 0,55 m/s,
 do 50 pkt za siłę szczytową / 1000 N oraz 10 pkt za kontakt na biegu i 30 pkt za podjęcie bez N.
+Dodatkowa łączna kara za nieudane podejścia jest ograniczona do 30 pkt.
+Każda nieudana próba kosztuje `3+5×risk+3×inGear+2×proximity`, a minięcie
+bez kliknięcia `3+6×risk+3×inGear+2×proximity`; risk rośnie liniowo między
+0,55 a 1,4 m/s, proximity między odległością 1,7 a 0 m.
+
+Histereza bliskiego minięcia: wejście ≤1,7 m, wyjście >2,4 m; wymagane
+rzeczywiste zbliżanie >0,03 m/s i ruch łodzi >0,05 m/s. Sam rzut z
+nieruchomej łodzi nie tworzy nieudanej próby. Rejestrowane są minimum
+odległości, względna prędkość przy nim, stan biegu i brak kliknięcia.
+Oceniana jest tylko aktualnie sterowana jednostka; łodzie bierne i holowane
+nadal oddziałują fizycznie na obiekt, ale nie naliczają kary za brak kliknięcia.
+Kliknięta próba oznacza ten epizod jako obsłużony, więc nie dopisuje się
+drugiej kary za to samo odpłynięcie. Ostatnich 60 prób jest w stanie SAR,
+nieudane trafiają do Logbooka razem z komunikatem przyczyny. Dane i
+oczekujące epizody są walidowane i zachowane w autozapisie.
 Wynik, czas fizyczny, prędkość, siła i kluczyki/biegi silników są zapisane
 w stanie SAR oraz zdarzeniu Logbooka. Zachowano klucz i wersję autozapisu;
 dodatkowe pola są opcjonalne dla starych sesji. Obiekty korzystają
 ze wspólnego pola fal i wake. Limity podjęcia są kalibracją gry.
-Weryfikacja publikacji RNLI/RYA/BoatUS nie została ukończona: proxy
-środowiska odrzuca te domeny (CONNECT 403), a zapisany projekt ich
-dopuszczenia wymaga publikacji konfiguracji środowiska. Nie twierdzimy,
-że 0,55 m/s albo 1,7 m stanowią zalecenie którejkolwiek z tych organizacji.
+Nie twierdzimy, że 0,55 m/s, 1,4 m/s albo 1,7 m stanowią zalecenie
+RNLI, RYA czy BoatUS. Prawdopodobieństwa są mechaniką treningową.
 To nie jest symulacja zachowania człowieka.
 
 Stały odczyt nacisku na dno jest `groundLoad / 9.81` kg; nie dodaje
@@ -587,34 +607,45 @@ Pomosty zdalne mają fizyczne 20–40 m. Budynki i drzewa stoją na lądzie,
 pomosty mają dojście do brzegu; stacja Rynia ma oddzielne stanowisko.
 Kompresja świata nie skraca samych budowli.
 
-**Euzebia** jest dodana osobno od wysp ujścia Bugu, przy ujściu Rządzy
-w rejonie Arciechowa/Ryni. Ma nieregularny obrys, płycizny, wybrane
-łagodne piaszczyste podejścia i pięć drzew do cumowania. W obecnym
-modelu jest największą wyspą. Jej obrys i wymiar są interpretowane. Zachodnia i część południowej
-strony mają łagodne podejście z ciągłym przejściem nachylenia 0,085–0,21.
-Płytki pas wody jest rysowany z cache rastra `bottomAt` o komórce 2 m,
-z interpolacją Canvas, a suchy piasek jest osobno nad linią wody.
-Dwie nowe kępy szuwarów mają ten sam opór co istniejące rośliny.
-Współrzędne drzew i ich stare indeksy pozostają bez przesuwania.
+**Euzebia** używa obrysu OSM way 193668247 (PRNG 29584). Środek obwiedni
+52,4779419 N / 21,07161465 E, obwiednia około 162×162 m w rzeczywistości,
+81×81 m na mapie 50%. Współrzędne są przeliczone przez istniejący
+`fromGeo`, bez dopasowywania wyspy do wymyślonej elipsy. Zachowano
+zachodnie/południowe łagodne podejścia, pięć drzew, płycizny z nachyleniem
+0,085–0,21 i dwie kępy szuwarów. Płytki pas wody korzysta z rastra
+`bottomAt` 2 m; odcień mokrego piasku jest odrębny od suchej plaży.
 
-**Pilawa** leży po wschodniej stronie południowego basenu według
-dostarczonej mapki lokalizacyjnej. Model ma cztery poprzeczne pomosty,
-dwie sekcje osłony z wejściem, 19 dodatkowych łodzi motorowych/żaglowych/
-skuterów oraz oznaczone stanowisko ORLEN pośród miejsc postojowych.
-Rozmiary pomostów pozostają fizyczne, ich nasady są dopasowane do brzegu.
-Pomost paliwa ma połączenie i własne polery/odbijacze; nie jest
-samotnym obiektem na otwartej wodzie. Basen ma umowne pogłębienie.
+**Pilawa** korzysta z basenu OSM way 871129082, brzegu relacji zbiornika
+2329494, sześciu pomostów i falochronu z OSM oraz punktu ORLEN
+2818500152 (52,4358481 N / 21,0412369 E). Wejście jest od północy.
+Sześć pomostów ma rzeczywiste kierunki, długości środkowych odcinków
+24–37 m, szerokość przyjętą 2,4 m, dojścia do lądu i główkę T. Osłona
+ma fizyczną szerokość 4 m. 19 łodzi motorowych, żaglowych i skuterów
+pozostaje na osobnych cumach; dalsze pomosty są dostępne do ćwiczeń.
+Stanowisko ORLEN ma 20 m kei, własne polery i pięć odbijaczy.
 
-**Stopień weryfikacji tych dwóch miejsc:** nazwa i okolica Euzebii pochodzą
-z informacji/linku użytkownika, lokalizacja Pilawy z jego załącznika.
-Załącznik nie pokazuje szczegółów pomostów. Bezpośrednia weryfikacja
-OpenStreetMap/Overpass, strony portu i wskazanego Facebooka jest
-zablokowana przez politykę sieci środowiska. Przygotowano projekt
-rozszerzenia dostępu; nie traktujemy go jako uzyskanego dostępu ani
-przejrzanego źródła. Obecne kształty, układ pomostów, liczba miejsc
-i położenie dystrybutora są **treningowym przybliżeniem, nie repliką 1:1**.
-Dane są wydzielone w `lake-sites.js`, aby można je było poprawić po
-uzyskaniu rzeczywistej geometrii bez przebudowy reszty świata.
+Położenie całej mariny jest przeliczone skalą geograficzną 50%, lecz
+jej wnętrze jest jedną fizyczną konstrukcją w metrach: nie ściska się
+odstępów między nieskalowanymi łodziami/pomostami. Lokalny brzeg basenu
+z danych OSM jest połączony z atlasowym brzegiem reszty świata.
+Basen ma umowne pogłębienie do minimum 2,7 m na wodzie przy twardej kei,
+z łagodnym przejściem na jego granicy. Geometria nie odtwarza każdego
+rzeczywistego stanowiska ani aktualnej liczby jachtów.
+
+Ukośne pomosty mają obwiednie AABB wyłącznie do odrzucania odległych
+obiektów. `solid-geometry.js` liczy kontakt w ich obróconym lokalnym
+układzie, zwracając rzeczywistą normalną. Tę samą geometrię wykorzystują
+kadłub, odbijacze, obiekty SAR, umieszczanie floty, przepływ przy kei,
+odbicia fal i renderowanie. Dawne osiowe prostokąty zachowują te same
+równania kontaktu. Nie powstaje niewidzialna prostokątna ściana obok
+ukośnego pomostu.
+
+Dane odczytano z API OSM i Nominatim 25 października 2026. Wydzielony
+plik `site-geography-data.js` zawiera współrzędne i identyfikatory;
+© OpenStreetMap contributors, ODbL 1.0. Aplikacja ma odnośnik atrybucji
+na mapie. Strona oficjalna portu zwróciła HTTP 403, więc jej treści nie
+wykorzystano jako potwierdzenia. Układ jest oparty na danych OSM,
+a nie na bieżącym pomiarze geodezyjnym czy batymetrycznym.
 
 Głębokości, pogłębienia portowe, mielizny, lokalne przepływy i plaże są
 modelowane na potrzeby ćwiczeń, nie z sondaży. Mosty mają założone
@@ -676,6 +707,13 @@ indeksy i współrzędne są sprawdzane przez fixture; stare cumy nie
 przeskakują do nowego portu. Odczyt starego zapisu zachowuje stan
 wcześniejszych łodzi portowych po ID i dopisuje nowe, brakujące ciała.
 Brak ratownictwa w starym zapisie daje pusty stan treningowy.
+Opcjonalne `siteGeometryVersion=2` uruchamia jednorazową migrację starszych
+pozycji przy Euzebii i Pilawie. Stare identyfikatory/liczbowe indeksy
+polerów zachowano; 24 nowe punkty są dopisane na końcu. Lokalne łodzie,
+kotwice, powiązany ślad i obiekty SAR zmieniają pozycję wraz z miejscem.
+Napięcia cum/bujających boi są inicjalizowane dla nowej geometrii,
+a liczniki, energia, paliwo, uszkodzenia, czas i stacyjki zostają zachowane.
+Stan parkowanych jednostek w pozostałych portach nie jest resetowany.
 
 Odizolowane obliczenia: `hydro-interactions.js`, `rescue.js` oraz
 rozszerzenia `towable-water.js`. Osobne adaptery sceny podają brzeg,
@@ -766,6 +804,18 @@ plik `.spec.js` bada brak przewijania strony, pompę podczas odświeżania,
 opadanie wskazówek, zachowanie kluczyka, światła, SAR, odczyt wybranej
 kopii i rzeczywiste próbki Web Audio.
 
+`rescue-port-refinements.test.js` sprawdza zasięg 1,4 m przy szybszym
+podejściu, granice szans, deterministyczne niepowodzenie/ponowienie,
+F/R, karę zależną od ryzyka, pojedyncze minięcie bez kliknięcia, zapis
+prób, odrzucanie uszkodzonego stanu, prawdziwe ukośne kontakty, obrys
+PRNG/OSM Euzebii i zachowanie identyfikatorów polerów. Sprawdza wolną
+drogę o średnicy 11,2 m do paliwa między rzeczywistymi przeszkodami i
+zacumowanymi łodziami. Motorówka fizycznie przepływa trasę bez kolizji,
+a pięć profili cumuje, pozostaje na wodzie i tankuje. Testy obejmują też
+migrację istniejącej cumy i nowy limit rzutu holu 20 m. Plik `.spec.js`
+sprawdza te menu w Chromium, logi niepowodzeń, suwaki przy 360–1440 px,
+zawartość tarcz, przycisk cumowania i powiększone światła.
+
 ## Źródła i pochodzenie założeń
 
 Punkty odniesienia konstrukcji modelu, nie przeniesione współczynniki
@@ -789,6 +839,12 @@ realnych motorówek:
   z geonamescache, [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/):
   Serock 52,51036/21,0691; Nieporęt 52,43152/21,03212; Białobrzegi
   52,44199/21,05255; Wieliszew 52,4513/20,96827.
+- [Euzebia — OSM way 193668247 / PRNG 29584](https://www.openstreetmap.org/way/193668247),
+  [Port Pilawa — way 871129082](https://www.openstreetmap.org/way/871129082),
+  [ORLEN — node 2818500152](https://www.openstreetmap.org/node/2818500152),
+  [zbiornik — relation 2329494](https://www.openstreetmap.org/relation/2329494).
+  Dane OSM/PRNG odczytane przez API 2026-10-25; współrzędne i ID pomostów
+  są zachowane w pliku danych. [© OpenStreetMap contributors / ODbL 1.0](https://www.openstreetmap.org/copyright).
 - Mapy/zdjęcia przekazane przez użytkownika i jego
   [wskazanie Euzebii przy Rządzy](https://www.facebook.com/arciechow/posts/euzebiato-najwi%C4%99ksza-wyspa-jeziora-zegrzy%C5%84skiego-le%C5%BC%C4%85ca-tu%C5%BC-przy-uj%C5%9Bciu-rzeki-rz/538736598240482/).
   To wskazanie źródła, nie deklaracja odczytania zablokowanego wpisu.

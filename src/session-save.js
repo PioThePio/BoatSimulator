@@ -1,7 +1,8 @@
+import {migrateSiteSave} from './site-migration.js';
 import {CRAFTS} from './craft.js';
 import {createFleetCraft,TOWABLES} from './fleet-craft.js';
 import {syncFleetWorld,MAX_FLEET} from './fleet.js';
-import {BOLLARDS} from './world.js';
+import {BOLLARDS,MAP_STARTS,shoreAt} from './world.js';
 import {WORLD_DISTANCE_SCALE} from './zegrze.js';
 import {createRescue,validRescueState} from './rescue.js';
 
@@ -10,7 +11,7 @@ const omitted=new Set(['booms','buoys','traffic','towRig','worldRig','wakeSource
 function boatData(b){return Object.fromEntries(Object.entries(b).filter(([key])=>!omitted.has(key)));}
 export function snapshotSession(session,now=Date.now()){
  const {fleet,env,start,boatOptions,vehicle,ui={},weather={}}=session,world=fleet.boats[0];
- return{version:SAVE_VERSION,worldScale:WORLD_DISTANCE_SCALE,savedAt:now,
+ return{version:SAVE_VERSION,siteGeometryVersion:2,worldScale:WORLD_DISTANCE_SCALE,savedAt:now,
   fleet:{...fleet,boats:fleet.boats.map(boatData),tows:fleet.tows.map(r=>({...r,control:0,rate:0}))},
   world:{booms:world.booms,buoys:world.buoys,traffic:world.traffic},rig:session.towRig??fleet.boats.find(b=>b.id===fleet.rigBoatId)?.towRig??null,
   env,start,boatOptions,vehicle,ui,weather};
@@ -24,6 +25,7 @@ export function restoreSession(value,{validateOnly=false}={}){
  try{
   const data=typeof value==='string'?JSON.parse(value):JSON.parse(JSON.stringify(value));
   if(data?.version!==SAVE_VERSION||data.worldScale!==WORLD_DISTANCE_SCALE||!finite(data.savedAt,0,1e15))throw Error('Nieobsługiwana wersja zapisu.');
+  if(data.siteGeometryVersion!==undefined&&![1,2].includes(data.siteGeometryVersion))throw Error('Nieobsługiwana geometria miejsc.');
   validateTree(data);const f=data.fleet;if(!Array.isArray(f?.boats)||!f.boats.length||f.boats.length>MAX_FLEET||!Array.isArray(f.tows)||f.tows.length>64)throw Error('Błędna flota.');
   f.rescue??=createRescue();if(!validRescueState(f.rescue))throw Error('Błędny stan ratownictwa.');
   const ids=new Set();for(const b of f.boats){
@@ -37,7 +39,7 @@ export function restoreSession(value,{validateOnly=false}={}){
   expectedBoomCount??=createFleetCraft('runabout').booms.length;if(!Array.isArray(data.world?.booms)||data.world.booms.length!==expectedBoomCount||!data.world.buoys||!Array.isArray(data.world.traffic))throw Error('Błędny stan akwenu.');
   if(data.rig&&(!finite(data.rig.car?.x)||!finite(data.rig.car?.y)||!finite(data.rig.trailer?.x)||!finite(data.rig.trailer?.y)||!data.rig.winch))throw Error('Błędny stan SUV-a.');
   if(validateOnly)return{ok:true};
-  const base=createFleetCraft('runabout');
+  const base=createFleetCraft('runabout');migrateSiteSave(data,{points:BOLLARDS,starts:MAP_STARTS,shoreAt,world:base});
   f.boats=f.boats.map(saved=>{const b=createFleetCraft(saved.fleetKind??saved.spec.profile);Object.assign(b,saved);const name=TOWABLES[b.fleetKind]?.name??CRAFTS[b.spec.profile]?.name??b.spec.name;if(b.name===b.spec.name||/ · \d+$/.test(b.name??''))b.name=name+(b.name?.match(/ · \d+$/)?.[0]??'');b.spec.name=name;if(b.fleetKind==='banana'||b.fleetKind==='mat')b.spec.inflatable=true;for(const r of b.ropes){r.control=0;r.rate=0;r.effortTime=0;}b.thrusters.bow=b.thrusters.stern=0;return b;});
   const trafficById=new Map(data.world.traffic.map(q=>[q.id,q]));
   data.world.traffic=base.traffic.map(q=>trafficById.get(q.id)??q);

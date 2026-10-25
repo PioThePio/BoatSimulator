@@ -1,10 +1,11 @@
+import {solidPose} from './solid-geometry.js';
 import {drawBrakingWaves} from './braking-waves.js';
 import {windSurface} from './wind-response.js';
 import {drawNavigation} from './render-navigation.js';
 import {drawEuzebiaShallows} from './render-shallows.js';
 import {euzebiaBeachWeight} from './island-approach.js';
 import {attachmentNames} from './attachment-points.js';
-import {LAKE,REEDS,FUEL_STATION,FUEL_STATIONS,ALL_FUEL_FENDERS,SERVICE_STATION,BUILDINGS,WORLD,ISLAND,ISLANDS,BRIDGES,REMOTE_HARBORS,MAP_POIS,DOCKS,BOLLARDS,BEACHES,islandOutline,islandRadius,shoreAt,bottomAt,environment,weatherAt,waveHeight,reflectionFacesNear,clamp} from './world.js';
+import {LAKE,COAST_PATCHES,REEDS,FUEL_STATION,FUEL_STATIONS,ALL_FUEL_FENDERS,SERVICE_STATION,BUILDINGS,WORLD,ISLAND,ISLANDS,BRIDGES,REMOTE_HARBORS,MAP_POIS,DOCKS,BOLLARDS,BEACHES,islandOutline,islandRadius,shoreAt,bottomAt,environment,weatherAt,waveHeight,reflectionFacesNear,clamp} from './world.js';
 import {waterMotionSamples} from './boat-effects.js';
 import {drawParking,drawTowRig} from './render-towing.js';
 import {wakeHistories} from './wave-field.js';
@@ -32,6 +33,7 @@ function drawTerrain(ctx,bounds=null){
  const lake=shapePath(LAKE);ctx.fillStyle='#8bb5c0';ctx.fill(lake);ctx.save();ctx.clip(lake);
  for(const [width,color]of [[180,'#92bdc5'],[70,'#a0c8cb'],[22,'#afd0ce'],[4,'#bfd9d1']]){ctx.lineJoin='round';ctx.lineWidth=width;ctx.strokeStyle=color;ctx.stroke(lake);}
  const harbour=ctx.createRadialGradient(78,28,15,78,28,95);harbour.addColorStop(0,'#7dabb750');harbour.addColorStop(1,'#7dabb700');ctx.fillStyle=harbour;ctx.beginPath();ctx.ellipse(78,28,95,60,0,0,Math.PI*2);ctx.fill();
+ for(const patch of COAST_PATCHES){ctx.fillStyle='#aec59b';ctx.fill(shapePath(patch.outline));ctx.strokeStyle='#c8c6aa';ctx.lineWidth=1;ctx.stroke(shapePath(patch.outline));}
  for(const q of ISLANDS){const r=Math.max(q.rx,q.ry)+50;if(bounds&&(q.x+r<bounds.left||q.x-r>bounds.right||q.y+r<bounds.top||q.y-r>bounds.bottom))continue;
   if(q.id==='euzebia'){drawEuzebiaShallows(ctx);const land=shapePath(outline(q));ctx.fillStyle='#9bb58a';ctx.fill(land);ctx.save();ctx.clip(land);ctx.strokeStyle='#e0ce9f';ctx.lineWidth=14;ctx.lineJoin='round';ctx.lineCap='round';ctx.beginPath();let active=false;for(let i=0;i<=q.outline.length;i++){const p=q.outline[i%q.outline.length];if(euzebiaBeachWeight(Math.atan2(p.y-q.y,p.x-q.x))<.3){active=false;continue;}if(active)ctx.lineTo(p.x,p.y);else ctx.moveTo(p.x,p.y);active=true;}ctx.stroke();ctx.restore();}
   else{ctx.fillStyle='#afd0ce';ctx.fill(shapePath(outline(q,10)));ctx.fillStyle='#e0ce9f';ctx.fill(shapePath(outline(q)));ctx.fillStyle='#9bb58a';ctx.fill(shapePath(outline(q,-4)));}
@@ -169,7 +171,7 @@ export function renderWorld(ctx,state){
  }
  // Sparse anchored surface features replace the metre grid. They make translation legible.
  const H=waveHeight(env,b.time),speed=.07+H*.6,angle=(env.waveDirection??90)*Math.PI/180,nx=Math.sin(angle),ny=-Math.cos(angle);
- const wind=windSurface(weatherAt(b.time,env).windSpeed,env.windVisuals!==false);if(wind.tint){if(!waterMask){waterMask=new Path2D();waterMask.addPath(shapePath(LAKE));for(const q of ISLANDS)waterMask.addPath(shapePath(outline(q)));}ctx.save();ctx.clip(waterMask,'evenodd');ctx.fillStyle=`rgba(100,114,124,${wind.tint})`;ctx.fillRect(bounds.left,bounds.top,bounds.right-bounds.left,bounds.bottom-bounds.top);ctx.restore();}
+ const wind=windSurface(weatherAt(b.time,env).windSpeed,env.windVisuals!==false);if(wind.tint){if(!waterMask){waterMask=new Path2D();waterMask.addPath(shapePath(LAKE));for(const q of ISLANDS)waterMask.addPath(shapePath(outline(q)));for(const q of COAST_PATCHES)waterMask.addPath(shapePath(q.outline));}ctx.save();ctx.clip(shapePath(LAKE));ctx.clip(waterMask,'evenodd');ctx.fillStyle=`rgba(100,114,124,${wind.tint})`;ctx.fillRect(bounds.left,bounds.top,bounds.right-bounds.left,bounds.bottom-bounds.top);ctx.restore();}
  const whiteTexture=new Path2D(),blueTexture=new Path2D();
  const textureStep=Math.max(2.6,9/scale,Math.max(5,22/scale)*wind.spacing);
  for(let y=Math.floor(bounds.top/textureStep)*textureStep;y<bounds.bottom+textureStep;y+=textureStep)for(let x=Math.floor(bounds.left/textureStep)*textureStep;x<bounds.right+textureStep;x+=textureStep){
@@ -196,7 +198,7 @@ export function renderWorld(ctx,state){
   ctx.beginPath();ctx.moveTo(0,-.7);ctx.lineTo(1.7,-q.width/2);ctx.moveTo(0,.7);ctx.lineTo(1.7,q.width/2);ctx.stroke();
   ctx.fillStyle='#e4e6ce';ctx.fillRect(0,-.20,1.4,.40);ctx.restore();
  }
- for(const d of DOCKS){if(d.x+d.w<bounds.left-2||d.x>bounds.right+2||d.y+d.h<bounds.top-2||d.y>bounds.bottom+2)continue;ctx.fillStyle='#73908722';ctx.fillRect(d.x+.3,d.y+.4,d.w,d.h);ctx.fillStyle=b.dockDamage>=100?'#9e8273':'#bda783';ctx.fillRect(d.x,d.y,d.w,d.h);ctx.strokeStyle='#9f8b70';ctx.lineWidth=.07;ctx.strokeRect(d.x,d.y,d.w,d.h);ctx.beginPath();if(d.w>d.h){for(let x=d.x+.5;x<d.x+d.w;x+=.65){ctx.moveTo(x,d.y);ctx.lineTo(x,d.y+d.h);}}else for(let y=d.y+.5;y<d.y+d.h;y+=.65){ctx.moveTo(d.x,y);ctx.lineTo(d.x+d.w,y);}ctx.stroke();}
+ for(const rect of DOCKS){if(rect.x+rect.w<bounds.left-2||rect.x>bounds.right+2||rect.y+rect.h<bounds.top-2||rect.y>bounds.bottom+2)continue;ctx.save();let d=rect;if(rect.pose){const p=solidPose(rect);ctx.translate(p.x,p.y);ctx.rotate(p.a);d={x:-p.length/2,y:-p.width/2,w:p.length,h:p.width};}ctx.fillStyle='#73908722';ctx.fillRect(d.x+.3,d.y+.4,d.w,d.h);ctx.fillStyle=b.dockDamage>=100?'#9e8273':'#bda783';ctx.fillRect(d.x,d.y,d.w,d.h);ctx.strokeStyle='#9f8b70';ctx.lineWidth=.07;ctx.strokeRect(d.x,d.y,d.w,d.h);ctx.beginPath();if(d.w>d.h){for(let x=d.x+.5;x<d.x+d.w;x+=.65){ctx.moveTo(x,d.y);ctx.lineTo(x,d.y+d.h);}}else for(let y=d.y+.5;y<d.y+d.h;y+=.65){ctx.moveTo(d.x,y);ctx.lineTo(d.x+d.w,y);}ctx.stroke();ctx.restore();}
  if(overview){ctx.fillStyle='#d0a14a';for(const q of REMOTE_HARBORS){ctx.beginPath();ctx.arc(q.x,q.y,3/scale,0,Math.PI*2);ctx.fill();}}
  for(const FUEL_STATION of FUEL_STATIONS){ ctx.fillStyle='#93692c';ctx.fillRect(FUEL_STATION.pumpX-.45,FUEL_STATION.pumpY-.55,.9,1.1);ctx.font='1.1px system-ui';ctx.fillText('⛽',FUEL_STATION.pumpX-.5,FUEL_STATION.pumpY-1);ctx.fillStyle='#d5bf75';ctx.fillRect(FUEL_STATION.x-.45,FUEL_STATION.alongMin,.4,FUEL_STATION.alongMax-FUEL_STATION.alongMin);ctx.save();ctx.translate(FUEL_STATION.x-1.3,FUEL_STATION.y+5);ctx.rotate(-Math.PI/2);ctx.font='bold .9px system-ui';ctx.fillStyle='#72613d';ctx.fillText('PALIWO · CUMUJ BURTĄ',0,0);ctx.restore(); if(FUEL_STATION.id==='pilawa-fuel'){ctx.fillStyle='#bc443b';ctx.fillRect(FUEL_STATION.pumpX-.65,FUEL_STATION.pumpY-.7,1.3,.4);ctx.font='bold .7px system-ui';ctx.fillText('ORLEN',FUEL_STATION.pumpX-1.1,FUEL_STATION.pumpY-1.5);}}
 
@@ -273,7 +275,7 @@ function drawBoat(ctx,b){
  for(const [end,x] of [['bow',2.05],['stern',-2.05]]){const power=b.thrusters[end+'Actual'];if(Math.abs(power)<.05)continue;ctx.strokeStyle='#f8fff0';ctx.lineWidth=.13;const dir=-Math.sign(power);for(let i=0;i<4;i++){const d=(i+(b.time*4)%1)*.28;ctx.beginPath();ctx.moveTo(x-.15,dir*(1.05+d));ctx.lineTo(x+.15,dir*(1.05+d));ctx.stroke();}}
  ctx.save();ctx.scale(5.5/b.spec.length,2.1/b.spec.beam);drawFenders(ctx,b);ctx.restore();
  if(b.spec.jet){const eye=cleatLocal(b.spec,'bow');ctx.save();ctx.scale(5.5/b.spec.length,2.1/b.spec.beam);ctx.strokeStyle='#f4e6ba';ctx.fillStyle='#193b36';ctx.lineWidth=.07;ctx.beginPath();ctx.arc(eye.x,eye.y,.16,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.restore();}
- if(b.electrics?.powered.navigationLights){for(const [x,y,color]of [[1.2,-.77,'#e2685b'],[1.2,.77,'#74d794'],[-2.65,0,'#fff8dc']]){ctx.fillStyle=color;ctx.beginPath();ctx.arc(x,y,.16,0,Math.PI*2);ctx.fill();}}
+ if(b.electrics?.powered.navigationLights){for(const [x,y,color]of [[1.65,-.50,'#e2685b'],[1.65,.50,'#74d794'],[-2.4,0,'#fff8dc']]){ctx.fillStyle='#f9fbf0';ctx.beginPath();ctx.arc(x,y,.29,0,Math.PI*2);ctx.fill();ctx.fillStyle=color;ctx.beginPath();ctx.arc(x,y,.23,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#244c43';ctx.lineWidth=.04;ctx.stroke();}}
  drawDeckWater(ctx,b);
  ctx.strokeStyle='#5c8a88';ctx.lineWidth=.035;ctx.beginPath();ctx.moveTo(-2,Math.sin(b.roll)*3);ctx.lineTo(1.5,Math.sin(b.roll)*3);ctx.stroke();ctx.fillStyle='#d5a64f';for(const end of Object.keys(attachmentNames(b))){const p=cleatLocal(b.spec,end);ctx.fillStyle=end==='stern'?'#152f2b':'#d5a64f';ctx.beginPath();ctx.arc(p.x*5.5/b.spec.length,p.y*2.1/b.spec.beam,end==='stern'?.20:.10,0,Math.PI*2);ctx.fill();}ctx.restore();
 }

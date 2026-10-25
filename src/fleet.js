@@ -1,3 +1,4 @@
+import {solidPose} from './solid-geometry.js';
 import {step} from './physics.js';
 import {createFleetCraft,fleetName} from './fleet-craft.js';
 import {bottomAt,shoreAt,SOLIDS,WORLD} from './world.js';
@@ -33,7 +34,7 @@ export function placementStatus(fleet,b,pose,{grounded=false,traffic=true}={}){
  if(!Number.isFinite(pose.x)||!Number.isFinite(pose.y)||pose.x<WORLD.left||pose.x>WORLD.right||pose.y<WORLD.top||pose.y>WORLD.bottom)return{ok:false,message:'Wskaż miejsce na akwenie.'};
  const probe={...b,...pose},samples=[{x:probe.x,y:probe.y},...hullOutline(b.spec).map(q=>point(probe,q.x,q.y))];
  if(samples.some(p=>shoreAt(p.x,p.y).land))return{ok:false,message:'Cały kadłub musi znajdować się nad wodą.'};
- if(SOLIDS.some(d=>overlaps(probe,{x:d.x+d.w/2,y:d.y+d.h/2,a:0,spec:{length:d.w,beam:d.h}}))||fleet.boats[0].booms.some(q=>overlaps(probe,{x:q.x1+Math.cos(q.a)*q.length/2,y:q.y1+Math.sin(q.a)*q.length/2,a:q.a,spec:{length:q.length,beam:q.width}})))return{ok:false,message:'To miejsce zajmuje pomost lub przeszkoda.'};
+ if(SOLIDS.some(d=>overlaps(probe,{...solidPose(d),spec:{length:solidPose(d).length,beam:solidPose(d).width}}))||fleet.boats[0].booms.some(q=>overlaps(probe,{x:q.x1+Math.cos(q.a)*q.length/2,y:q.y1+Math.sin(q.a)*q.length/2,a:q.a,spec:{length:q.length,beam:q.width}})))return{ok:false,message:'To miejsce zajmuje pomost lub przeszkoda.'};
  if([...fleet.boats,...traffic?fleet.boats[0].traffic:[]].some(q=>overlaps(probe,q)))return{ok:false,message:'Zostaw odstęp od pozostałych jednostek.'};
  if(!grounded&&samples.some(p=>bottomAt(p.x,p.y).depth<b.spec.draft+.08))return{ok:false,message:'Za płytko. Wybierz głębszą wodę albo stan „na mieliźnie”.'};
  if(grounded&&!samples.some(p=>bottomAt(p.x,p.y).depth<b.spec.draft))return{ok:false,message:'Dla osiadłej łodzi wskaż płytką wodę przy brzegu lub mieliznę.'};

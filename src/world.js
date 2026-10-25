@@ -1,14 +1,17 @@
+import {closestSolidPoint,orientedFaces} from './solid-geometry.js';
 import {makeNavigationMarks,hazardBottom} from './navigation-marks.js';
 import {euzebiaBeachWeight,euzebiaSlope} from './island-approach.js';
 import {ZEGRZE_BOUNDS,ZEGRZE_SHORE,ZEGRZE_ISLANDS,BRIDGES,REMOTE_HARBORS,FUEL_LOCATION,MAP_LABELS,fromAtlas,WORLD_DISTANCE_SCALE} from './zegrze.js';
 import {createShoreQuery} from './shore-geometry.js';
 import {weatherAt} from './weather.js';
 import {mirrorPoint,mirrorVector,wallDistance} from './wave-reflections.js';
-import {EUZEBIA,createPilawaSite} from './lake-sites.js';
+import {EUZEBIA,PILAWA_LAND,createPilawaSite} from './lake-sites.js';
 export {weatherAt} from './weather.js';
 export const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 export {BRIDGES,REMOTE_HARBORS,MAP_LABELS,fromGeo,toGeo,METRES_PER_MAP_PIXEL} from './zegrze.js';
 export const WORLD=ZEGRZE_BOUNDS,LAKE=ZEGRZE_SHORE,ISLAND=ZEGRZE_ISLANDS[0],ISLANDS=[...ZEGRZE_ISLANDS];
+export const COAST_PATCHES=[PILAWA_LAND];
+const coastQueries=COAST_PATCHES.map(q=>({...q,query:createShoreQuery(q.outline)}));
 const islandQueries=new Map();
 const lakeQuery=createShoreQuery(LAKE);
 export function islandRadius(a,q=ISLAND){return(1+.075*Math.sin(3*a)+.035*Math.cos(5*a))/Math.hypot(Math.cos(a)/q.rx,Math.sin(a)/q.ry);}
@@ -72,6 +75,7 @@ export const TRAFFIC=[{id:0,type:'motor',x:35.5,y:18.8,a:Math.PI/2,length:5.2,be
 export const polygonShore=lakeQuery;
 export function shoreAt(x,y){
  const lake=lakeQuery(x,y);let best={distance:lake.distance,nx:lake.nx,ny:lake.ny,qx:lake.qx,qy:lake.qy,edge:'lake',along:0};
+ for(const q of coastQueries){const box=q.bounds;if(x<box.left||x>box.right||y<box.top||y>box.bottom){const dx=Math.max(box.left-x,0,x-box.right),dy=Math.max(box.top-y,0,y-box.bottom);if(best.distance<=0||Math.hypot(dx,dy)>=best.distance)continue;}const hit=q.query(x,y);if(-hit.distance<best.distance)best={distance:-hit.distance,nx:-hit.nx,ny:-hit.ny,qx:hit.qx,qy:hit.qy,edge:'quay',along:0,coast:q.id};}
  for(const q of ISLANDS){
   if(q.outline){const box=q.bounds,dx=Math.max(box.left-x,0,x-box.right),dy=Math.max(box.top-y,0,y-box.bottom);if((dx||dy)&&(best.distance<=0||Math.hypot(dx,dy)>=best.distance))continue;
    const hit=islandQueries.get(q.id)(x,y);if(-hit.distance<best.distance)best={distance:-hit.distance,nx:-hit.nx,ny:-hit.ny,qx:hit.qx,qy:hit.qy,edge:'island',along:Math.atan2(y-q.y,x-q.x),island:q.id};
@@ -109,6 +113,7 @@ for(const [i,a]of [.55,1.05,1.55,2.85,3.08].entries()){
  BOLLARDS.push({...p,id:'EUZ-D'+(i+1),kind:'tree',label:'Euzebia · drzewo '+(i+1),site:'euzebia'});
 }
 for(const id of ['EUZ-D4','EUZ-D5']){const tree=BOLLARDS.find(q=>q.id===id),n=shoreAt(tree.x,tree.y);REEDS.push({x:tree.x+n.nx*5,y:tree.y+n.ny*5,r:7,shallow:true});}
+BOLLARDS.push(...PILAWA.extraBollards);
 MAP_STARTS.pilawa=PILAWA.start;MAP_STARTS.euzebia={x:EUZEBIA.x-EUZEBIA.rx-35,y:EUZEBIA.y,a:Math.PI/2};
 export function bottomAt(x,y){
  const shore=shoreAt(x,y),dist=shore.distance,slope=shore.island==='euzebia'?euzebiaSlope(shore.along):shore.beach?.085:shore.edge==='canal'?.65:.21*(1+.28*Math.sin(x*.027)+.16*Math.cos(y*.041));
@@ -116,7 +121,7 @@ export function bottomAt(x,y){
  let depth=dist>=0?basin*(1-Math.exp(-dist*slope/basin)):dist*(shore.beach?.07:.32);
  if(dist>=0){for(const s of SHOALS)depth-=s.drop*Math.exp(-((x-s.x)**2/s.rx**2+(y-s.y)**2/s.ry**2));depth=Math.max(.015,depth+.10*Math.sin(x*.13)*Math.sin(y*.16)*clamp(dist/12,0,1));}
  // Pilawa's maintained basin is dredged, with a short blend at the bank.
- const pb=PILAWA.bounds;if(dist>0&&x>pb.left&&x<pb.right&&y>pb.top&&y<pb.bottom){const blend=clamp(dist/5,0,1)*clamp(Math.min(x-pb.left,pb.right-x,y-pb.top,pb.bottom-y)/4,0,1);depth+=Math.max(0,2.7-depth)*blend;}
+ const pb=PILAWA.bounds;if(dist>0&&x>pb.left&&x<pb.right&&y>pb.top&&y<pb.bottom){const blend=clamp(dist/(shore.coast==='pilawa-bank'?.4:5),0,1)*clamp(Math.min(x-pb.left,pb.right-x,y-pb.top,pb.bottom-y)/4,0,1);depth+=Math.max(0,2.7-depth)*blend;}
  const ramp=SERVICE_STATION.slip;
  // A level yard and its approach meet the dry end of the slip. Shore-distance
  // elevation used to put the parked trailer on an unintended slope.
@@ -154,7 +159,7 @@ export function environment(t,e={},x=null,y=null){
    current.x-=normal*shore.nx*block;current.y-=normal*shore.ny*block;
    if(shore.edge==='canal'){const canal=canalAt(x),flow=(Math.sin(c)+canal.slope*(-Math.cos(c)))*V*1.65;current={x:flow/Math.sqrt(1+canal.slope**2),y:flow*canal.slope/Math.sqrt(1+canal.slope**2)};}
    else{const ux=Math.sin(c),uy=-Math.cos(c),behind=dx*ux+dy*uy,across=-dx*uy+dy*ux;if(behind>45){const wake=.6*Math.exp(-(behind-45)/120)*Math.exp(-((across/55)**2));current.x*=1-wake;current.y*=1-wake;const swirl=.20*V*Math.sin(t*.13+behind*.05)*wake;current.x+=-uy*swirl;current.y+=ux*swirl;}}
-   for(const d of DOCKS){const px=clamp(x,d.x,d.x+d.w),py=clamp(y,d.y,d.y+d.h),rx=x-px,ry=y-py,dist=Math.hypot(rx,ry);if(dist>0&&dist<7){const q=.17*V*(1-dist/7)*Math.sin(t*.2+d.x);current.x+=-ry/dist*q;current.y+=rx/dist*q;}}
+   for(const d of DOCKS){const near=closestSolidPoint(d,x,y),px=near.x,py=near.y,rx=x-px,ry=y-py,dist=Math.hypot(rx,ry);if(dist>0&&dist<7){const q=.17*V*(1-dist/7)*Math.sin(t*.2+d.x);current.x+=-ry/dist*q;current.y+=rx/dist*q;}}
   }
  }
  const dry=x!==null&&bottomAt(x,y).depth<=0;
@@ -165,7 +170,7 @@ export function waveHeight(e,t=0){return e.autoWaves?Math.min(.55,.004*weatherAt
 let dockReflectionFaces,reflectionGrid;
 function staticReflectionFaces(){
  if(dockReflectionFaces)return dockReflectionFaces;
- dockReflectionFaces=DOCKS.flatMap((d,i)=>[
+ dockReflectionFaces=DOCKS.flatMap((d,i)=>d.pose?orientedFaces(d,'dock-'+i):[
   ['L',{x:d.x,y:d.y},{x:d.x,y:d.y+d.h},-1,0],['R',{x:d.x+d.w,y:d.y},{x:d.x+d.w,y:d.y+d.h},1,0],
   ['T',{x:d.x,y:d.y},{x:d.x+d.w,y:d.y},0,-1],['B',{x:d.x,y:d.y+d.h},{x:d.x+d.w,y:d.y+d.h},0,1]
  ].map(([side,a,b,nx,ny])=>({id:'dock'+i+side,a,b,nx,ny,coefficient:d.service?.64:.56,dx:b.x-a.x,dy:b.y-a.y,length2:(b.x-a.x)**2+(b.y-a.y)**2})));

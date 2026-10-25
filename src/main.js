@@ -1,3 +1,4 @@
+import {compactPropulsion} from './helm-refinements.js';
 import {installScreenLayout} from './screen-layout.js';
 import {installRestoreHistory} from './restore-history.js';
 import {installMapAlerts} from './map-alerts.js';
@@ -70,7 +71,7 @@ function syncControls(){
  const S=boat.spec,R=vehicle==='suv'?towRig:boat,limit=vehicle==='suv'?SUV.maxSteer:S.maxSteer,deg=Math.round(R.steer*180/Math.PI);$('#steer-label').textContent=deg+'°';const actual=R.actualSteer*180/Math.PI;$('#rudder-angle').textContent=(actual>1?'P ':actual< -1?'L ':'')+Math.abs(actual).toFixed(0)+'°';$('#rudder-command').style.left=(50+R.steer/limit*46)+'%';$('#rudder-actual').style.left=(50+R.actualSteer/limit*46)+'%';$('#wheel svg').style.transform=`rotate(${R.steer*180/Math.PI*wheelRatio()}deg)`;$('#wheel').setAttribute('aria-valuenow',deg);$('#wheel').setAttribute('aria-valuemax',Math.round(limit*180/Math.PI));$('#wheel').setAttribute('aria-valuemin',-Math.round(limit*180/Math.PI));
  $('#throttle').min=boat.spec.air?'0':'-100';$('#throttle2').min=boat.spec.air?'0':'-100';$('#throttle').value=Math.round(boat.throttle*100);$('#throttle2').value=Math.round(boat.throttle2*100);$('#gear').textContent=gearLabel(boat.throttle);$('#gear2').textContent=gearLabel(boat.throttle2);
  $('#throttle').disabled=S.passive&&!S.manual;if(S.passive)$('#gear').textContent=S.manual?'WIOSŁA · '+Math.round(Math.abs(boat.throttle)*100)+'%':'BEZ NAPĘDU';
- $('#second-engine').hidden=S.engineCount!==2;$('.engine-link-controls').hidden=S.engineCount!==2;$('#link-engines').checked=boat.linked;$('#fenders').checked=boat.fenders;
+ $('#second-engine').hidden=S.engineCount!==2;$('#ignition-1').hidden=S.engineCount!==2;$('.engine-link-controls').hidden=S.engineCount!==2;$('#link-engines').checked=boat.linked;$('#fenders').checked=boat.fenders;
  $('#wheel-travel').textContent=S.jet?'Skuter · 90° kierownicy':`${S.wheelTurns.toLocaleString('pl-PL')} obrotu od oporu do oporu`;$('#wheel').dataset.travel=String(S.wheelTurns);
  $('#first-engine').classList.toggle('selected',selectedEngine===0&&!boat.linked);$('#second-engine').classList.toggle('selected',selectedEngine===1&&!boat.linked);
  $('#keyboard-engine').textContent=S.engineCount===1?'SOLO':boat.linked?'L + P':selectedEngine?'PRAWA':'LEWA';$('#engine-select-hint').textContent=S.passive?(S.manual?'W / S: wysiłek wiosłowania · A / D: zmiana kierunku.':'Bez napędu. Holowanie, cumy i kotwica działają jak w łodzi.'):S.air?'Śmigło powietrzne · brak wstecznego. Manewruj gazem i sterami.':S.engineCount===2&&!boat.linked?'Kliknij manetkę, aby wybrać ją dla przycisków i klawiatury (1 / 2).':'Pierwszy krok: bieg pełzający.';
@@ -215,6 +216,7 @@ draggablePopup($('#anchor-picker'),$('#anchor-handle'));
 $('#close-mooring').onclick=()=>{releaseRopeControls();$('#mooring-picker').hidden=true;};$('#close-anchor').onclick=()=>$('#anchor-picker').hidden=true;
 function showAnchor(){closeWeather();$('#mooring-picker').hidden=true;$('#anchor-picker').hidden=false;$('#anchor-picker').scrollIntoView({block:'nearest'});}
 $('#show-anchor').onclick=showAnchor;
+$('#show-mooring').onclick=()=>{let target=selectedTarget??boat.ropes[0]?.bollard;if(target==null){let distance=Infinity;for(let i=0;i<BOLLARDS.length;i++){const p=mooringPoint(boat,i),d=Math.hypot(p.x-boat.x,p.y-boat.y);if(d<distance&&!p.trailer){distance=d;target=i;}}}if(target!=null)openMooring(target);};
 for(const id of ['anchor-suggest'])$('#'+id).onclick=()=>{const advice=anchorAdvice(boat,env);$('#anchor-target').value=advice.length;};
 for(const btn of document.querySelectorAll('[data-anchor]'))btn.onclick=()=>{const input=$('#anchor-target');if(!input.reportValidity())return;toast(anchorCommand(boat,btn.dataset.anchor,+input.value).message);};
 function mapZoom(factor){if(overview)zoomAtlas(atlas,factor,width/2,height/2,width,height);else zoom=clamp(zoom*factor,.16,3);}
@@ -322,5 +324,5 @@ let savedGame;try{savedGame=readAutosave(localStorage);}catch{savedGame={ok:fals
 if(savedGame.ok){$('#continue-session').hidden=false;$('#begin-session').textContent='Rozpocznij nową próbę →';$('#resume-info').textContent=`Zapis ${new Date(savedGame.session.savedAt).toLocaleString('pl-PL')} · ${savedGame.session.fleet.boats.length} jednostek${savedGame.backup?' · odzyskana kopia':''}. Nowa próba zastąpi zapis.`;$('#continue-session').onclick=()=>continueSession(savedGame);}
 else if(savedGame.message)$('#resume-info').textContent=savedGame.message;
 restoreHistory=installRestoreHistory({restore:continueSession,toast,reference:savedGame?.session?.savedAt});
-screenUI=installScreenLayout({boat:()=>boat,save:saveGame});
+screenUI=installScreenLayout({boat:()=>boat,save:saveGame});compactPropulsion();
 installMapAlerts();readEnv();renderRopes();syncControls();telemetry();requestAnimationFrame(frame);openSetup();

@@ -2,7 +2,7 @@ import {FUEL_STATIONS} from './world.js';
 import {fuelBerthStatus} from './systems.js';
 const $=s=>document.querySelector(s);
 export function installScreenLayout({boat,save}){
- const wrap=$('.water-wrap'),help=$('#help');wrap.append(help);help.classList.add('map-help');$('header')?.remove();
+ const wrap=$('.water-wrap'),help=$('#help');wrap.append(help);help.classList.add('map-help');$('header')?.remove();const credit=document.createElement('a');credit.className='map-attribution';credit.href='https://www.openstreetmap.org/copyright';credit.target='_blank';credit.rel='noopener noreferrer';credit.textContent='Euzebia / Pilawa · © OpenStreetMap';wrap.append(credit);
  const instructions=$('#instructions');$('#info').append(instructions);$('footer')?.remove();
  const alerts=document.createElement('div');alerts.className='map-alert-stack';alerts.append($('#engine-warning'),$('#toast'));wrap.append(alerts);
  $('.controls').append($('.vehicle-selector'),$('.console-tools'));

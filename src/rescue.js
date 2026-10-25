@@ -1,4 +1,5 @@
-import {rescueApproach,validRescueResult} from './rescue-metrics.js';
+import {pickupAssessment} from './rescue-attempts.js';
+import {validRescueResult} from './rescue-metrics.js';
 // Training objects, not people/AI. SI units and physical seconds only.
 export const RESCUE_TYPES={ring:{name:'Koło ratunkowe',mass:2.5,length:.8,beam:.8,draft:.05,windArea:.025},mob:{name:'Manekin MOB',mass:80,length:1.7,beam:.5,draft:.18,windArea:.06}};
 export const createRescue=()=>({objects:[],nextId:1,recovered:0,contacts:0});
@@ -16,19 +17,16 @@ export function advanceRescueObject(o,flow,wave,floor,dt){
  next.a+=clamp((wave.sx-wave.sy)*.15,-.25,.25)*dt;
  return next;
 }
-export function pickupStatus(b,o){
- if(!o||o.recovered)return{ok:false,message:'Wybierz obiekt na wodzie.'};
- const {distance,relativeSpeed,neutral}=rescueApproach(b,o);
- if(distance>1.7)return{ok:false,distance,message:'Podejdź burtą na mniej niż 1,7 m od obiektu.'};
- if(relativeSpeed>.55)return{ok:false,distance,message:'Zwolnij względem obiektu: limit gry 0,55 m/s.'};
- return{ok:true,distance,message:neutral?'Można podjąć obiekt.':'Podejmowanie na biegu · kara 30 pkt. Zalecany luz N / wyłączone silniki.'};
-}
+export const pickupStatus=pickupAssessment;
 export function validRescueState(state){
  const finite=(x,lo=-1e8,hi=1e8)=>Number.isFinite(x)&&x>=lo&&x<=hi;
+ const attempt=q=>q&&/^rescue-\d+$/.test(q.objectId)&&typeof q.boatId==='string'&&['ring','mob'].includes(q.kind)&&['manual','missed'].includes(q.type)&&finite(q.time,0)&&finite(q.distance,0)&&finite(q.relativeSpeed,0)&&typeof q.success==='boolean'&&typeof q.reason==='string'&&typeof q.enginesNeutral==='boolean'&&finite(q.enginesRunning,0,2)&&Array.isArray(q.engines)&&q.engines.length<=2&&(q.penalty===undefined||finite(q.penalty,0,30));
+ const encounters=q=>q&&typeof q==='object'&&!Array.isArray(q)&&Object.keys(q).length<=8&&Object.values(q).every(v=>v&&['enteredAt','minDistance','speed'].every(k=>finite(v[k],0))&&['inGear','approached','attempted'].every(k=>typeof v[k]==='boolean'));
  const metrics=m=>m&&typeof m==='object'&&!Array.isArray(m)&&Object.keys(m).length<=8&&Object.values(m).every(q=>q&&finite(q.contacts,0)&&finite(q.peakForce,0)&&finite(q.peakSpeed,0)&&finite(q.lastAt,0)&&typeof q.inGear==='boolean');
  return state&&Array.isArray(state.objects)&&state.objects.length<=28&&Number.isInteger(state.nextId)&&state.nextId>0&&state.nextId<1e7&&finite(state.recovered,0,1e7)&&finite(state.contacts,0,1e7)
   &&(state.targetId==null||typeof state.targetId==='string'&&state.objects.some(o=>o.id===state.targetId))&&(!state.lastResult||validRescueResult(state.lastResult))
+  &&(!state.attempts||Array.isArray(state.attempts)&&state.attempts.length<=60&&state.attempts.every(attempt))&&(!state.lastAttempt||attempt(state.lastAttempt))
   &&(state.alarmSequence===undefined||finite(state.alarmSequence,0,1e9))
   &&(!state.pending||(RESCUE_TYPES[state.pending.kind]&&typeof state.pending.boatId==='string'&&finite(state.pending.at,0)))
-  &&new Set(state.objects.map(o=>o.id)).size===state.objects.length&&state.objects.every(o=>/^rescue-\d+$/.test(o.id)&&RESCUE_TYPES[o.kind]&&finite(o.x)&&finite(o.y)&&finite(o.a)&&finite(o.vx,-150,150)&&finite(o.vy,-150,150)&&finite(o.thrownAt,0)&&finite(o.heave,-5,5)&&finite(o.roll,-3,3)&&(!o.result||validRescueResult(o.result))&&(!o.contactMetrics||metrics(o.contactMetrics)));
+  &&new Set(state.objects.map(o=>o.id)).size===state.objects.length&&state.objects.every(o=>/^rescue-\d+$/.test(o.id)&&RESCUE_TYPES[o.kind]&&finite(o.x)&&finite(o.y)&&finite(o.a)&&finite(o.vx,-150,150)&&finite(o.vy,-150,150)&&finite(o.thrownAt,0)&&finite(o.heave,-5,5)&&finite(o.roll,-3,3)&&(o.failedAttempts===undefined||finite(o.failedAttempts,0,1e7))&&(o.missedPasses===undefined||finite(o.missedPasses,0,1e7))&&(o.lastAttemptAt===undefined||finite(o.lastAttemptAt,0))&&(!o.encounters||encounters(o.encounters))&&(o.attemptPenalty===undefined||finite(o.attemptPenalty,0,30))&&(!o.result||validRescueResult(o.result))&&(!o.contactMetrics||metrics(o.contactMetrics)));
 }

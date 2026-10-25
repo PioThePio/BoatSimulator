@@ -1,3 +1,5 @@
+import {circleSolidHit,solidPoint} from '../src/solid-geometry.js';
+import {COAST_PATCHES} from '../src/world.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -76,7 +78,7 @@ test('append-only sites keep all legacy mooring indices and coordinates unchange
  const fixture=JSON.parse(fs.readFileSync(new URL('./fixtures/legacy-bollards.json',import.meta.url)));assert.equal(fixture.length,332);assert.deepEqual(BOLLARDS.slice(0,fixture.length).map(({id,x,y})=>({id,x,y})),fixture);assert.equal(new Set(BOLLARDS.map(q=>q.id)).size,BOLLARDS.length);
 });
 test('island bounding-box rejection preserves exact shore distances compared with unconditional polygon queries',()=>{
- const query=createShoreQuery(EUZEBIA.outline);for(let i=0;i<700;i++){const x=WORLD.left+(i*347%1000)/1000*(WORLD.right-WORLD.left),y=WORLD.top+(i*619%1000)/1000*(WORLD.bottom-WORLD.top);let d=polygonShore(x,y).distance;for(const q of ISLANDS){const value=q.outline?-query(x,y).distance:Math.hypot(x-q.x,y-q.y)-islandRadius(Math.atan2(y-q.y,x-q.x),q);d=Math.min(d,value);}close(shoreAt(x,y).distance,d);}
+ const query=createShoreQuery(EUZEBIA.outline);for(let i=0;i<700;i++){const x=WORLD.left+(i*347%1000)/1000*(WORLD.right-WORLD.left),y=WORLD.top+(i*619%1000)/1000*(WORLD.bottom-WORLD.top);let d=polygonShore(x,y).distance;for(const q of ISLANDS){const value=q.outline?-query(x,y).distance:Math.hypot(x-q.x,y-q.y)-islandRadius(Math.atan2(y-q.y,x-q.x),q);d=Math.min(d,value);}for(const p of COAST_PATCHES)d=Math.min(d,-createShoreQuery(p.outline)(x,y).distance);close(shoreAt(x,y).distance,d);}
 });
 test('Euzebia is a distinct irregular island at Rządza mouth, with dry mooring trees, gentle sandy approaches and a deep start',()=>{
  assert.equal(shoreAt(EUZEBIA.x,EUZEBIA.y).land,true);assert.ok(EUZEBIA.outline.length>10);assert.ok(EUZEBIA.rx*EUZEBIA.ry>Math.max(...ISLANDS.filter(q=>q!==EUZEBIA).map(q=>q.rx*q.ry)));assert.equal(ISLANDS.length,4);const trees=BOLLARDS.filter(q=>q.site==='euzebia');assert.equal(trees.length,5);
@@ -84,8 +86,8 @@ test('Euzebia is a distinct irregular island at Rządza mouth, with dry mooring 
  for(const id of ['euzebia','pilawa'])assert.ok(bottomAt(MAP_STARTS[id].x,MAP_STARTS[id].y).depth>1.5);
 });
 test('Pilawa piers meet land, fingers/fuel form connected assemblies and mooring points lie on their actual docks',()=>{
- for(const d of PILAWA.docks.filter(q=>q.w>10)){assert.ok(shoreAt(d.x+d.w,d.y+d.h/2).distance<0);assert.ok(shoreAt(d.x,d.y).distance>10);}
- for(const q of PILAWA.bollards)if(q.kind!=='buoy')assert.ok(PILAWA.docks.some(d=>q.x>=d.x-.01&&q.x<=d.x+d.w+.01&&q.y>=d.y-.01&&q.y<=d.y+d.h+.01),q.id);
+ for(const d of PILAWA.docks.filter(q=>q.access)){const p=solidPoint(d,-d.pose.length/2,0),q=solidPoint(d,d.pose.length/2,0);assert.ok(shoreAt(p.x,p.y).distance<0,d.id);assert.ok(PILAWA.docks.some(r=>r!==d&&circleSolidHit(q,.1,r)),d.id);}
+ for(const q of PILAWA.bollards)if(q.kind!=='buoy')assert.ok(PILAWA.docks.some(d=>circleSolidHit(q,.03,d)),q.id);
  for(const d of PILAWA.docks)assert.ok(SOLIDS.includes(d)&&DOCKS.includes(d));assert.ok(FUEL_STATIONS.includes(PILAWA.fuel));
 });
 test('each Euzebia wild berth allows a shallow flat boat to throw its bow line without grounding or hull damage',()=>{
@@ -93,7 +95,7 @@ test('each Euzebia wild berth allows a shallow flat boat to throw its bow line w
 });
 test('Pilawa contains mixed, individually moored sail/motor/PWC boats with clear water and no initial pier penetrations',()=>{
  const traffic=createTraffic().filter(q=>q.site==='pilawa');assert.equal(traffic.length,19);assert.equal(new Set(traffic.map(q=>q.type)).size,3);
- for(const q of traffic){assert.ok(bottomAt(q.x,q.y).depth>q.spec.draft);assert.ok(q.ropes.length>=2);for(const r of q.ropes){assert.ok(r.bollard>=332);const p=cleat(q,r.end),target=BOLLARDS[r.bollard];close(r.length,Math.hypot(p.x-target.x,p.y-target.y)+.12);}assert.ok(!DOCKS.some(d=>q.x>d.x&&q.x<d.x+d.w&&q.y>d.y&&q.y<d.y+d.h));}
+ for(const q of traffic){assert.ok(bottomAt(q.x,q.y).depth>q.spec.draft);assert.ok(q.ropes.length>=2);for(const r of q.ropes){assert.ok(r.bollard>=332);const p=cleat(q,r.end),target=BOLLARDS[r.bollard];close(r.length,Math.hypot(p.x-target.x,p.y-target.y)+.12);}assert.ok(!DOCKS.some(d=>circleSolidHit(q,.01,d)));}
 });
 test('both fuel sites require own mooring, idle hull and engines/key off, preserving the original station',()=>{
  for(const station of FUEL_STATIONS){const b=createBoat('lake',{coldStart:true});Object.assign(b,{x:station.x+b.spec.beam/2+.5,y:station.y,a:Math.PI/2});assert.equal(fuelBerthStatus(b).ok,false);const i=BOLLARDS.findIndex(q=>q.kind==='bollard'&&Math.abs(q.x-station.x)<.3&&Math.abs(q.y-station.y)<6);assert.ok(i>=0);assert.ok(attachRope(b,'bow',i).ok||attachRope(b,'portStern',i).ok);assert.equal(fuelBerthStatus(b).ok,true);b.engines[0].key='ignition';assert.equal(fuelBerthStatus(b).ok,false);}

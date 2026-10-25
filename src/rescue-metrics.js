@@ -22,13 +22,14 @@ export function rescueContactMeasurement(b,o,normal,objectMass){
 export function rescueResult(b,o,time){
  const approach=rescueApproach(b,o),contact=o.contactMetrics?.[b.id??'boat']??{},peakForce=contact.peakForce??0;
  const speedPenalty=40*clamp(approach.relativeSpeed/.55,0,1)**2,impactPenalty=50*clamp(peakForce/1000,0,1),gearPenalty=(contact.inGear?10:0)+(approach.neutral?0:30);
- return{objectId:o.id,kind:o.kind,boatId:b.id??'boat',elapsed:Math.max(0,time-o.thrownAt),pickupSpeed:approach.relativeSpeed,closingSpeed:approach.closingSpeed,peakForce,contacts:contact.contacts??0,contactInGear:!!contact.inGear,enginesNeutral:approach.neutral,enginesRunning:approach.running,engines:approach.engines,score:Math.round(clamp(100-speedPenalty-impactPenalty-gearPenalty,0,100))};
+ return{objectId:o.id,kind:o.kind,boatId:b.id??'boat',elapsed:Math.max(0,time-o.thrownAt),pickupSpeed:approach.relativeSpeed,closingSpeed:approach.closingSpeed,peakForce,contacts:contact.contacts??0,contactInGear:!!contact.inGear,enginesNeutral:approach.neutral,enginesRunning:approach.running,engines:approach.engines,attemptPenalty:o.attemptPenalty??0,failedAttempts:o.failedAttempts??0,missedPasses:o.missedPasses??0,score:Math.round(clamp(100-speedPenalty-impactPenalty-gearPenalty-Math.min(30,o.attemptPenalty??(5*(o.failedAttempts??0)+8*(o.missedPasses??0))),0,100))};
 }
 export function selectedRescue(fleet){const objects=fleet?.rescue?.objects??[];return objects.find(o=>o.id===fleet.rescue.targetId&&!o.recovered)??objects.find(o=>!o.recovered);}
 export function validRescueResult(r){
  const positive=x=>Number.isFinite(x)&&x>=0;
  return r&&/^rescue-\d+$/.test(r.objectId)&&['ring','mob'].includes(r.kind)&&typeof r.boatId==='string'
   &&['elapsed','pickupSpeed','peakForce','contacts','enginesRunning','score'].every(k=>positive(r[k]))&&r.score<=100&&Number.isFinite(r.closingSpeed)
+  &&(r.attemptPenalty===undefined||positive(r.attemptPenalty))&&(r.failedAttempts===undefined||positive(r.failedAttempts))&&(r.missedPasses===undefined||positive(r.missedPasses))
   &&typeof r.enginesNeutral==='boolean'&&typeof r.contactInGear==='boolean'&&Array.isArray(r.engines)&&r.engines.length<=2
   &&r.engines.every(e=>['off','ignition','starting','running'].includes(e.key)&&[-1,0,1].includes(e.gear)&&(e.command===undefined||Number.isFinite(e.command)));
 }

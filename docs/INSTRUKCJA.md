@@ -134,7 +134,8 @@ uruchomi silnika. Wskaźnik pokazuje V i pozostały procent. Wyłączenie
 samego odbiornika zachowuje jego ustawienie przy następnym zasileniu.
 
 Zegary pokazują RPM (osobne dla dwóch silników), prędkość, paliwo, trym,
-temperaturę i napięcie. RPM L/P, TRIM, L/h i SOC są na tarczach.
+temperaturę i napięcie. RPM L/P, TRIM, L/h i SOC są na tarczach. Prędkość (v), paliwo i Temp
+mają ikonę/opis oraz odczyt wewnątrz tarczy; przy paliwie jest też L/h.
 Wyłączenie instrumentów opuszcza wskazówki poza BAT; wyłączenie głównego
 zasilania opuszcza również BAT. Wyłączone odczyty cyfrowe pokazują kreskę. Profil obok pokazuje
 uniesienie dziobu, położenie napędu, zanurzenie śruby i dno na płytkiej
@@ -213,7 +214,8 @@ Wybierz knagę, aby rzucić linę. Rzut na brzeg ma zasięg 6 m od knagi
 i zostawia luz — nie przyciąga od razu łodzi. Przytrzymuj przyciski
 wybierania/luzowania przy danej linie; puszczenie zatrzymuje pracę.
 X odłącza ją. Wybór kolejnego polera zmienia cel w tym samym oknie.
-Obsługa odbywa się na mapie; dolny, powielony panel cumowania usunięto.
+Obsługa odbywa się na mapie. Przycisk Cumowanie obok Kotwicy otwiera
+aktualny albo najbliższy poler; samo otwarcie nie zakłada liny.
 
 | Kolor punktu z liną | Znaczenie |
 | --- | --- |
@@ -238,7 +240,11 @@ szuwary: można w nie wpłynąć, ale zwiększają opór.
 
 Na Euzebii pięć drzew jest punktami dzikiego cumowania. Podejdź powoli,
 obserwuj dno i zanurzenie; większą jednostkę pozostaw dalej na kotwicy.
-Pilawa ma ciasne przejścia między różnymi zacumowanymi łodziami.
+Pilawa ma wejście od północy, sześć ukośnych pomostów, główkę T i
+19 różnych zacumowanych jednostek. ORLEN jest przy zachodniej wewnętrznej
+kei, między pomostami. Płyń głównym korytarzem w dół basenu, potem
+skręć do zatoki dystrybutora. Łagodne podejścia Euzebii zostały zachowane,
+a jej położenie i obrys odpowiadają danym OSM/PRNG.
 
 ## Kotwica
 
@@ -316,7 +322,7 @@ stanowisk łódź/SUV. Pozostawiane manetki przechodzą na N; bezwładność,
 wiatr i cumy nadal działają. Przesiadka nie leczy ani nie teleportuje.
 
 Aby połączyć łodzie, kliknij punkt obcej jednostki i wybierz własną
-knagę, zwykle czarny punkt przy rufie. Zasięg rzutu holu to 25 m.
+knagę, zwykle czarny punkt przy rufie. Zasięg podłączenia holu to 20 m. Długość już założonej liny można nadal regulować do 60 m.
 Banan i materac mają tylko przednie ucho, kajak/wiosłówka przód i tył,
 barka również punkty boczne i środkowy poler. Dostępne są też połączenia
 za rufą i burta w burtę. Długość można zmieniać podczas trzymania
@@ -349,9 +355,20 @@ hamowania oraz lokalny strumień śruby lub strumieniowych. Rzut z łodzi
 na przyczepie jest blokowany.
 
 Wybierz obiekt z listy, Pokaż centruje jego okolicę. Podejdź burtą na
-mniej niż 1,7 m i zmniejsz prędkość względem obiektu poniżej 0,55 m/s
-(1,98 km/h). Zalecany jest N lub wyłączone silniki. Podejmij działa także
-na biegu, lecz odejmuje 30 punktów i zapisuje ten stan w logu.
+mniej niż 1,7 m. Do 0,55 m/s (1,98 km/h) na N podjęcie jest pewne.
+Przy większej prędkości przycisk Spróbuj podjąć pozostaje dostępny,
+ale szansa płynnie maleje do zera przy 1,4 m/s (5,04 km/h). Także przy
+jeszcze większej prędkości kliknięcie zapisuje nieudaną próbę i jej powód.
+Na biegu szansa jest dodatkowo mnożona przez 80%, a udane podjęcie ma
+karę 30 punktów. Zalecany jest N lub wyłączone silniki.
+
+Nieudana próba pozostawia obiekt na wodzie. Komunikat podaje przyczynę,
+a Logbook zapisuje prędkość względną, odległość i napędy. Ponowienie jest
+możliwe po 1,2 s aktywnej symulacji. Bliskie minięcie bez naciśnięcia
+przycisku jest rejestrowane raz po odpłynięciu dalej niż 2,4 m. Kara
+rośnie z nadmierną prędkością, bliskością i pracą na biegu. Kliknięta
+próba i to samo minięcie nie są liczone podwójnie; łączna kara za
+nieudane podejścia jest ograniczona do 30 pkt.
 Linia na mapie prowadzi od kadłuba do wybranego obiektu. Karta SAR
 podaje odległość od burty, podpisane zbliżanie (+ do obiektu, − oddalanie),
 pełną prędkość względną oraz maksymalną szacowaną siłę kontaktu w N/kN.
@@ -360,16 +377,15 @@ i polecenia manetek; przesunięcie manetki podczas zmiany biegu nie daje
 od razu pełnej punktacji.
 
 Wynik 0–100 uwzględnia prędkość podjęcia, najmocniejszy kontakt i kontakt
-na biegu F/R oraz samo podjęcie na biegu. Pokazuje osobno N/F/R i pracę/wyłączenie każdego silnika.
+na biegu F/R, samo podjęcie na biegu i nieudane podejścia. Pokazuje osobno N/F/R i pracę/wyłączenie każdego silnika.
 Siła jest oszacowaniem miękkiego kontaktu z obiektem treningowym, nie
 pomiarem sił ani oceną obrażeń człowieka. Czas ćwiczenia jest fizyczny.
 Rozpoczęcie i zakończenie z wynikiem trafiają do Logbooka; wybrany obiekt
 i wynik pozostają w autozapisie.
 Maksymalnie 12 obiektów może jednocześnie być na wodzie. Ich stan jest
-objęty lokalnym zapisem. To ćwiczenie z obiektem, bez fizjologii ani AI. Progi 1,7 m i 0,55 m/s
-są kalibracją gry, nie potwierdzoną normą ratowniczą. Aktualna weryfikacja
-publikacji RNLI/RYA pozostaje niedokończona z powodu blokady sieci
-środowiska; nie przypisujemy tym organizacjom tych wartości.
+objęty lokalnym zapisem. To ćwiczenie z obiektem, bez fizjologii ani AI. Progi i prawdopodobieństwa
+są kalibracją gry, nie potwierdzoną normą ratowniczą ani oceną szans
+ratowania prawdziwego człowieka.
 
 ## SUV, parking, slip i przyczepa
 
@@ -438,6 +454,9 @@ Osobna, kompresowana historia tworzy dodatkowe punkty w odstępach około
 30 s. Historia jest ograniczona pojemnością przeglądarki; nie blokuje
 głównego zapisu. Ostatnie zamknięcie strony zawsze próbuje zapisać bieżący
 stan synchronicznie, nawet gdy kompresowanie historii nie zdąży się skończyć.
+Odczyt dawnych zapisów przy Euzebii/Pilawie przenosi lokalne łodzie,
+cumy i boje do poprawionych miejsc, zachowując stan silników, akumulator,
+paliwo, liczniki i czas rejsu.
 Zapis jest w danych tej przeglądarki dla tego adresu: nie przenosi się
 między Chrome/Firefox, telefonem/komputerem ani różnymi domenami.
 Wyczyszczenie danych strony lub zakończenie trybu prywatnego może go
