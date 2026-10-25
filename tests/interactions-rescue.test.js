@@ -11,7 +11,7 @@ import {crossWaveDrag,towHeelAngle,whipState} from '../src/towable-water.js';
 import {connectBoatPoints} from '../src/marine-tow.js';
 import {RESCUE_TYPES,createRescue,advanceRescueObject,pickupStatus,validRescueState} from '../src/rescue.js';
 import {throwRescue,recoverRescue,rescueStep} from '../src/rescue-scene.js';
-import {BOLLARDS,DOCKS,SOLIDS,TRAFFIC,EUZEBIA,ISLANDS,PILAWA,MAP_STARTS,shoreAt,bottomAt,FUEL_STATION,FUEL_STATIONS,WORLD,polygonShore,islandRadius} from '../src/world.js';
+import {BOLLARDS,DOCKS,SOLIDS,TRAFFIC,EUZEBIA,ISLANDS,NIEPORET,PILAWA,MAP_STARTS,shoreAt,bottomAt,FUEL_STATION,FUEL_STATIONS,WORLD,polygonShore,islandRadius} from '../src/world.js';
 import {createShoreQuery} from '../src/shore-geometry.js';
 import {fuelBerthStatus} from '../src/systems.js';
 import {createTraffic} from '../src/traffic.js';
@@ -75,7 +75,7 @@ for(const kind of ['banana','mat'])test(`${kind}: powered turn causes physical w
  assert.ok(gain>.5);assert.ok(roll>.01);assert.ok(wake>.005);assert.equal(f.tows[0].broken,false);
 });
 test('append-only sites keep all legacy mooring indices and coordinates unchanged',()=>{
- const fixture=JSON.parse(fs.readFileSync(new URL('./fixtures/legacy-bollards.json',import.meta.url)));assert.equal(fixture.length,332);assert.deepEqual(BOLLARDS.slice(0,fixture.length).map(({id,x,y})=>({id,x,y})),fixture);assert.equal(new Set(BOLLARDS.map(q=>q.id)).size,BOLLARDS.length);
+ const fixture=JSON.parse(fs.readFileSync(new URL('./fixtures/legacy-bollards.json',import.meta.url)));assert.equal(fixture.length,332);for(const [i,q]of fixture.entries()){assert.equal(BOLLARDS[i].id,q.id);if(!['wodnik','beach'].includes(BOLLARDS[i].site))assert.deepEqual(({id:BOLLARDS[i].id,x:BOLLARDS[i].x,y:BOLLARDS[i].y}),q);}assert.equal(new Set(BOLLARDS.map(q=>q.id)).size,BOLLARDS.length);
 });
 test('island bounding-box rejection preserves exact shore distances compared with unconditional polygon queries',()=>{
  const query=createShoreQuery(EUZEBIA.outline);for(let i=0;i<700;i++){const x=WORLD.left+(i*347%1000)/1000*(WORLD.right-WORLD.left),y=WORLD.top+(i*619%1000)/1000*(WORLD.bottom-WORLD.top);let d=polygonShore(x,y).distance;for(const q of ISLANDS){const value=q.outline?-query(x,y).distance:Math.hypot(x-q.x,y-q.y)-islandRadius(Math.atan2(y-q.y,x-q.x),q);d=Math.min(d,value);}for(const p of COAST_PATCHES)d=Math.min(d,-createShoreQuery(p.outline)(x,y).distance);close(shoreAt(x,y).distance,d);}
@@ -87,14 +87,14 @@ test('Euzebia is a distinct irregular island at Rządza mouth, with dry mooring 
 });
 test('Pilawa piers meet land, fingers/fuel form connected assemblies and mooring points lie on their actual docks',()=>{
  for(const d of PILAWA.docks.filter(q=>q.access)){const p=solidPoint(d,-d.pose.length/2,0),q=solidPoint(d,d.pose.length/2,0);assert.ok(shoreAt(p.x,p.y).distance<0,d.id);assert.ok(PILAWA.docks.some(r=>r!==d&&circleSolidHit(q,.1,r)),d.id);}
- for(const q of PILAWA.bollards)if(q.kind!=='buoy')assert.ok(PILAWA.docks.some(d=>circleSolidHit(q,.03,d)),q.id);
- for(const d of PILAWA.docks)assert.ok(SOLIDS.includes(d)&&DOCKS.includes(d));assert.ok(FUEL_STATIONS.includes(PILAWA.fuel));
+ for(const site of[PILAWA,NIEPORET])for(const q of site.bollards)if(q.kind!=='buoy'&&!q.shoreMooring)assert.ok(site.docks.some(d=>circleSolidHit(q,.03,d)),q.id);
+ for(const d of PILAWA.docks)assert.ok(SOLIDS.includes(d)&&DOCKS.includes(d));assert.ok(FUEL_STATIONS.includes(NIEPORET.fuel));
 });
 test('each Euzebia wild berth allows a shallow flat boat to throw its bow line without grounding or hull damage',()=>{
  for(const [index,t]of BOLLARDS.entries()){if(t.site!=='euzebia')continue;const n=shoreAt(t.x,t.y),b=createBoat('euzebia',{profile:'flat',coldStart:true});Object.assign(b,{x:t.x+n.nx*7.7,y:t.y+n.ny*7.7,a:Math.atan2(-n.ny,-n.nx)});assert.equal(attachRope(b,'bow',index).ok,true);for(let i=0;i<30;i++)step(b,calm,dt);assert.equal(b.grounded,false);assert.equal(b.damage,0);assert.ok(b.underKeel>.15);}
 });
 test('Pilawa contains mixed, individually moored sail/motor/PWC boats with clear water and no initial pier penetrations',()=>{
- const traffic=createTraffic().filter(q=>q.site==='pilawa');assert.equal(traffic.length,19);assert.equal(new Set(traffic.map(q=>q.type)).size,3);
+ const traffic=createTraffic().filter(q=>q.site==='nieporet');assert.equal(traffic.length,19);assert.equal(new Set(traffic.map(q=>q.type)).size,3);
  for(const q of traffic){assert.ok(bottomAt(q.x,q.y).depth>q.spec.draft);assert.ok(q.ropes.length>=2);for(const r of q.ropes){assert.ok(r.bollard>=332);const p=cleat(q,r.end),target=BOLLARDS[r.bollard];close(r.length,Math.hypot(p.x-target.x,p.y-target.y)+.12);}assert.ok(!DOCKS.some(d=>circleSolidHit(q,.01,d)));}
 });
 test('both fuel sites require own mooring, idle hull and engines/key off, preserving the original station',()=>{

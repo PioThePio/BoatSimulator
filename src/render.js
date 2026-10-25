@@ -2,7 +2,7 @@ import {solidPose} from './solid-geometry.js';
 import {drawBrakingWaves} from './braking-waves.js';
 import {windSurface} from './wind-response.js';
 import {drawNavigation} from './render-navigation.js';
-import {drawEuzebiaShallows} from './render-shallows.js';
+import {drawEuzebiaShallows,drawNieporetDepths} from './render-shallows.js';
 import {euzebiaBeachWeight} from './island-approach.js';
 import {attachmentNames} from './attachment-points.js';
 import {LAKE,COAST_PATCHES,REEDS,FUEL_STATION,FUEL_STATIONS,ALL_FUEL_FENDERS,SERVICE_STATION,BUILDINGS,WORLD,ISLAND,ISLANDS,BRIDGES,REMOTE_HARBORS,MAP_POIS,DOCKS,BOLLARDS,BEACHES,islandOutline,islandRadius,shoreAt,bottomAt,environment,weatherAt,waveHeight,reflectionFacesNear,clamp} from './world.js';
@@ -27,11 +27,12 @@ const terrainPaths=new WeakMap(),outlines=new WeakMap();
 function outline(q,padding=0){let m=outlines.get(q);if(!m){m=new Map();outlines.set(q,m);}if(!m.has(padding))m.set(padding,islandOutline(padding,q));return m.get(padding);}
 function shapePath(points){let p=terrainPaths.get(points);if(!p){p=new Path2D();points.forEach((q,i)=>i?p.lineTo(q.x,q.y):p.moveTo(q.x,q.y));p.closePath();terrainPaths.set(points,p);}return p;}
 let waterMask;
-function drawTerrain(ctx,bounds=null){
+function drawTerrain(ctx,bounds=null,detailed=true){
  ctx.fillStyle='#aec59b';ctx.fillRect(WORLD.left,WORLD.top,WORLD.right-WORLD.left,WORLD.bottom-WORLD.top);
  for(const q of BEACHES){ctx.beginPath();ctx.ellipse(q.x,q.y,q.r,q.r*.75,0,0,Math.PI*2);ctx.fillStyle='#e0ce9f';ctx.fill();}
  const lake=shapePath(LAKE);ctx.fillStyle='#8bb5c0';ctx.fill(lake);ctx.save();ctx.clip(lake);
  for(const [width,color]of [[180,'#92bdc5'],[70,'#a0c8cb'],[22,'#afd0ce'],[4,'#bfd9d1']]){ctx.lineJoin='round';ctx.lineWidth=width;ctx.strokeStyle=color;ctx.stroke(lake);}
+ if(detailed)drawNieporetDepths(ctx,bounds);
  const harbour=ctx.createRadialGradient(78,28,15,78,28,95);harbour.addColorStop(0,'#7dabb750');harbour.addColorStop(1,'#7dabb700');ctx.fillStyle=harbour;ctx.beginPath();ctx.ellipse(78,28,95,60,0,0,Math.PI*2);ctx.fill();
  for(const patch of COAST_PATCHES){ctx.fillStyle='#aec59b';ctx.fill(shapePath(patch.outline));ctx.strokeStyle='#c8c6aa';ctx.lineWidth=1;ctx.stroke(shapePath(patch.outline));}
  for(const q of ISLANDS){const r=Math.max(q.rx,q.ry)+50;if(bounds&&(q.x+r<bounds.left||q.x-r>bounds.right||q.y+r<bounds.top||q.y-r>bounds.bottom))continue;
@@ -44,6 +45,8 @@ function drawBridges(ctx,scale){
  for(const q of BRIDGES){
   ctx.strokeStyle=q.dam?'#8b978b':'#a3aaa0';ctx.lineWidth=q.width;ctx.lineCap='butt';ctx.beginPath();ctx.moveTo(q.a.x,q.a.y);ctx.lineTo(q.b.x,q.b.y);ctx.stroke();
   ctx.strokeStyle='#e9ebd8';ctx.lineWidth=.35;ctx.setLineDash([3,4]);ctx.stroke();ctx.setLineDash([]);
+  if(q.rail){const dx=q.b.x-q.a.x,dy=q.b.y-q.a.y,L=Math.hypot(dx,dy),nx=-dy/L,ny=dx/L;ctx.strokeStyle='#59675e';ctx.lineWidth=.25;for(const side of[-1,1]){ctx.beginPath();ctx.moveTo(q.a.x+nx*side*.72,q.a.y+ny*side*.72);ctx.lineTo(q.b.x+nx*side*.72,q.b.y+ny*side*.72);ctx.stroke();}for(let i=0;i<L;i+=1){ctx.beginPath();ctx.moveTo(q.a.x+dx*i/L-nx,q.a.y+dy*i/L-ny);ctx.lineTo(q.a.x+dx*i/L+nx,q.a.y+dy*i/L+ny);ctx.stroke();}}
+  for(const d of q.abutments??[]){const p=d.pose;ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.a);ctx.fillStyle='#7c897b';ctx.fillRect(-p.length/2,-p.width/2,p.length,p.width);ctx.restore();}
   for(const t of q.piers){const x=q.a.x+(q.b.x-q.a.x)*t,y=q.a.y+(q.b.y-q.a.y)*t;ctx.fillStyle='#617b73';ctx.fillRect(x-2.2,y-3.5,4.4,7);}
  }
 }
@@ -198,7 +201,7 @@ export function renderWorld(ctx,state){
   ctx.beginPath();ctx.moveTo(0,-.7);ctx.lineTo(1.7,-q.width/2);ctx.moveTo(0,.7);ctx.lineTo(1.7,q.width/2);ctx.stroke();
   ctx.fillStyle='#e4e6ce';ctx.fillRect(0,-.20,1.4,.40);ctx.restore();
  }
- for(const rect of DOCKS){if(rect.x+rect.w<bounds.left-2||rect.x>bounds.right+2||rect.y+rect.h<bounds.top-2||rect.y>bounds.bottom+2)continue;ctx.save();let d=rect;if(rect.pose){const p=solidPose(rect);ctx.translate(p.x,p.y);ctx.rotate(p.a);d={x:-p.length/2,y:-p.width/2,w:p.length,h:p.width};}ctx.fillStyle='#73908722';ctx.fillRect(d.x+.3,d.y+.4,d.w,d.h);ctx.fillStyle=b.dockDamage>=100?'#9e8273':'#bda783';ctx.fillRect(d.x,d.y,d.w,d.h);ctx.strokeStyle='#9f8b70';ctx.lineWidth=.07;ctx.strokeRect(d.x,d.y,d.w,d.h);ctx.beginPath();if(d.w>d.h){for(let x=d.x+.5;x<d.x+d.w;x+=.65){ctx.moveTo(x,d.y);ctx.lineTo(x,d.y+d.h);}}else for(let y=d.y+.5;y<d.y+d.h;y+=.65){ctx.moveTo(d.x,y);ctx.lineTo(d.x+d.w,y);}ctx.stroke();ctx.restore();}
+ for(const rect of DOCKS){if(rect.x+rect.w<bounds.left-2||rect.x>bounds.right+2||rect.y+rect.h<bounds.top-2||rect.y>bounds.bottom+2)continue;ctx.save();let d=rect;if(rect.pose){const p=solidPose(rect);ctx.translate(p.x,p.y);ctx.rotate(p.a);d={x:-p.length/2,y:-p.width/2,w:p.length,h:p.width};}ctx.fillStyle='#73908722';ctx.fillRect(d.x+.3,d.y+.4,d.w,d.h);ctx.fillStyle=b.dockDamage>=100?'#9e8273':rect.finger?'#c5c4a5':'#bda783';ctx.fillRect(d.x,d.y,d.w,d.h);ctx.strokeStyle='#9f8b70';ctx.lineWidth=.07;ctx.strokeRect(d.x,d.y,d.w,d.h);ctx.beginPath();if(d.w>d.h){for(let x=d.x+.5;x<d.x+d.w;x+=.65){ctx.moveTo(x,d.y);ctx.lineTo(x,d.y+d.h);}}else for(let y=d.y+.5;y<d.y+d.h;y+=.65){ctx.moveTo(d.x,y);ctx.lineTo(d.x+d.w,y);}ctx.stroke();ctx.restore();}
  if(overview){ctx.fillStyle='#d0a14a';for(const q of REMOTE_HARBORS){ctx.beginPath();ctx.arc(q.x,q.y,3/scale,0,Math.PI*2);ctx.fill();}}
  for(const FUEL_STATION of FUEL_STATIONS){ ctx.fillStyle='#93692c';ctx.fillRect(FUEL_STATION.pumpX-.45,FUEL_STATION.pumpY-.55,.9,1.1);ctx.font='1.1px system-ui';ctx.fillText('⛽',FUEL_STATION.pumpX-.5,FUEL_STATION.pumpY-1);ctx.fillStyle='#d5bf75';ctx.fillRect(FUEL_STATION.x-.45,FUEL_STATION.alongMin,.4,FUEL_STATION.alongMax-FUEL_STATION.alongMin);ctx.save();ctx.translate(FUEL_STATION.x-1.3,FUEL_STATION.y+5);ctx.rotate(-Math.PI/2);ctx.font='bold .9px system-ui';ctx.fillStyle='#72613d';ctx.fillText('PALIWO · CUMUJ BURTĄ',0,0);ctx.restore(); if(FUEL_STATION.id==='pilawa-fuel'){ctx.fillStyle='#bc443b';ctx.fillRect(FUEL_STATION.pumpX-.65,FUEL_STATION.pumpY-.7,1.3,.4);ctx.font='bold .7px system-ui';ctx.fillText('ORLEN',FUEL_STATION.pumpX-1.1,FUEL_STATION.pumpY-1.5);}}
 
@@ -246,7 +249,7 @@ export function renderWorld(ctx,state){
  drawBridges(ctx,scale);
  const bow=cleat(b,'bow');ctx.fillStyle='#cfb56d';ctx.beginPath();ctx.arc(bow.x,bow.y,.22,0,Math.PI*2);ctx.fill();
  ctx.restore();
- const metres=overview?1000:scale<1?100:5;ctx.strokeStyle='#4f756d';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(22,height-52);ctx.lineTo(22+metres*scale,height-52);ctx.moveTo(22,height-56);ctx.lineTo(22,height-49);ctx.moveTo(22+metres*scale,height-56);ctx.lineTo(22+metres*scale,height-49);ctx.stroke();ctx.fillStyle='#4f756d';ctx.font='10px system-ui';ctx.fillText(metres+' m',24,height-60);
+ if(!state.hideScale){const metres=overview?1000:scale<1?100:5;ctx.strokeStyle='#4f756d';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(22,height-52);ctx.lineTo(22+metres*scale,height-52);ctx.moveTo(22,height-56);ctx.lineTo(22,height-49);ctx.moveTo(22+metres*scale,height-56);ctx.lineTo(22+metres*scale,height-49);ctx.stroke();ctx.fillStyle='#4f756d';ctx.font='10px system-ui';ctx.fillText(metres+' m',24,height-60);}
  const result={scale,camera,bounds};result.labels=drawMapNames(ctx,state,result);if(overview)drawPositionMarker(ctx,b,result,width,height);return result;
 }
 function drawBoat(ctx,b){
@@ -281,10 +284,10 @@ function drawBoat(ctx,b){
 }
 export function renderMinimap(canvas,b,view){
  const c=canvas.getContext('2d'),w=canvas.width,h=canvas.height,p=minimapProjection(w,h,b),scale=p.scale;
- c.clearRect(0,0,w,h);c.fillStyle='#aec59b';c.fillRect(0,0,w,h);c.save();c.scale(scale,scale);c.translate(-p.left,-p.top);drawTerrain(c,{left:p.left,top:p.top,right:p.left+w/scale,bottom:p.top+h/scale});
+ c.clearRect(0,0,w,h);c.fillStyle='#aec59b';c.fillRect(0,0,w,h);c.save();c.scale(scale,scale);c.translate(-p.left,-p.top);drawTerrain(c,{left:p.left,top:p.top,right:p.left+w/scale,bottom:p.top+h/scale},false);
  c.lineWidth=1/scale;for(const q of BRIDGES){c.strokeStyle=q.dam?'#8e785d':'#789385';c.beginPath();c.moveTo(q.a.x,q.a.y);c.lineTo(q.b.x,q.b.y);c.stroke();}
  c.fillStyle='#607e65';for(const q of [{x:80,y:15},...REMOTE_HARBORS])c.fillRect(q.x-2/scale,q.y-2/scale,4/scale,4/scale);
- c.fillStyle='#c39d4b';c.beginPath();c.arc(FUEL_STATION.x,FUEL_STATION.y,3/scale,0,Math.PI*2);c.fill();
+ c.fillStyle='#c39d4b';for(const q of FUEL_STATIONS){c.beginPath();c.arc(q.x,q.y,3/scale,0,Math.PI*2);c.fill();}
  c.strokeStyle='#f5f7df';c.lineWidth=1.2/scale;c.strokeRect(view.bounds.left,view.bounds.top,view.bounds.right-view.bounds.left,view.bounds.bottom-view.bounds.top);
  c.restore();drawPositionMarker(c,b,{scale,camera:{x:p.left+w/scale/2,y:p.top+h/scale/2}},w,h,false);c.font='12px system-ui';c.fillStyle='#355f5a';c.fillText('OKOLICA · 3,5 km',7,h-7);return p;
 }

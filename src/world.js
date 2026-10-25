@@ -1,16 +1,18 @@
-import {closestSolidPoint,orientedFaces} from './solid-geometry.js';
+import {closestSolidPoint,orientedFaces,pierSegment,solidPoint} from './solid-geometry.js';
+import {NIEPORET_REFERENCE} from './nieporet-reference.js';
+import {projectNieporet} from './zegrze.js';
 import {makeNavigationMarks,hazardBottom} from './navigation-marks.js';
 import {euzebiaBeachWeight,euzebiaSlope} from './island-approach.js';
 import {ZEGRZE_BOUNDS,ZEGRZE_SHORE,ZEGRZE_ISLANDS,BRIDGES,REMOTE_HARBORS,FUEL_LOCATION,MAP_LABELS,fromAtlas,WORLD_DISTANCE_SCALE} from './zegrze.js';
 import {createShoreQuery} from './shore-geometry.js';
 import {weatherAt} from './weather.js';
 import {mirrorPoint,mirrorVector,wallDistance} from './wave-reflections.js';
-import {EUZEBIA,PILAWA_LAND,createPilawaSite} from './lake-sites.js';
+import {EUZEBIA,createNieporetSite,createPilawaSite} from './lake-sites.js';
 export {weatherAt} from './weather.js';
 export const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 export {BRIDGES,REMOTE_HARBORS,MAP_LABELS,fromGeo,toGeo,METRES_PER_MAP_PIXEL} from './zegrze.js';
 export const WORLD=ZEGRZE_BOUNDS,LAKE=ZEGRZE_SHORE,ISLAND=ZEGRZE_ISLANDS[0],ISLANDS=[...ZEGRZE_ISLANDS];
-export const COAST_PATCHES=[PILAWA_LAND];
+export const COAST_PATCHES=[];
 const coastQueries=COAST_PATCHES.map(q=>({...q,query:createShoreQuery(q.outline)}));
 const islandQueries=new Map();
 const lakeQuery=createShoreQuery(LAKE);
@@ -44,7 +46,7 @@ for(const house of BUILDINGS)for(let i=0;i<8;i++){const points=[[0,0],[house.w,0
 // Floating fingers: 25 cm beam, triangular brace only at the hinge, 5 m spacing.
 export const YBOOMS=Array.from({length:6},(_,i)=>({id:i,x1:76+i*5,y1:12.8,x2:76+i*5,y2:22.8,width:.25,length:10,a:Math.PI/2}));
 export const BUOY_SLIPS=[35.5,41,46.5].map((x,i)=>({x,y:26,id:`B${i+1}`}));
-for(const q of REMOTE_HARBORS){const bank=lakeQuery(q.x,q.y);q.x=bank.qx;q.y=bank.qy;}
+for(const q of REMOTE_HARBORS){if(q.id==='NIE'){Object.assign(q,{x:156.8414871959014,y:1278.5478860950955});continue;}const bank=lakeQuery(q.x,q.y);q.x=bank.qx;q.y=bank.qy;}
 const harborDocks=REMOTE_HARBORS.map(q=>q.direction==='east'?{x:q.x-2,y:q.y,w:q.length,h:1.8}:q.direction==='west'?{x:q.x-q.length+2,y:q.y,w:q.length,h:1.8}:q.direction==='south'?{x:q.x,y:q.y-2,w:1.8,h:q.length}:{x:q.x,y:q.y-q.length+2,w:1.8,h:q.length});
 DOCKS.push(...harborDocks);
 const fuelPier={x:FUEL_LOCATION.x-48,y:FUEL_LOCATION.y-8,w:2.8,h:30};DOCKS.push(fuelPier,{x:fuelPier.x+fuelPier.w,y:fuelPier.y,w:48,h:1.6});
@@ -52,10 +54,14 @@ const fuelPier={x:FUEL_LOCATION.x-48,y:FUEL_LOCATION.y-8,w:2.8,h:30};DOCKS.push(
 DOCKS.push({x:80,y:3.5,w:1.8,h:7,access:true},{x:130.5,y:3.5,w:1.5,h:4,service:true,access:true});
 export const FUEL_STATION={x:fuelPier.x+fuelPier.w,y:fuelPier.y+16,pumpX:fuelPier.x+1.4,pumpY:fuelPier.y+14,alongMin:fuelPier.y+4,alongMax:fuelPier.y+28,maxGap:1.4};
 export const FUEL_FENDERS=Array.from({length:5},(_,id)=>({x:FUEL_STATION.x,y:FUEL_STATION.alongMin+1+id*4.5,w:.22,h:.7,fender:true,id:'fuel-fender-'+id}));
-export const BRIDGE_SOLIDS=BRIDGES.flatMap(q=>q.dam?[{id:q.id,x:Math.min(q.a.x,q.b.x)-q.width/2,y:Math.min(q.a.y,q.b.y),w:Math.max(q.width,Math.abs(q.b.x-q.a.x)),h:Math.max(q.width,Math.abs(q.b.y-q.a.y))}]:q.piers.map((t,i)=>({id:q.id+'-pier-'+i,x:q.a.x+(q.b.x-q.a.x)*t-2.2,y:q.a.y+(q.b.y-q.a.y)*t-3.5,w:4.4,h:7})));
+for(const q of BRIDGES.filter(q=>q.site==='nieporet')){const length=Math.hypot(q.b.x-q.a.x,q.b.y-q.a.y),dx=(q.b.x-q.a.x)/length,dy=(q.b.y-q.a.y)/length;q.abutments=[q.a,q.b].map((p,i)=>{const side=i?1:-1;return pierSegment({x:p.x+side*dx*.5,y:p.y+side*dy*.5},{x:p.x+side*dx*4,y:p.y+side*dy*4},q.width+1,{id:q.id+'-abutment-'+i,bridge:true});});}
+export const BRIDGE_SOLIDS=BRIDGES.flatMap(q=>q.dam?[{id:q.id,x:Math.min(q.a.x,q.b.x)-q.width/2,y:Math.min(q.a.y,q.b.y),w:Math.max(q.width,Math.abs(q.b.x-q.a.x)),h:Math.max(q.width,Math.abs(q.b.y-q.a.y))}]:[...(q.abutments??[]),...q.piers.map((t,i)=>({id:q.id+'-pier-'+i,x:q.a.x+(q.b.x-q.a.x)*t-2.2,y:q.a.y+(q.b.y-q.a.y)*t-3.5,w:4.4,h:7}))]);
 export const SOLIDS=[...DOCKS,...FUEL_FENDERS,...BUILDINGS,...BRIDGE_SOLIDS,
  {x:WORLD.left-24,y:WORLD.top-24,w:WORLD.right-WORLD.left+48,h:12},{x:WORLD.left-24,y:WORLD.top-12,w:12,h:WORLD.bottom-WORLD.top+48},{x:WORLD.left-12,y:WORLD.bottom+12,w:WORLD.right-WORLD.left+36,h:12},{x:WORLD.right+12,y:WORLD.top-12,w:12,h:WORLD.bottom-WORLD.top+48}];
 export const BEACHES=[{...fromAtlas(525,881),r:145*WORLD_DISTANCE_SCALE,name:'Dzika Plaża · Nieporęt'},{...fromAtlas(345,609),r:180*WORLD_DISTANCE_SCALE,name:'Plaża Wieliszew'},{...fromAtlas(764,858),r:120*WORLD_DISTANCE_SCALE,name:'Białobrzegi'}];
+// Rejoin the western atlas outside the surveyed headland; keep the existing
+// beach exercise attached to the resulting shoreline.
+{const q=BEACHES[0],s=lakeQuery(q.x,q.y);q.x=s.qx;q.y=s.qy;}
 export const REEDS=[{x:fromAtlas(954,371).x-20,y:fromAtlas(954,371).y-10,r:85},{...fromAtlas(991,568),r:40},{...fromAtlas(650,1005),r:20},{...fromAtlas(1080,250),r:40}];
 export const SHOALS=[{...fromAtlas(1005,225),rx:95*WORLD_DISTANCE_SCALE,ry:55*WORLD_DISTANCE_SCALE,drop:4.5},{...fromAtlas(894,577),rx:55*WORLD_DISTANCE_SCALE,ry:26*WORLD_DISTANCE_SCALE,drop:4.6},{...fromAtlas(1160,245),rx:120*WORLD_DISTANCE_SCALE,ry:38*WORLD_DISTANCE_SCALE,drop:4.4}];
 const islandTree=a=>{const r=islandRadius(a)-1.2;return{x:ISLAND.x+Math.cos(a)*r,y:ISLAND.y+Math.sin(a)*r};};
@@ -92,7 +98,7 @@ for(const [index,d]of DOCKS.entries()){
  const horizontal=d.w>d.h,count=Math.max(2,Math.floor((horizontal?d.w:d.h)/6));
  for(let j=0;j<count;j++)for(const side of [0,1]){
   const t=(j+.5)/count,x=horizontal?d.x+d.w*t:d.x+d.w*side,y=horizontal?d.y+d.h*side:d.y+d.h*t;
-  if(polygonShore(x,y).distance<.2)continue;
+  if(index!==13&&polygonShore(x,y).distance<.2)continue;
   BOLLARDS.push({x,y,kind:'bollard',id:`M${index+1}${side?'P':'L'}-${j+1}`,label:`${d.service?'Serwis':REMOTE_HARBORS[index-13]?.name??'Pomost'} · poler ${j+1}`,service:d.service&&Math.abs(x-132)<.1});
  }
 }
@@ -102,10 +108,10 @@ export const MAP_STARTS={retrieve:{x:125,y:22,a:-Math.PI/2},beach:{x:beachTree.x
 // Append-only additions: never shift legacy bollard indices stored in sessions.
 ISLANDS.push(EUZEBIA);islandQueries.set(EUZEBIA.id,createShoreQuery(EUZEBIA.outline));
 export {EUZEBIA};
-export const PILAWA=createPilawaSite(lakeQuery);
-DOCKS.push(...PILAWA.docks);SOLIDS.push(...PILAWA.docks,...PILAWA.fenders);BOLLARDS.push(...PILAWA.bollards);TRAFFIC.push(...PILAWA.traffic);
-export const FUEL_STATIONS=[FUEL_STATION,PILAWA.fuel];
-export const ALL_FUEL_FENDERS=[...FUEL_FENDERS,...PILAWA.fenders];
+export const NIEPORET=createNieporetSite(lakeQuery),PILAWA=createPilawaSite(lakeQuery);
+DOCKS.push(...NIEPORET.docks);SOLIDS.push(...NIEPORET.docks,...NIEPORET.fenders);BOLLARDS.push(...NIEPORET.bollards);TRAFFIC.push(...NIEPORET.traffic);
+export const FUEL_STATIONS=[FUEL_STATION,NIEPORET.fuel];
+export const ALL_FUEL_FENDERS=[...FUEL_FENDERS,...NIEPORET.fenders];
 for(const [i,a]of [.55,1.05,1.55,2.85,3.08].entries()){
  let p={x:EUZEBIA.x+Math.cos(a)*EUZEBIA.rx*2,y:EUZEBIA.y+Math.sin(a)*EUZEBIA.ry*2};
  const hit=islandQueries.get(EUZEBIA.id)(p.x,p.y);p={x:hit.qx+hit.nx*1.5,y:hit.qy+hit.ny*1.5};
@@ -113,15 +119,26 @@ for(const [i,a]of [.55,1.05,1.55,2.85,3.08].entries()){
  BOLLARDS.push({...p,id:'EUZ-D'+(i+1),kind:'tree',label:'Euzebia · drzewo '+(i+1),site:'euzebia'});
 }
 for(const id of ['EUZ-D4','EUZ-D5']){const tree=BOLLARDS.find(q=>q.id===id),n=shoreAt(tree.x,tree.y);REEDS.push({x:tree.x+n.nx*5,y:tree.y+n.ny*5,r:7,shallow:true});}
-BOLLARDS.push(...PILAWA.extraBollards);
-MAP_STARTS.pilawa=PILAWA.start;MAP_STARTS.euzebia={x:EUZEBIA.x-EUZEBIA.rx-35,y:EUZEBIA.y,a:Math.PI/2};
+BOLLARDS.push(...NIEPORET.extraBollards);
+DOCKS.push(...PILAWA.docks);SOLIDS.push(...PILAWA.docks);BOLLARDS.push(...PILAWA.bollards);TRAFFIC.push(...PILAWA.traffic);
+// Reuse the old Nieporęt pier's array slot and attachment identities. No dummy
+// pier survives on open water, and existing saved indices do not shift.
+const oldNie=DOCKS[13],oldPose={...oldNie},wodnikSource=NIEPORET_REFERENCE.features['178815913'];
+Object.assign(oldNie,pierSegment(projectNieporet(wodnikSource[1]),projectNieporet(wodnikSource[0]),1.6,{id:'wodnik-pier',site:'wodnik',sourceWay:'178815913'}));
+for(const q of BOLLARDS)if(!q.site&&q.kind==='bollard'&&q.x>=oldPose.x-.05&&q.x<=oldPose.x+oldPose.w+.05&&q.y>=oldPose.y-.05&&q.y<=oldPose.y+oldPose.h+.05){const t=(q.x-oldPose.x)/oldPose.w,side=q.y>oldPose.y+oldPose.h*.5?1:-1;Object.assign(q,solidPoint(oldNie,(t-.5)*oldNie.pose.length,side*.8),{site:'wodnik',legacy2Rotation:oldNie.pose.a,label:'Wodnik · ujście kanału · poler'});}
+for(const q of BOLLARDS)if(['D1','D2'].includes(q.id)||[DOCKS[6],DOCKS[7]].some(d=>q.kind==='bollard'&&q.x>=d.x-.05&&q.x<=d.x+d.w+.05&&q.y>=d.y-.05&&q.y<=d.y+d.h+.05))q.site='beach';
+Object.assign(REMOTE_HARBORS[0],solidPoint(oldNie,-oldNie.pose.length/2,0),{name:'Wodnik · ujście kanału',length:oldNie.pose.length});
+for(const id of ['178815906','178815911','310824661','1185783075','1185783076']){const q=NIEPORET_REFERENCE.features[id],d=pierSegment(projectNieporet(q[0]),projectNieporet(q[1]),1.3,{id:'wodnik-'+id,site:'wodnik',sourceWay:id});DOCKS.push(d);SOLIDS.push(d);for(let j=0;j<Math.ceil(d.pose.length/7);j++)BOLLARDS.push({...solidPoint(d,-d.pose.length/2+(j+.5)*d.pose.length/Math.ceil(d.pose.length/7),.65),kind:'bollard',site:'wodnik',id:'WOD-'+id+'-'+j,label:'Wodnik · poler'});}
+MAP_STARTS.pilawa=PILAWA.start;MAP_STARTS.nieporet=NIEPORET.start;MAP_STARTS.zeranski={...projectNieporet([21.03427,52.43295]),a:Math.PI/2};MAP_STARTS.euzebia={x:EUZEBIA.x-EUZEBIA.rx-35,y:EUZEBIA.y,a:Math.PI/2};
+const surveyDredgeY=projectNieporet([21.038,52.4355]).y;
+export const NIEPORET_SURVEY_BOUNDS={left:projectNieporet([21.029,52.44]).x,right:projectNieporet([21.0447,52.44]).x,top:projectNieporet([21.038,52.4402]).y,bottom:WORLD.bottom};
 export function bottomAt(x,y){
  const shore=shoreAt(x,y),dist=shore.distance,slope=shore.island==='euzebia'?euzebiaSlope(shore.along):shore.beach?.085:shore.edge==='canal'?.65:.21*(1+.28*Math.sin(x*.027)+.16*Math.cos(y*.041));
  const basin=shore.edge==='canal'?3.2:8.5;
  let depth=dist>=0?basin*(1-Math.exp(-dist*slope/basin)):dist*(shore.beach?.07:.32);
  if(dist>=0){for(const s of SHOALS)depth-=s.drop*Math.exp(-((x-s.x)**2/s.rx**2+(y-s.y)**2/s.ry**2));depth=Math.max(.015,depth+.10*Math.sin(x*.13)*Math.sin(y*.16)*clamp(dist/12,0,1));}
  // Pilawa's maintained basin is dredged, with a short blend at the bank.
- const pb=PILAWA.bounds;if(dist>0&&x>pb.left&&x<pb.right&&y>pb.top&&y<pb.bottom){const blend=clamp(dist/(shore.coast==='pilawa-bank'?.4:5),0,1)*clamp(Math.min(x-pb.left,pb.right-x,y-pb.top,pb.bottom-y)/4,0,1);depth+=Math.max(0,2.7-depth)*blend;}
+ if(dist>0){for(const site of[NIEPORET,PILAWA]){const pb=site.bounds;if(x>pb.left&&x<pb.right&&y>pb.top&&y<pb.bottom){const blend=clamp(dist/.6,0,1)*clamp(Math.min(x-pb.left,pb.right-x,y-pb.top,pb.bottom-y)/4,0,1);depth+=Math.max(0,2.7-depth)*blend;}}const sb=NIEPORET_SURVEY_BOUNDS;if(x>sb.left&&x<sb.right&&y>surveyDredgeY){depth+=Math.max(0,3.2-depth)*clamp(dist/2,0,1);}}
  const ramp=SERVICE_STATION.slip;
  // A level yard and its approach meet the dry end of the slip. Shore-distance
  // elevation used to put the parked trailer on an unintended slope.
@@ -181,10 +198,13 @@ export function reflectionFacesNear(x,y,radius=70){
  const nearby=new Set();for(let ix=Math.floor((x-radius)/80);ix<=Math.floor((x+radius)/80);ix++)for(let iy=Math.floor((y-radius)/80);iy<=Math.floor((y+radius)/80);iy++)for(const f of reflectionGrid.get(ix+','+iy)??[])nearby.add(f);
  const p={x,y},faces=[];
  for(const f of nearby){
-  const {a,dx,dy,length2}=f,u=clamp(((x-a.x)*dx+(y-a.y)*dy)/length2,0,1),distance=Math.hypot(x-a.x-u*dx,y-a.y-u*dy);
-  if(distance<radius&&wallDistance(p,f)>.001)faces.push({...f,distance});
+  const {a,dx,dy,length2}=f,u=clamp(((x-a.x)*dx+(y-a.y)*dy)/length2,0,1),px=x-a.x-u*dx,py=y-a.y-u*dy,d2=px*px+py*py;
+  // Keep the same four faces and order as the full sort, without allocating
+  // hundreds of discarded finger-face objects at every field sample.
+  if(d2>=radius*radius||faces.length===4&&d2>(faces[3].distance+1e-8)**2||wallDistance(p,f)<=.001)continue;
+  const distance=Math.hypot(px,py);if(distance>=radius)continue;let i=0;while(i<faces.length&&(faces[i].distance<distance||faces[i].distance===distance&&faces[i].order<f.order))i++;
+  if(i<4){faces.splice(i,0,{...f,distance});if(faces.length>4)faces.pop();}
  }
- faces.sort((a,b)=>a.distance-b.distance||a.order-b.order);faces.splice(4);
  const s=shoreAt(x,y);
  if(s.distance>0&&s.distance<radius){const q={x:x-s.nx*s.distance,y:y-s.ny*s.distance},half=65;
   faces.push({id:'shore',a:{x:q.x-s.ny*half,y:q.y+s.nx*half},b:{x:q.x+s.ny*half,y:q.y-s.nx*half},nx:s.nx,ny:s.ny,coefficient:s.beach?.08:q.x>0&&q.x<165&&Math.abs(q.y-4)<3?.62:.34,distance:s.distance});
@@ -220,7 +240,9 @@ export const MAP_POIS=[
  ...REMOTE_HARBORS.map(q=>({id:'harbor-'+q.id,name:'Port · '+q.name,x:q.x,y:q.y,priority:3})),
  ...ISLANDS.map((q,i)=>({id:q.id??'island-'+i,name:q.name??'Wyspa '+(i+1),x:q.x,y:q.y,priority:q.id?4:2})),
  {id:'pilawa',name:'Port Pilawa',x:PILAWA.x+35,y:PILAWA.y,priority:5},
- {id:'pilawa-fuel',name:'⛽ ORLEN · Pilawa',x:PILAWA.fuel.x,y:PILAWA.fuel.y,priority:5},
+ {id:'nieporet',name:'Port Nieporęt',x:NIEPORET.x,y:NIEPORET.y,priority:5},
+ {id:'zeranski',name:'Ujście Kanału Żerańskiego',...MAP_STARTS.zeranski,priority:4},
+ {id:'pilawa-fuel',name:'⛽ ORLEN na wodzie · Nieporęt',x:NIEPORET.fuel.x,y:NIEPORET.fuel.y,priority:5},
  ...MAP_LABELS.map((q,i)=>({id:'town-'+i,...q,priority:1}))];
 
 export const NAV_MARKS=makeNavigationMarks(shoreAt);

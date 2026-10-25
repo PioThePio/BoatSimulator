@@ -1,4 +1,5 @@
 import {contacts} from './contacts.js';
+import {nearbySolids} from './solid-index.js';
 import {beginFenderStep,fenderGeometry,fenderContact} from './fenders.js';
 import {hullContactSamples} from './hull-geometry.js';
 import {sampleWater,wakeHistories} from './wave-field.js';
@@ -30,7 +31,7 @@ export function trafficStep(b,e,dt,{integrate=true}={}){
   q.time=b.time;beginFenderStep(q);
   // Only new marina boats sample external fields at 20 Hz. Integration of
   // inertia, damping, contact and individual rope tension remains at 120 Hz.
-  const cached=q.site==='pilawa';
+  const cached=q.site==='pilawa'||q.site==='nieporet';
   if(!cached||!q.fieldCache||b.time>=q.fieldAt){
    const faces=wakeHistories(b).some(h=>h.length>1)?reflectionFacesNear(q.x,q.y):[],sample=(x,y)=>sampleWater(b,x,y,e,faces),fore=point(q,.35*q.length,0),aft=point(q,-.35*q.length,0);
    q.fieldCache={flow:environment(b.time,e,q.x,q.y),wave:sample(q.x,q.y),ends:[sample(aft.x,aft.y),sample(fore.x,fore.y)]};q.fieldAt=b.time+.05;
@@ -49,7 +50,7 @@ export function trafficStep(b,e,dt,{integrate=true}={}){
   q.w+=(N/q.spec.iz-q.w*.18-500*q.beam*q.length**4*.006*q.w*Math.abs(q.w)/q.spec.iz)*dt;
   moorTraffic(b,q,dt);
   q.x+=q.vx*dt;q.y+=q.vy*dt;q.a+=q.w*dt;
-  const candidates=cached?SOLIDS.flatMap((d,i)=>Math.hypot(Math.max(d.x-q.x,0,q.x-d.x-d.w),Math.max(d.y-q.y,0,q.y-d.y-d.h))<q.spec.length*.65+1?[i]:[]):null;
+  const candidates=cached?nearbySolids(SOLIDS,q.x,q.y,q.spec.length*.65+1):null;
   contacts(q,dt,candidates);
   }
   if(Math.hypot(b.x-q.x,b.y-q.y)>(b.spec.length+q.spec.length)*.6+1)continue;

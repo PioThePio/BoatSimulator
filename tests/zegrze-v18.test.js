@@ -35,7 +35,7 @@ test('overview and minimap use equal axis scale; fit/click coordinates round-tri
 test('fuel pier is genuinely across the lake and all remote harbours have water-facing attachment points',()=>{
  assert.ok(Math.hypot(FUEL_STATION.x-80,FUEL_STATION.y-15)>2700*WORLD_DISTANCE_SCALE);
  for(const q of REMOTE_HARBORS){const points=BOLLARDS.filter(p=>Math.hypot(p.x-q.x,p.y-q.y)<q.length+10&&p.kind==='bollard');assert.ok(points.length>=2,q.name);assert.ok(points.some(p=>bottomAt(p.x,p.y).depth>.3),q.name);}
- for(const d of DOCKS.filter(q=>q.h>q.w&&q.x<100)){
+ for(const d of DOCKS.filter(q=>!q.pose&&q.h>q.w&&q.x<100)){
   assert.ok(BOLLARDS.some(p=>Math.abs(p.x-d.x)<1e-8&&p.y>d.y&&p.y<d.y+d.h));assert.ok(BOLLARDS.some(p=>Math.abs(p.x-d.x-d.w)<1e-8&&p.y>d.y&&p.y<d.y+d.h));
  }
 });

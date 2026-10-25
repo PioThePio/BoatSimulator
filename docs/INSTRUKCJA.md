@@ -13,7 +13,7 @@ pokazuje rzeczywistą masę startową z paliwem oraz zanurzenie.
 Kabinowa ma domyślnie strumieniowy dziobowy, a wypornościowa dziobowy i rufowy; można je odznaczyć. Wyścigowa ma zawsze dwa Z-drive do 600 KM każdy. Pozostałe jednostki zachowują limit 350 KM na silnik.
 
 Wybierz miejsce startu i pogodę. Dostępne są otwarta woda, port główny,
-pomosty, plaża, wyspy przy Bugu, Euzebia, Pilawa, zatoka Rządzy, paliwo,
+pomosty, plaża, wyspy przy Bugu, Euzebia, Pilawa, Port Nieporęt, ujście Kanału Żerańskiego, zatoka Rządzy, paliwo,
 serwis oraz zadania z SUV-em i przyczepą. Start na przyczepie podnosi
 podnoszony napęd do końca. Wybór nowej próby zastępuje aktualną sesję.
 
@@ -52,7 +52,7 @@ Przycisk Ślad włącza lub ukrywa historię trasy. Widok łodzi oddala się
 łagodnie wraz z prędkością i wraca po zwolnieniu. W SUV-ie kierunek widoku
 zmienia się lekko po wybraniu D/R; P i N zachowują ostatni kierunek.
 
-GPS pozwala wybrać przystań, w tym Pilawę i Euzebię. Odległość i ETA są
+GPS pozwala wybrać przystań, w tym Pilawę, Port Nieporęt, wodną stację ORLEN i Euzebię. Odległość i ETA są
 logiczne, zgodne ze skróconą geografią. ETA pojawia się podczas zbliżania
 do celu, nie na postoju ani podczas oddalania. To kierunek do celu po
 prostej, nie wyznaczona trasa omijająca ląd. Wyłączony GPS ukrywa odczyty.
@@ -134,8 +134,9 @@ uruchomi silnika. Wskaźnik pokazuje V i pozostały procent. Wyłączenie
 samego odbiornika zachowuje jego ustawienie przy następnym zasileniu.
 
 Zegary pokazują RPM (osobne dla dwóch silników), prędkość, paliwo, trym,
-temperaturę i napięcie. RPM L/P, TRIM, L/h i SOC są na tarczach. Prędkość (v), paliwo i Temp
-mają ikonę/opis oraz odczyt wewnątrz tarczy; przy paliwie jest też L/h.
+temperaturę i napięcie. RPM L/P, TRIM, L/h i SOC są na tarczach. Napisy V, Paliwo i Temp są wewnątrz tarcz.
+Spalanie w L/h również jest na tarczy paliwa. Wartości są pod tarczami:
+prędkość z km/h, ilość paliwa w litrach i temperatura z °C.
 Wyłączenie instrumentów opuszcza wskazówki poza BAT; wyłączenie głównego
 zasilania opuszcza również BAT. Wyłączone odczyty cyfrowe pokazują kreskę. Profil obok pokazuje
 uniesienie dziobu, położenie napędu, zanurzenie śruby i dno na płytkiej
@@ -240,11 +241,15 @@ szuwary: można w nie wpłynąć, ale zwiększają opór.
 
 Na Euzebii pięć drzew jest punktami dzikiego cumowania. Podejdź powoli,
 obserwuj dno i zanurzenie; większą jednostkę pozostaw dalej na kotwicy.
-Pilawa ma wejście od północy, sześć ukośnych pomostów, główkę T i
-19 różnych zacumowanych jednostek. ORLEN jest przy zachodniej wewnętrznej
-kei, między pomostami. Płyń głównym korytarzem w dół basenu, potem
-skręć do zatoki dystrybutora. Łagodne podejścia Euzebii zostały zachowane,
-a jej położenie i obrys odpowiadają danym OSM/PRNG.
+Pilawa to wąski basen na północny wschód od ujścia Kanału Żerańskiego.
+Wpływa się od północy, między zakrzywioną osłoną a wschodnim brzegiem.
+Pomosty wychodzą ze wschodniej strony, a środkowy ma poprzeczne odnogi.
+Większy Port Nieporęt jest osobnym basenem dalej na południowy zachód:
+ma sześć pomostów od zachodu, długi pomost od wschodu, zatoczki i wodne paliwo.
+Z jeziora można też wpłynąć do kanału i przepłynąć pod mostem drogowym,
+a dalej pod osobnym mostem kolejowym. Pokłady mostów nie blokują wody.
+Prześwity wysokościowe i głębokości są założeniami treningowymi, nie pomiarem.
+Nie wszystkie stanowiska są zajęte; opcja zacumowanych łodzi działa jak w innych portach.
 
 ## Kotwica
 
@@ -295,7 +300,9 @@ osiadanie i niższą rufę.
 Nominalnie: otwarta/płaskodenna/swamp/skuter 32 l/min, RIB/motorówka 50,
 kabinowa 95, wypornościowa 126. Napięcie wpływa na faktyczną wydajność.
 
-Tankuj burtą przy oznaczonym pomoście paliwowym w Ryni albo ORLEN w Pilawie.
+Tankuj burtą przy oznaczonym pomoście paliwowym w Ryni albo przy wodnej
+stacji ORLEN na zachodnim brzegu większego Portu Nieporęt. W Pilawie
+nie ma tej stacji; drogowy ORLEN przy rondzie nie jest punktem obsługi łodzi.
 Wymagana jest przynajmniej jedna cuma do **tego** stanowiska, postój oraz
 wyłączone silniki i zapłon. Kliknij dystrybutor na mapie: małe okno
 pokazuje warunki i poziom paliwa. Jego Tankuj uruchamia/przerywa napełnianie.
@@ -454,7 +461,7 @@ Osobna, kompresowana historia tworzy dodatkowe punkty w odstępach około
 30 s. Historia jest ograniczona pojemnością przeglądarki; nie blokuje
 głównego zapisu. Ostatnie zamknięcie strony zawsze próbuje zapisać bieżący
 stan synchronicznie, nawet gdy kompresowanie historii nie zdąży się skończyć.
-Odczyt dawnych zapisów przy Euzebii/Pilawie przenosi lokalne łodzie,
+Odczyt dawnych zapisów przy Euzebii i przebudowanym ujściu kanału przenosi lokalne łodzie,
 cumy i boje do poprawionych miejsc, zachowując stan silników, akumulator,
 paliwo, liczniki i czas rejsu.
 Zapis jest w danych tej przeglądarki dla tego adresu: nie przenosi się

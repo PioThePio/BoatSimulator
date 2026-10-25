@@ -57,6 +57,6 @@ test('weather reflections remain bounded and water waves never appear on the dry
 test('lake travel is exactly half the original geography with unchanged aspect, physical boats, main slip, parking and remote pier dimensions',()=>{
  assert.ok(Math.abs((WORLD.right-WORLD.left)-(1280*1000/75*.5))<1e-8);assert.ok(Math.abs((WORLD.right-WORLD.left)/(WORLD.bottom-WORLD.top)-1280/1042)<1e-10);
  for(const [x,y]of [[0,0],[1280,1042],[834,741]]){const p=fromAtlas(x,y),old={x:(x-610)*1000/75,y:(y-739)*1000/75};assert.deepEqual(p,compressWorld(old));}
- assert.equal(createBoat('lake').spec.length,5.5);assert.deepEqual([SERVICE_STATION.slip.w,SERVICE_STATION.slip.h],[7,44]);assert.deepEqual([PARKING.w,PARKING.h],[64,40]);assert.deepEqual([DOCKS[0].w,DOCKS[0].h],[23,2.8]);assert.equal(DOCKS[13].w,38);assert.equal(BRIDGES[0].width,17);
+ assert.equal(createBoat('lake').spec.length,5.5);assert.deepEqual([SERVICE_STATION.slip.w,SERVICE_STATION.slip.h],[7,44]);assert.deepEqual([PARKING.w,PARKING.h],[64,40]);assert.deepEqual([DOCKS[0].w,DOCKS[0].h],[23,2.8]);assert.ok(DOCKS[13].pose.length>55&&DOCKS[13].pose.length<59);assert.equal(BRIDGES[0].width,17);
  const p=fromGeo(52.51,21.07),geo=toGeo(p.x,p.y);assert.ok(Math.abs(geo.latitude-52.51)<1e-10&&Math.abs(geo.longitude-21.07)<1e-10);assert.ok(bottomAt(80,110).depth>2);
 });

@@ -18,7 +18,7 @@ export function resolveFleetSpawn(fleet,kind,location,options={}){
  if(location==='map')return{ok:true,map:true,message:options.moored?'Wskaż wodę przy polerze · po dodaniu zostaną założone cumy.':'Wskaż dowolną wolną pozycję na wodzie.'};
  const base=createBoat(location,{coldStart:true}),b=createFleetCraft(kind,options),poses=[];
  if(options.moored){
-  for(const d of DOCKS){if(location==='pilawa'?d.site!=='pilawa':Math.hypot(base.x-(d.x+d.w/2),base.y-(d.y+d.h/2))>55)continue;
+  for(const d of DOCKS){if(['pilawa','nieporet'].includes(location)?d.site!==location:Math.hypot(base.x-(d.x+d.w/2),base.y-(d.y+d.h/2))>55)continue;
    if(d.pose){const p=solidPose(d);for(const side of[-1,1])for(const fraction of[.5,.25,.75])poses.push({...solidPoint(d,(fraction-.5)*p.length,side*(p.width/2+b.spec.beam/2+.65)),a:p.a});continue;}
    for(const side of [-1,1]){
     if(d.h>=b.spec.length*.8)for(const fraction of [.5,.25,.75])poses.push({x:side<0?d.x-b.spec.beam*.5-.65:d.x+d.w+b.spec.beam*.5+.65,y:d.y+d.h*fraction,a:-Math.PI/2});

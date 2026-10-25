@@ -1,4 +1,5 @@
 import {circleSolidHit as rectHit} from './solid-geometry.js';
+import {nearbySolids} from './solid-index.js';
 import {SOLIDS,DOCKS,clamp} from './world.js';
 import {point,inverseMass,impulse} from './rigging.js';
 import {recordImpact} from './impacts.js';
@@ -9,10 +10,9 @@ import {boomPoint} from './marina.js';
 const notify=b=>message=>{if(!b.events)return;b.events.unshift({time:b.time,message});b.events.splice(12);};
 const dockSolids=new Set(DOCKS);
 export function contacts(b,dt,indices=null){
- const candidates=indices??SOLIDS.map((_,i)=>i);
- if(b.fenders)for(const g of fenderGeometry(b.spec)){const p=point(b,g.x,g.y),extent=g.length/2+g.radius;for(const k of candidates){const rect=SOLIDS[k];if(!dockSolids.has(rect)&&!rect.fender||p.x+extent<rect.x||p.x-extent>rect.x+rect.w||p.y+extent<rect.y||p.y-extent>rect.y+rect.h)continue;let best=null;for(const sample of fenderContactShape(g)){const hit=rectHit(point(b,sample.x,sample.y),g.radius,rect);if(hit&&(!best||hit.depth>best.depth))best={...hit,sample};}if(best)fenderContact(b,best.sample,{...best,target:rect.id??'solid-'+k},dt,notify(b));}}
+ if(b.fenders)for(const g of fenderGeometry(b.spec)){const p=point(b,g.x,g.y),extent=g.length/2+g.radius,candidates=indices??nearbySolids(SOLIDS,p.x,p.y,extent+.001);for(const k of candidates){const rect=SOLIDS[k];if(!dockSolids.has(rect)&&!rect.fender||p.x+extent<rect.x||p.x-extent>rect.x+rect.w||p.y+extent<rect.y||p.y-extent>rect.y+rect.h)continue;let best=null;for(const sample of fenderContactShape(g)){const hit=rectHit(point(b,sample.x,sample.y),g.radius,rect);if(hit&&(!best||hit.depth>best.depth))best={...hit,sample};}if(best)fenderContact(b,best.sample,{...best,target:rect.id??'solid-'+k},dt,notify(b));}}
  for(let iteration=0;iteration<3;iteration++)for(const sample of hullContactSamples(b.spec)){
-  const p=point(b,sample.x,sample.y),radius=sample.radius;
+  const p=point(b,sample.x,sample.y),radius=sample.radius,candidates=indices??nearbySolids(SOLIDS,p.x,p.y,radius+.001);
   for(const k of candidates){
    const rect=SOLIDS[k],hit=rectHit(p,radius,rect);if(!hit)continue;const {n,depth}=hit,arm={x:p.x-b.x-n.x*radius,y:p.y-b.y-n.y*radius};
    const vn=(b.vx-b.w*arm.y)*n.x+(b.vy+b.w*arm.x)*n.y,effective=1/inverseMass(b,n,arm),dock=dockSolids.has(rect)||!!rect.fender;

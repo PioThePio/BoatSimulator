@@ -1,6 +1,6 @@
 # Przystań — symulator manewrów na Zegrzu
 
-**[Uruchom w przeglądarce](https://piothepio.github.io/BoatSimulator/?v=29.0.0)** · komputer, telefon lub tablet, bez konta i instalowania gry.
+**[Uruchom w przeglądarce](https://piothepio.github.io/BoatSimulator/?v=30.0.0)** · komputer, telefon lub tablet, bez konta i instalowania gry.
 
 Symulator z widokiem z góry do ćwiczenia manewrów, cumowania, kotwiczenia,
 holowania i wodowania z przyczepy. Ma dziewięć profili łodzi, pięć rodzajów
@@ -15,11 +15,14 @@ Wyścigowa ma dwa turbodoładowane diesle do 600 KM każdy. Logbook zbiera
 łączne statystyki i incydenty. Lokalny automatyczny zapis umożliwia kontynuowanie próby po powrocie oraz punkty cofnięcia około 30 s / 3 min / 5 min.
 SAR działa z menu mapy, a obiekty reagują na fale i strumienie napędów.
 
-Mapa jest interpretacją Jeziora Zegrzyńskiego w skali odległości 50%,
-z portami, mostami, ujściami rzek i wyspami. Euzebia i Pilawa korzystają z danych OSM/PRNG: poprawny obrys wyspy,
-północne wejście do portu, ukośne pomosty i dostęp do ORLEN. W obrębie
-mariny zachowano fizyczne rozmiary konstrukcji i przejść. Geografia i głębokości nie są mapą nawigacyjną;
-model fizyczny nie jest skalibrowany dla konkretnej rzeczywistej łodzi.
+Mapa jest interpretacją Jeziora Zegrzyńskiego ze skróconymi odległościami 50%.
+Euzebia korzysta z obrysu OSM/PRNG. Ujście Kanału Żerańskiego, most drogowy,
+most kolejowy, Port Nieporęt i osobny Port Pilawa mają wspólny szczegółowy
+brzeg w lokalnej skali metrów 1:1. Wodna stacja ORLEN leży w większym
+basenie Nieporętu, przy zachodniej kei. Zrzuty i zakres oszacowań:
+[geometria i porównanie mapy](docs/MODEL.md#ujście-kanału-żerańskiego-i-porty).
+Głębokości są symulacyjne; model nie jest mapą nawigacyjną ani kalibracją
+konkretnej rzeczywistej łodzi.
 
 ## Dokumentacja do przekazania dalej
 
@@ -65,3 +68,6 @@ npm run benchmark
 Testy e2e domyślnie korzystają z `/usr/bin/chromium`; inną lokalizację można
 ustawić zmienną `CHROMIUM_PATH`. Szczegóły pomiarów i zakres testów opisuje
 [Model](docs/MODEL.md#testy-i-wydajność).
+
+Aby odtworzyć trzy widoki porównawcze mapy, uruchom serwer `npm run dev`,
+a następnie `npm run capture:map`. Wyniki trafiają do `docs/images/`.

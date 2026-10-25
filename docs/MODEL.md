@@ -249,7 +249,7 @@ Zużycie silnika [l/h] jest empiryczne:
 Dotyczy logicznej godziny; masa znika ze zbiornika zgodnie z tym samym
 ubytkiem. Zbiorniki rozdzielają paliwo proporcjonalnie. Tankowanie
 0,65 l/s używa czasu fizycznego i wymaga lokalnego stanowiska,
-rzeczywistej cumy, prędkości ≤0,15 m/s i stacyjek OFF. Rynia i Pilawa
+rzeczywistej cumy, prędkości ≤0,15 m/s i stacyjek OFF. Rynia i Port Nieporęt
 korzystają z jednej wspólnej logiki, nie dwóch niezależnych systemów.
 
 ## Zęza, przecieki i zalewanie
@@ -615,22 +615,84 @@ zachodnie/południowe łagodne podejścia, pięć drzew, płycizny z nachyleniem
 0,085–0,21 i dwie kępy szuwarów. Płytki pas wody korzysta z rastra
 `bottomAt` 2 m; odcień mokrego piasku jest odrębny od suchej plaży.
 
-**Pilawa** korzysta z basenu OSM way 871129082, brzegu relacji zbiornika
-2329494, sześciu pomostów i falochronu z OSM oraz punktu ORLEN
-2818500152 (52,4358481 N / 21,0412369 E). Wejście jest od północy.
-Sześć pomostów ma rzeczywiste kierunki, długości środkowych odcinków
-24–37 m, szerokość przyjętą 2,4 m, dojścia do lądu i główkę T. Osłona
-ma fizyczną szerokość 4 m. 19 łodzi motorowych, żaglowych i skuterów
-pozostaje na osobnych cumach; dalsze pomosty są dostępne do ćwiczeń.
-Stanowisko ORLEN ma 20 m kei, własne polery i pięć odbijaczy.
+### Ujście Kanału Żerańskiego i porty
 
-Położenie całej mariny jest przeliczone skalą geograficzną 50%, lecz
-jej wnętrze jest jedną fizyczną konstrukcją w metrach: nie ściska się
-odstępów między nieskalowanymi łodziami/pomostami. Lokalny brzeg basenu
-z danych OSM jest połączony z atlasowym brzegiem reszty świata.
-Basen ma umowne pogłębienie do minimum 2,7 m na wodzie przy twardej kei,
-z łagodnym przejściem na jego granicy. Geometria nie odtwarza każdego
-rzeczywistego stanowiska ani aktualnej liczby jachtów.
+To jeden powiązany obszar, a nie niezależne generowane zatoki. Odtworzono go
+z przesłanych map i zdjęć satelitarnych, porównanych z geometrią OSM.
+Na szerokim zrzucie odcinek 100 m zajmuje około 130 pikseli: około 0,77 m/piksel.
+Zbliżenia dopasowano przez wspólne końce osłon, most i brzegi basenów;
+nie przenoszono między nimi samych odległości w pikselach. Północ jest u góry.
+Wektory brzegu są z ways 1318889433 / 1318889432 relacji zbiornika 2329494,
+a kanału z way 107588782. Granice działek i obrys opisany `leisure=marina`
+nie służą jako automatyczna maska wody.
+
+`projectNieporet` korzysta z dotychczasowego `fromGeo`. Kotwica to
+52,433 N / 21,038 E, osie pozostają te same, bez obrotu i bez rozciągania
+jednej osi. W całym wspólnym fragmencie metr geometrii odpowiada metrowi
+fizycznemu: `anchor + (fromGeo(point)-anchor)/0.5`. To zachowuje wymiary
+brzegu, kanału, pomostów i odstępów względem nieskalowanych kadłubów.
+Reszta atlasu nadal ma geograficzne 50%; połączenia obrysów leżą poza
+szczegółowym fragmentem. `nieporetToGeo` jest odwrotnością lokalnej transformacji.
+Globalny czas fizyki 1:1 i istniejące liczniki eksploatacyjne ×2 pozostają bez zmian.
+
+Kanał ma asymetryczne brzegi i przewężenie na południe. Most drogowy w ciągu
+ul. Zegrzyńskiej ma oś z way 107588848, a kolejowy — z way 99750424.
+Oba pokłady mostów są nad wodą. Nie dodano podpór w wodzie; końcowe przyczółki
+są rysowane i zderzane z tych samych obróconych odcinków. Przyjęte szerokości
+pokładów 11 / 7 m, przyczółki 3,5 m i prześwity 3,5 / 4,5 m są oszacowaniami
+symulacji, nie pomiarem z widoku z góry. Prześwit nie jest modelem kolizji masztu.
+
+**Port Nieporęt** jest większym, nieregularnym basenem na wschód od półwyspu.
+Ma północne otwarcie, występy i zatoczki od wschodu oraz zaokrąglone południe.
+Sześć pomostów od zachodu ma źródłowe kierunki i długości około 24–37 m;
+długi pomost od wschodu ma około 71,8 m (way 711114031). Są też krótkie
+pomosty przy zatoczkach. Główne szerokości 2,1–2,4 m są przyjęte z geometrii
+pomostów; wąskie odnogi 0,45 m i długości około 8 m są uproszczeniem zdjęć.
+Rozstaw wynosi około 4–5 m; liczba drobnych odnóg nie jest inwentaryzacją.
+19 jednostek różnych typów stoi na osobnych cumach, pozostawiając wolne miejsca.
+
+Osłona przy „Zatopionych Barkach” wykorzystuje obrys way 974972779,
+włączony do wspólnego brzegu. Przyjęto ją jako stałą osłonę z dostępnymi
+punktami cumowania. OSM opisuje ją jako hulk/floating breakwater; sposób
+posadowienia i ruchomość nie wynikają pewnie ze zdjęcia. Nie dodano tam
+drugiego drewnianego pomostu ani niewidocznych podpór.
+
+**Pilawa** jest osobnym, wąskim basenem dalej na północny wschód.
+Zachowano zakrzywioną zachodnią osłonę, zamknięty południowy koniec i wejście
+na północnym końcu. Pomosty leżą przy wschodnim brzegu; środkowy ma trzy
+poprzeczne odnogi zgodne z way 1052289092, a południowy z way 1052289095.
+Krótki północny pomost (około 7 m) jest oszacowany ze zdjęcia. Dokładna
+liczba drobnych stanowisk oraz aktualna obsada pozostają uproszczeniami.
+Trzy zacumowane jednostki pokazują obsadę bez zablokowania wejścia.
+
+**Wodna stacja ORLEN** znajduje się przy zachodniej kei większego Portu Nieporęt,
+w miejscu czerwonego zaznaczenia. Punkt OSM 2818500152 ma współrzędne
+52,4358481 N / 21,0412369 E. Stanowisko ma 20 m kei, polery i pięć odbijaczy.
+Nie jest to drogowy ORLEN przy rondzie ani stacja w osobnej Pilawie.
+Stary identyfikator techniczny `pilawa-fuel` pozostaje aliasem dla zgodności
+zapisów; na mapie i w obsłudze jest tylko jeden lokalny punkt tankowania.
+
+Nie powiększono niezależnie żadnego basenu ani wejścia. Głębokości są
+wyłącznie treningowe: mokre baseny mają co najmniej 2,7 m poza krótkim
+przejściem przy brzegu, tor kanału co najmniej 3,2 m. Suchy ląd nadal jest
+suchy; pogłębianie nigdy nie otwiera przejazdu przez półwysep. Kolory wody
+w tym fragmencie korzystają z cache `bottomAt` 3 m i dokładnego klipu brzegu.
+Stare uproszczone maski i umowny most/kanał zostały zastąpione.
+Istniejący pomost plażowy przy zachodnim łączeniu atlasu dosunięto do brzegu;
+to nadal umowne miejsce treningowe. Wymiary łodzi, SUV-a, przyczepy i slipu
+pozostają bez zmian.
+
+Porównywalne widoki z północą u góry i podziałką fizycznych metrów:
+
+- [Ujście, oba mosty i oba baseny](images/nieporet-overview.png)
+- [Port Nieporęt, pomosty i wodna stacja](images/nieporet-basin.png)
+- [Pilawa, wejście i pomosty](images/pilawa-basin.png)
+- [Poprawione zegary w konsoli](images/cockpit-gauges.png)
+
+`npm run capture:map` odtwarza te zrzuty z działającego renderera. W grze nie
+ma zdjęcia jako tekstury ani referencyjnej nakładki. Przy porównaniu zachowano
+asymetrię ujścia, kąty pomostów, oba wejścia, końce osłon oraz zatoki wschodnie.
+Najmniej pewne są drobne odnogi, pomost północny Pilawy i detale konstrukcyjne.
 
 Ukośne pomosty mają obwiednie AABB wyłącznie do odrzucania odległych
 obiektów. `solid-geometry.js` liczy kontakt w ich obróconym lokalnym
@@ -640,16 +702,22 @@ odbicia fal i renderowanie. Dawne osiowe prostokąty zachowują te same
 równania kontaktu. Nie powstaje niewidzialna prostokątna ściana obok
 ukośnego pomostu.
 
-Dane odczytano z API OSM i Nominatim 25 października 2026. Wydzielony
-plik `site-geography-data.js` zawiera współrzędne i identyfikatory;
-© OpenStreetMap contributors, ODbL 1.0. Aplikacja ma odnośnik atrybucji
-na mapie. Strona oficjalna portu zwróciła HTTP 403, więc jej treści nie
-wykorzystano jako potwierdzenia. Układ jest oparty na danych OSM,
-a nie na bieżącym pomiarze geodezyjnym czy batymetrycznym.
+Statyczna siatka kontaktów odrzuca odległe pomosty, zachowując kolejność
+i dokładne równania kontaktu. Wybór czterech najbliższych powierzchni odbicia
+nie sortuje już całej listy odnóg; wynik jest porównywany z pełnym skanem
+w testach. Minimapę rysuje się z tego samego brzegu, bez kosztownej lokalnej
+warstwy głębokości. Łodzie stojące równolegle w Pilawie mają cumy burtowe
+i szpringi w obu kierunkach, korzystające z istniejącego modelu lin.
+
+Dane wektorowe odczytano z API OSM 25 października 2026 i porównano
+z materiałami użytkownika. `site-geography-data.js` zawiera Euzebię,
+a `nieporet-reference.js` wspólną geometrię ujścia. © OpenStreetMap contributors,
+ODbL 1.0; atrybucja jest również na mapie. To rekonstrukcja treningowa,
+a nie bieżący pomiar geodezyjny lub batymetryczny.
 
 Głębokości, pogłębienia portowe, mielizny, lokalne przepływy i plaże są
 modelowane na potrzeby ćwiczeń, nie z sondaży. Mosty mają założone
-prześwity 7,5/6,5/3,5 m bez dokumentacji zarządców. Mapa nie jest
+prześwity 7,5/6,5/3,5/4,5 m bez dokumentacji zarządców. Mapa nie jest
 źródłem informacji nawigacyjnej o rzeczywistym Zegrzu.
 
 ## Logbook i zarządzanie flotą
@@ -702,18 +770,17 @@ jest przede wszystkim bieżący stan; asynchroniczna historia może nie
 zdążyć się dopisać. Walidacja podczas zapisu używa tych samych warunków
 co odczyt, bez tworzenia całego świata wyłącznie na potrzeby sprawdzania.
 
-Polery nowych miejsc są wyłącznie dopisywane. Wszystkie 332 wcześniejsze
-indeksy i współrzędne są sprawdzane przez fixture; stare cumy nie
-przeskakują do nowego portu. Odczyt starego zapisu zachowuje stan
-wcześniejszych łodzi portowych po ID i dopisuje nowe, brakujące ciała.
-Brak ratownictwa w starym zapisie daje pusty stan treningowy.
-Opcjonalne `siteGeometryVersion=2` uruchamia jednorazową migrację starszych
-pozycji przy Euzebii i Pilawie. Stare identyfikatory/liczbowe indeksy
-polerów zachowano; 24 nowe punkty są dopisane na końcu. Lokalne łodzie,
-kotwice, powiązany ślad i obiekty SAR zmieniają pozycję wraz z miejscem.
-Napięcia cum/bujających boi są inicjalizowane dla nowej geometrii,
-a liczniki, energia, paliwo, uszkodzenia, czas i stacyjki zostają zachowane.
-Stan parkowanych jednostek w pozostałych portach nie jest resetowany.
+Indeksy i tożsamości dawnych polerów są zachowane. Wyjątkiem od dawnych
+współrzędnych są obiekty przebudowanego obszaru: pomost zachodni, plażowy
+oraz błędnie nazwana wcześniej marina. Migracja `siteGeometryVersion=3`
+przenosi powiązane łodzie i osprzęt do poprawionych punktów. Sprawdza też,
+czy dawny obrys kadłuba nie przecina nowych odnóg; w razie potrzeby szuka
+najbliższego wolnego położenia. Dawny umowny kanał przywracany jest do
+bezpiecznej wody nowego ujścia. Przeskalowanie nie resetuje motogodzin,
+paliwa, SOC, kluczy stacyjek, czasu rejsu, uszkodzeń ani dziennika.
+Nowe polery i jednostki portowe są dopisywane. Odczyt starych zapisów
+z Euzebii zachowuje wcześniejszą migrację. W pozostałych portach stan
+zacumowanych jednostek nie jest resetowany.
 
 Odizolowane obliczenia: `hydro-interactions.js`, `rescue.js` oraz
 rozszerzenia `towable-water.js`. Osobne adaptery sceny podają brzeg,
@@ -781,7 +848,7 @@ są nadal liczone w fizycznym czasie zapytania i współdzielone dla
 identycznego czasu, bez zmiany równań; test porównuje je ze
 starszym niezależnym wzorcem. Minimapę odświeża się 10 Hz.
 
-Nowe ciała Pilawy próbkują zewnętrzne pola wiatru/fal 20 Hz, a siły
+Jednostki w szczegółowych portach próbkują zewnętrzne pola wiatru/fal 20 Hz, a siły
 kontaktu, bezwładność i cumy nadal integrują się co 1/120 s. Stare
 łodzie zachowują pełne próbkowanie. Odrzucanie odległych kolizji
 i niewidocznych grafik ogranicza koszt większej przystani. Nie
@@ -841,6 +908,10 @@ realnych motorówek:
   52,44199/21,05255; Wieliszew 52,4513/20,96827.
 - [Euzebia — OSM way 193668247 / PRNG 29584](https://www.openstreetmap.org/way/193668247),
   [Port Pilawa — way 871129082](https://www.openstreetmap.org/way/871129082),
+  [Port Nieporęt — way 871129083](https://www.openstreetmap.org/way/871129083),
+  [kanał — way 107588782](https://www.openstreetmap.org/way/107588782),
+  [most drogowy — way 107588848](https://www.openstreetmap.org/way/107588848),
+  [most kolejowy — way 99750424](https://www.openstreetmap.org/way/99750424),
   [ORLEN — node 2818500152](https://www.openstreetmap.org/node/2818500152),
   [zbiornik — relation 2329494](https://www.openstreetmap.org/relation/2329494).
   Dane OSM/PRNG odczytane przez API 2026-10-25; współrzędne i ID pomostów
@@ -853,3 +924,11 @@ Wartości ssania, oporów, uszkodzeń, pomp, chłodzenia i granic rozruchu
 są przyjętymi parametrami symulatora. Nie należy traktować ich jako
 instrukcji producenta, bezpiecznych prędkości rzeczywistych uderzeń
 ani oceny dopuszczalności manewru w prawdziwym porcie.
+
+
+Testy szczegółowego ujścia obejmują wspólną skalę i odwrotność projekcji,
+brak samoprzecięć brzegu, ciągłość toru pod mostami, brak wymyślonych podpór,
+wejścia obu basenów i drogę do stanowiska paliwowego z obsadą portową.
+Oddzielnie sprawdzane są fizyczne przepłynięcia podejść, postój i tankowanie
+pięciu profili, poprawne starty dziewięciu profili, cumowanie floty,
+wyświetlanie tej samej wody na minimapie, układ zegarów i migracja zapisów.

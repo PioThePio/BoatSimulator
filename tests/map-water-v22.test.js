@@ -43,7 +43,7 @@ test('main port access and service finger touch land; slip crosses the real wet/
  for(const f of FUEL_FENDERS)close(f.x,FUEL_STATION.x);
 });
 test('all fixed bollards are on their piers, floating fingers, trailer or anchored buoys; trees and all building corners stay on land',()=>{
- for(const q of BOLLARDS){if(q.kind==='tree'){assert.ok(shoreAt(q.x,q.y).distance<-1.3,q.id);continue;}if(q.kind==='buoy'){assert.ok(bottomAt(q.x,q.y).depth>.5,q.id);assert.ok(shoreAt(q.x,q.y).distance>.55,q.id);continue;}if(q.trailer||q.boom!==undefined)continue;
+ for(const q of BOLLARDS){if(q.kind==='tree'){assert.ok(shoreAt(q.x,q.y).distance<-1.3,q.id);continue;}if(q.kind==='buoy'){assert.ok(bottomAt(q.x,q.y).depth>.5,q.id);assert.ok(shoreAt(q.x,q.y).distance>.55,q.id);continue;}if(q.shoreMooring){assert.ok(Math.abs(shoreAt(q.x,q.y).distance)<.3,q.id);continue;}if(q.trailer||q.boom!==undefined)continue;
   assert.ok(DOCKS.some(d=>q.x>=d.x-.05&&q.x<=d.x+d.w+.05&&q.y>=d.y-.05&&q.y<=d.y+d.h+.05),q.id);}
  for(const d of BUILDINGS)for(const [dx,dy]of [[0,0],[d.w,0],[0,d.h],[d.w,d.h]])assert.ok(shoreAt(d.x+dx,d.y+dy).land,JSON.stringify(d));
  for(const q of YBOOMS)assert.ok(DOCKS.some(d=>q.x1>=d.x&&q.x1<=d.x+d.w&&q.y1>=d.y&&q.y1<=d.y+d.h));

@@ -13,8 +13,8 @@ main{padding-top:5px}
 #toast{top:93px;font-size:10px}#wind-indicator{top:88px;pointer-events:auto}
 .flow-indicator-row{text-align:left;padding:0;color:inherit}.flow-indicator-row+button{border-top:1px solid #cfdbc5;padding-top:5px}
 .flow-indicator-row>div{pointer-events:none}.flow-indicator-row svg{flex-shrink:0}
-#service-map{position:absolute;z-index:4;max-width:160px;background:#f6f8e9ed;border:1px solid #b7caa8;border-radius:7px;box-shadow:0 3px 12px #244e3020;padding:3px 6px}
-#service-map #repair{padding:5px 7px;font-size:10px;background:transparent;border:0}
+#service-map{position:absolute;z-index:4;max-width:160px;background:#f6f8e9ed;border:1px solid #b7caa8;border-radius:7px;box-shadow:0 3px 12px #244e3020;padding:3px 6px;pointer-events:none}
+#service-map #repair{padding:5px 7px;font-size:10px;background:transparent;border:0;pointer-events:auto}
 #service-map #repair-status{display:block;max-width:150px;font-size:8px;line-height:1.35}
 .controls{grid-template-columns:minmax(150px,.9fr) minmax(195px,1.1fr) minmax(260px,1.8fr) minmax(150px,.8fr);align-items:start}
 .wheel-section{grid-column:1;grid-row:1}.throttle-section{grid-column:2;grid-row:1}

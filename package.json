@@ -1,6 +1,6 @@
 {
   "name": "boat-simulator",
-  "version": "29.0.0",
+  "version": "30.0.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -11,7 +11,8 @@
     "audit:physics": "node scripts/audit-physics.mjs",
     "test:e2e": "playwright test",
     "test:production": "npm run build && playwright test --config playwright.production.config.js",
-    "benchmark": "node scripts/benchmark.mjs"
+    "benchmark": "node scripts/benchmark.mjs",
+    "capture:map": "node scripts/capture-nieporet.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.56.1",

@@ -3,6 +3,8 @@
 // physical boat, pier, slip and tree dimensions / SI speed and time stay unchanged.
 // Independent checks: GeoNames Serock/Nieporęt and the BDOT10k/OSM geoportal.
 // See docs/MODEL.md#mapa-i-wiarygodność-geografii for provenance, scale checks and bathymetry limitations.
+import {NIEPORET_REFERENCE} from './nieporet-reference.js';
+import {surveyProjection,reconstructedShore} from './nieporet-geography.js';
 export const WORLD_DISTANCE_SCALE=.50;
 export const METRES_PER_MAP_PIXEL=1000/75*WORLD_DISTANCE_SCALE;
 // Compress geography about the main quay; all manufactured objects retain SI dimensions.
@@ -12,6 +14,8 @@ const R=6371008.8,rad=Math.PI/180;
 export const fromAtlas=(x,y)=>compressWorld({x:(x-origin.x)*1000/75,y:(y-origin.y)*1000/75});
 export function fromGeo(latitude,longitude){return compressWorld({x:(longitude-origin.longitude)*rad*R*Math.cos(origin.latitude*rad),y:(origin.latitude-latitude)*rad*R});}
 export function toGeo(x,y){x=80+(x-80)/WORLD_DISTANCE_SCALE;y=4+(y-4)/WORLD_DISTANCE_SCALE;return{latitude:origin.latitude-y/(R*rad),longitude:origin.longitude+x/(R*rad*Math.cos(origin.latitude*rad))};}
+export const projectNieporet=surveyProjection(fromGeo,WORLD_DISTANCE_SCALE);
+export function nieporetToGeo(x,y){const a=fromGeo(NIEPORET_REFERENCE.anchor[1],NIEPORET_REFERENCE.anchor[0]);return toGeo(a.x+(x-a.x)*WORLD_DISTANCE_SCALE,a.y+(y-a.y)*WORLD_DISTANCE_SCALE);}
 const bank=[
  [0,449],[32,450],[90,459],[144,480],[219,493],[253,519],[310,553],[345,591],[395,619],[441,643],[480,663],[525,688],[567,690],[555,714],[589,737],
  // The simulator marina has a short engineered quay on the Zegrze headland.
@@ -25,7 +29,7 @@ const bank=[
 ];
 // Preserve atlas landmarks and the engineered main quay; add metre-scale
 // coves between them rather than large, ruler-straight stretches of bank.
-export const ZEGRZE_SHORE=bank.flatMap(([x,y],i)=>{
+const atlasShore=bank.flatMap(([x,y],i)=>{
  const a=fromAtlas(x,y),next=bank[(i+1)%bank.length],b=fromAtlas(...next),dx=b.x-a.x,dy=b.y-a.y,length=Math.hypot(dx,dy),count=Math.max(1,Math.ceil(length/(65*WORLD_DISTANCE_SCALE)));
  const marina=Math.hypot((a.x+b.x)/2-80,(a.y+b.y)/2)<450*WORLD_DISTANCE_SCALE;
  const beach=[[525,881],[345,609],[764,858]].some(([px,py])=>Math.hypot((x+next[0])/2-px,(y+next[1])/2-py)<18);
@@ -33,6 +37,10 @@ export const ZEGRZE_SHORE=bank.flatMap(([x,y],i)=>{
 });
 const lo=fromAtlas(0,0),hi=fromAtlas(1280,1042);
 export const ZEGRZE_BOUNDS={left:lo.x,top:lo.y,right:hi.x,bottom:hi.y};
+const northEast=fromAtlas(753,888),southWest=fromAtlas(507,872),index=p=>atlasShore.findIndex(q=>Math.hypot(q.x-p.x,q.y-p.y)<.001);
+// Replace the old southern outline, including its fictional narrow canal.
+// Transition segments lie outside the detailed reference area.
+export const ZEGRZE_SHORE=[...atlasShore.slice(0,index(northEast)+1),...reconstructedShore(projectNieporet,hi.y),...atlasShore.slice(index(southWest))];
 export const ZEGRZE_ISLANDS=[{...fromAtlas(1020,246),rx:100*WORLD_DISTANCE_SCALE,ry:36*WORLD_DISTANCE_SCALE},{...fromAtlas(1098,230),rx:130*WORLD_DISTANCE_SCALE,ry:44*WORLD_DISTANCE_SCALE},{...fromAtlas(1170,233),rx:80*WORLD_DISTANCE_SCALE,ry:30*WORLD_DISTANCE_SCALE}];
 export const MAP_LABELS=[['Zegrze Północne',607,722],['Zegrze Południowe',532,783],['Nieporęt',646,978],['Białobrzegi',761,864],['Rynia',860,715],['Serock',808,293],['Jachranka',270,500],['Skubianka',393,607],['Dębe',86,443],['Wierzbica',824,80],['Narew',884,128],['Bug',1110,218],['Rządza',1060,544],['Kanał Żerański',664,1020]].map(([name,x,y])=>({name,...fromAtlas(x,y)}));
 export const REMOTE_HARBORS=[
@@ -51,8 +59,8 @@ export const BRIDGES=[
  {id:'zegrze',name:'Most w Zegrzu',a:fromAtlas(589,737),b:fromAtlas(556,748),width:17,clearance:7.5,piers:[.30,.66]},
  {id:'wierzbica',name:'Most w Wierzbicy',a:fromAtlas(862,63),b:fromAtlas(931,67),width:12,clearance:6.5,piers:[.24,.5,.76]},
  {id:'debe',name:'Zapora Dębe',a:fromAtlas(58,449),b:fromAtlas(58,480),width:12,clearance:0,dam:true,piers:[]},
- {id:'nieporet',name:'Most · Kanał Żerański',a:fromAtlas(647.5,1026),b:fromAtlas(652.5,1026),width:11,clearance:3.5,piers:[]}
+ ...[['nieporet','Most drogowy · Zegrzyńska','roadBridge',11,3.5],['nieporet-rail','Most kolejowy · Kanał Żerański','railBridge',7,4.5]].map(([id,name,key,width,clearance])=>({id,name,a:projectNieporet(NIEPORET_REFERENCE[key][0]),b:projectNieporet(NIEPORET_REFERENCE[key][1]),width,clearance,clearanceAssumed:true,rail:key==='railBridge',piers:[],site:'nieporet'}))
 ];
 
 export const GEONAMES_LANDMARKS=[{name:'Serock',latitude:52.51036,longitude:21.0691},{name:'Nieporęt',latitude:52.43152,longitude:21.03212},{name:'Białobrzegi',latitude:52.44199,longitude:21.05255},{name:'Wieliszew',latitude:52.4513,longitude:20.96827}].map(q=>({...q,...fromGeo(q.latitude,q.longitude)}));
-for(const q of GEONAMES_LANDMARKS){const label=MAP_LABELS.find(p=>p.name===q.name);if(label)Object.assign(label,{x:q.x,y:q.y});else MAP_LABELS.push(q);}
+for(const q of GEONAMES_LANDMARKS){const label=MAP_LABELS.find(p=>p.name===q.name);const p=['Nieporęt','Białobrzegi'].includes(q.name)?projectNieporet([q.longitude,q.latitude]):q;if(label)Object.assign(label,{x:p.x,y:p.y});else MAP_LABELS.push(p);}
