@@ -4,7 +4,7 @@ export function createBuoys(){return BOLLARDS.map((q,index)=>q.kind==='buoy'?{..
 export function buoyStep(world,e,dt){
  for(const q of world.buoys??[]){
   if(!q)continue;
-  if(q.site!=='pilawa'||!q.fieldCache||world.time>=q.fieldAt){q.fieldCache={flow:environment(world.time,e,q.x,q.y),wave:sampleWater(world,q.x,q.y,e)};q.fieldAt=world.time+.05;}
+  if(!['pilawa','nieporet'].includes(q.site)||!q.fieldCache||world.time>=q.fieldAt){q.fieldCache={flow:environment(world.time,e,q.x,q.y),wave:sampleWater(world,q.x,q.y,e)};q.fieldAt=world.time+.05;}
   const {flow,wave}=q.fieldCache;
   const dx=q.x-q.homeX,dy=q.y-q.homeY,ux=flow.current.x-q.vx,uy=flow.current.y-q.vy;
   q.vx+=(q.loadX+75*ux*Math.abs(ux)+q.mass*.55*wave.ax-2500*dx-1000*q.vx)/q.mass*dt;

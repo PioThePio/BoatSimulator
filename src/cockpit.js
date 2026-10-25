@@ -1,3 +1,4 @@
+import {engineRPMRange} from './combustion.js';
 import {pumpMode,setPumpMode} from './bilge.js';
 import {throttleStep} from './controls.js';
 import {engineKey} from './craft.js';
@@ -31,9 +32,10 @@ export function installCockpit(api){
  return function update(){
   const b=api.boat(),S=b.spec,en=b.engines,avg=k=>en.reduce((sum,e)=>sum+e[k],0)/en.length;
   document.body.dataset.passive=String(!!S.passive);
+  for(const id of ['rpm','rpm2']){const el=$('#gauge-'+id),max=engineRPMRange(api.vehicle?.()==='suv'?{}:S).max;if(+el.dataset.max!==max){el.dataset.max=max;el.querySelector('.gauge-dial>text:nth-of-type(2)').textContent=(max/1000).toFixed(1);}}
+  const speedMax=api.vehicle?.()!=='suv'&&S.racing?200:120;if(+$('#gauge-speed').dataset.max!==speedMax){$('#gauge-speed').dataset.max=speedMax;$('#gauge-speed .gauge-dial>text:nth-of-type(2)').textContent=speedMax;}
   const noTrim=S.passive||S.air||S.jet||S.propulsion==='inboard',trim=b.enginesRaised?1:avg('trim'),temperature=Math.max(...en.map(e=>e.temperature));
   $('#first-engine h3').textContent=en.length===2?'Lewy':'Solo';$('#gauge-rpm2').hidden=en.length!==2;$('#instruments').classList.toggle('twins',en.length===2);$('#gauge-rpm .gauge-name').textContent=en.length===2?'RPM L':'RPM';$('#gauge-rpm .gauge-face-title').textContent=en.length===2?'RPM L':'RPM';
-  for(const id of ['rpm','rpm2']){const g=$('#gauge-'+id);g.dataset.max=S.racing?'4500':'6500';g.querySelectorAll('.gauge-dial>text')[1].textContent=S.racing?'4.5':'6.5';}$('#gauge-speed').dataset.max=S.racing?'200':'120';$('#gauge-speed').querySelectorAll('.gauge-dial>text')[1].textContent=S.racing?'200':'120';
   const values={rpm:en[0].rpm,rpm2:en[1]?.rpm??0,speed:Math.hypot(b.vx,b.vy)*3.6,fuel:b.fuel.capacity?100*b.fuel.litres/b.fuel.capacity:0,trim:100*trim,volt:b.battery.voltage,temp:temperature};
   const car=api.vehicle?.()==='suv',masterLive=car||b.electrics.master!==false,instrumentsLive=car||b.electrics.powered.instruments;
   for(const [id,value]of Object.entries(values)){const el=$('#gauge-'+id),live=id==='volt'?masterLive:instrumentsLive,fraction=live?Math.max(0,Math.min(1,(value-+el.dataset.min)/(+el.dataset.max-+el.dataset.min))):0;el.dataset.powered=String(!!live);el.querySelector('.needle').style.transform=`rotate(${fraction*180}deg)`;el.querySelector('strong').textContent=live?value.toFixed(['rpm','rpm2','fuel','trim','temp'].includes(id)?0:1):'—';}

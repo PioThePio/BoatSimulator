@@ -1,4 +1,5 @@
 import {solidPose} from './solid-geometry.js';
+import {cachedTerrain} from './terrain-cache.js';
 import {drawBrakingWaves} from './braking-waves.js';
 import {windSurface} from './wind-response.js';
 import {drawNavigation} from './render-navigation.js';
@@ -154,7 +155,7 @@ export function renderWorld(ctx,state){
  ctx.clearRect(0,0,width,height);ctx.fillStyle='#aec59b';ctx.fillRect(0,0,width,height);
  ctx.save();ctx.translate(width/2,height/2);ctx.scale(scale,scale);ctx.translate(-camera.x,-camera.y);
  const visible=(x,y,pad=4)=>x>bounds.left-pad&&x<bounds.right+pad&&y>bounds.top-pad&&y<bounds.bottom+pad;
- drawTerrain(ctx,bounds);
+ cachedTerrain(ctx,bounds,(c,box)=>drawTerrain(c,box));
  drawParking(ctx);
  // Small shore settlement and a concrete slip next to the service fingers.
  for(const house of BUILDINGS){
@@ -172,14 +173,17 @@ export function renderWorld(ctx,state){
   ctx.strokeStyle='#74887e';ctx.lineWidth=.18;for(const x of [slip.x+1.8,slip.x+slip.w-1.8]){ctx.beginPath();ctx.moveTo(x,slip.y);ctx.lineTo(x,slip.y+slip.h);ctx.stroke();}
   ctx.font='bold 1.3px system-ui';ctx.fillStyle='#486c60';ctx.fillText('SLIP',121,34);ctx.fillText('SERWIS · CUMUJ',133,42);
  }
+ // Clip water effects once; thousands of visual ripples need no physical shore queries.
+ if(!waterMask){waterMask=new Path2D();waterMask.addPath(shapePath(LAKE));for(const q of ISLANDS)waterMask.addPath(shapePath(outline(q)));for(const q of COAST_PATCHES)waterMask.addPath(shapePath(q.outline));}
+ ctx.save();ctx.clip(shapePath(LAKE));ctx.clip(waterMask,'evenodd');
  // Sparse anchored surface features replace the metre grid. They make translation legible.
  const H=waveHeight(env,b.time),speed=.07+H*.6,angle=(env.waveDirection??90)*Math.PI/180,nx=Math.sin(angle),ny=-Math.cos(angle);
- const wind=windSurface(weatherAt(b.time,env).windSpeed,env.windVisuals!==false);if(wind.tint){if(!waterMask){waterMask=new Path2D();waterMask.addPath(shapePath(LAKE));for(const q of ISLANDS)waterMask.addPath(shapePath(outline(q)));for(const q of COAST_PATCHES)waterMask.addPath(shapePath(q.outline));}ctx.save();ctx.clip(shapePath(LAKE));ctx.clip(waterMask,'evenodd');ctx.fillStyle=`rgba(100,114,124,${wind.tint})`;ctx.fillRect(bounds.left,bounds.top,bounds.right-bounds.left,bounds.bottom-bounds.top);ctx.restore();}
+ const wind=windSurface(weatherAt(b.time,env).windSpeed,env.windVisuals!==false);if(wind.tint){ctx.fillStyle=`rgba(100,114,124,${wind.tint})`;ctx.fillRect(bounds.left,bounds.top,bounds.right-bounds.left,bounds.bottom-bounds.top);}
  const whiteTexture=new Path2D(),blueTexture=new Path2D();
  const textureStep=Math.max(2.6,9/scale,Math.max(5,22/scale)*wind.spacing);
  for(let y=Math.floor(bounds.top/textureStep)*textureStep;y<bounds.bottom+textureStep;y+=textureStep)for(let x=Math.floor(bounds.left/textureStep)*textureStep;x<bounds.right+textureStep;x+=textureStep){
   const seed=Math.sin(x*12.9898+y*78.233)*43758.5453,part=seed-Math.floor(seed),phase=(b.time*speed+part*4)%4;
-  const px=x+part*4.7+nx*phase,py=y+part*4.8+ny*phase;if(shoreAt(px,py).land)continue;
+  const px=x+part*4.7+nx*phase,py=y+part*4.8+ny*phase;
   const curl=(.10+H*.22)*Math.sin(b.time*1.15+part*Math.PI*2),sway=.06*Math.sin(b.time*.8+part*11);
   const texture=part>.55-wind.white*.3?whiteTexture:blueTexture;texture.moveTo(px-.7,py+sway);texture.bezierCurveTo(px-.28,py-.12+curl,px+.25,py+.12-curl,px+.7,py-sway);
  }
@@ -188,6 +192,7 @@ export function renderWorld(ctx,state){
  for(const h of [b.brakingWaves??[],...(b.wakeSources??[]).map(q=>q.braking??[])])drawBrakingWaves(ctx,h,b.time);
  if(!overview)drawSurfaceFlow(ctx,b,env,bounds,scale);
  if(!overview)drawReflectedWeather(ctx,b,env,reflectionFacesNear(camera.x,camera.y,40));
+ ctx.restore();
  // Trees remain on dry land; reeds are traversable water vegetation.
  for(let i=0;i<145;i++){const a=i*2.39996,r=8+Math.sqrt(i/145)*66,x=ISLAND.x+Math.cos(a)*r,y=ISLAND.y+Math.sin(a)*r*.78;if(!visible(x,y)||!shoreAt(x,y).land)continue;ctx.beginPath();ctx.arc(x,y,1.7+(i%3)*.4,0,Math.PI*2);ctx.fillStyle=i%2?'#9cb58c':'#91ab82';ctx.fill();}
  for(const island of ISLANDS.filter(q=>q.id==='euzebia')){if(!visible(island.x,island.y,island.ry))continue;for(let i=0;i<145;i++){const a=i*2.39996,r=Math.sqrt((i+.5)/145)*.88,x=island.x+Math.cos(a)*island.rx*r,y=island.y+Math.sin(a)*island.ry*r;if(!visible(x,y)||!shoreAt(x,y).land)continue;ctx.beginPath();ctx.arc(x,y,1.6+(i%3)*.4,0,Math.PI*2);ctx.fillStyle=i%2?'#9cb58c':'#91ab82';ctx.fill();}}
@@ -284,7 +289,7 @@ function drawBoat(ctx,b){
 }
 export function renderMinimap(canvas,b,view){
  const c=canvas.getContext('2d'),w=canvas.width,h=canvas.height,p=minimapProjection(w,h,b),scale=p.scale;
- c.clearRect(0,0,w,h);c.fillStyle='#aec59b';c.fillRect(0,0,w,h);c.save();c.scale(scale,scale);c.translate(-p.left,-p.top);drawTerrain(c,{left:p.left,top:p.top,right:p.left+w/scale,bottom:p.top+h/scale},false);
+ c.clearRect(0,0,w,h);c.fillStyle='#aec59b';c.fillRect(0,0,w,h);c.save();c.scale(scale,scale);c.translate(-p.left,-p.top);cachedTerrain(c,{left:p.left,top:p.top,right:p.left+w/scale,bottom:p.top+h/scale},(context,box)=>drawTerrain(context,box,false));
  c.lineWidth=1/scale;for(const q of BRIDGES){c.strokeStyle=q.dam?'#8e785d':'#789385';c.beginPath();c.moveTo(q.a.x,q.a.y);c.lineTo(q.b.x,q.b.y);c.stroke();}
  c.fillStyle='#607e65';for(const q of [{x:80,y:15},...REMOTE_HARBORS])c.fillRect(q.x-2/scale,q.y-2/scale,4/scale,4/scale);
  c.fillStyle='#c39d4b';for(const q of FUEL_STATIONS){c.beginPath();c.arc(q.x,q.y,3/scale,0,Math.PI*2);c.fill();}

@@ -1,7 +1,7 @@
 import {recordBrakingWave} from './braking-waves.js';
 import {sternPowerOnState,oarForces} from './maneuver-transient.js';
 import {voyageEvent} from './voyage-events.js';
-import {racingResistance} from './racing.js';
+import {racingResistance,racingSternRelease} from './racing.js';
 import {bilgeTrimAngle,applyFloodShort} from './flood-systems.js';
 import {enforceMainPower} from './electrical.js';
 import {contacts,boomContacts} from './contacts.js';
@@ -50,7 +50,7 @@ export function step(b,e,dt,{sharedStep=true}={}){
   if(b.engines.length===2)b.engines[1].trimTarget=b.engines[0].trimTarget;
   for(const [i,en]of b.engines.entries()){
    propellerContact(b,en,dt,m=>event(b,m),e);
-   updateEngine(en,i?b.throttle2:b.throttle,0,dt,b.damage,{starterVoltage:b.battery.voltage,noFuel:b.fuel.litres<=0,jet:S.jet,air:S.air,racing:!!S.racing,fixedDrive:S.propulsion==='inboard',moored:true,onTrailer:true,speed:0,immersion:en.immersion,intake:en.intake,intakeBlocked:en.intakeBlocked});
+   updateEngine(en,i?b.throttle2:b.throttle,0,dt,b.damage,{starterVoltage:b.battery.voltage,noFuel:b.fuel.litres<=0,jet:S.jet,air:S.air,racing:!!S.racing,engineType:S.engineType,fixedDrive:S.propulsion==='inboard',moored:true,onTrailer:true,speed:0,immersion:en.immersion,intake:en.intake,intakeBlocked:en.intakeBlocked});
    const steering=engineSteering(b,en,dt);en.forceSteer=steering;
    const delta=S.air||S.propulsion==='inboard'?0:steering,T=en.thrust*(S.jet||S.air||S.propulsion==='inboard'?1:Math.cos(trimAngle(en.trim)));en.effectiveThrust=T;
    const air=airRudderForce(S,T,b.actualSteer),X=S.air?air.x:T*Math.cos(delta),Y=S.air?air.y:-T*Math.sin(delta),fx=c*X-s*Y,fy=s*X+c*Y;
@@ -117,7 +117,8 @@ export function step(b,e,dt,{sharedStep=true}={}){
  if(S.inflatable&&e.towEffects!==false)force(-crossWaveDrag(S,u,b.encounter.crossSlope)*wetFraction,0);
  const poweredTurn=clamp(Math.abs(b.actualSteer)/S.maxSteer,0,1)*clamp(b.engines.reduce((sum,en)=>sum+Math.abs(en.thrust),0)/(S.mass*2),0,1)*clamp(1-Math.abs(u)/5,0,1);
  b.powerOn=sternPowerOnState(S,b.engines,b.actualSteer,u,dt,b.powerOn);
- if(S.inflatable)inflatableLateral(S,v,b.w,b.planing,force);else hullLateralForces(S,u,v,b.w,b.planing,(x,y,px,py)=>force(x*wetFraction,y*wetFraction,px,py),poweredTurn,b.powerOn.release);
+ b.racingSlide=racingSternRelease(S,b.engines,b.actualSteer,u);
+ if(S.inflatable)inflatableLateral(S,v,b.w,b.planing,force);else hullLateralForces(S,u,v,b.w,b.planing,(x,y,px,py)=>force(x*wetFraction,y*wetFraction,px,py),poweredTurn,Math.max(b.powerOn.release,b.racingSlide));
  if(!b.bank||b.time>=(b.bankAt??0)){b.bank=bankInfluence(b);b.bankAt=b.time+.25;}
  const bankSteering=1-.06*b.bank.strength*clamp(Math.abs(u)/2,0,1);
  // Outboards rotate at a finite rate; linked controls copy commands, not engine states.
@@ -138,7 +139,7 @@ export function step(b,e,dt,{sharedStep=true}={}){
   engine.lastSurface=g.surface;
   const vertical=b.heaveVelocity+g.mountX*Math.cos(b.pitch)*b.pitchVelocity+engine.y*Math.cos(b.roll)*b.rollVelocity;
   const waveLoad=clamp(2.5*Math.abs(u)*Math.max(0,surfaceRate-vertical)/(9.81*S.length),0,.25);
-  let thrust=updateEngine(engine,i===0?b.throttle:b.throttle2,inflow,dt,b.damage,{starterVoltage:b.battery.voltage,noFuel:b.fuel.litres<=0,jet:S.jet,air:S.air,racing:!!S.racing,fixedDrive:S.propulsion==='inboard',onTrailer:onSupports,grounded:b.grounded,moored:b.ropes.length>0,raised:b.enginesRaised,speed:Math.hypot(ur,vr),immersion:engine.immersion,intake:engine.intake,intakeBlocked:engine.intakeBlocked,crossflow:lateral,waveLoad});
+  let thrust=updateEngine(engine,i===0?b.throttle:b.throttle2,inflow,dt,b.damage,{starterVoltage:b.battery.voltage,noFuel:b.fuel.litres<=0,jet:S.jet,air:S.air,racing:!!S.racing,engineType:S.engineType,fixedDrive:S.propulsion==='inboard',onTrailer:onSupports,grounded:b.grounded,moored:b.ropes.length>0,raised:b.enginesRaised,speed:Math.hypot(ur,vr),immersion:engine.immersion,intake:engine.intake,intakeBlocked:engine.intakeBlocked,crossflow:lateral,waveLoad});
   if(b.enginesRaised){thrust=0;engine.thrust=0;}
   thrust*=S.jet||S.air||S.propulsion==='inboard'?1:Math.cos(trimAngle(engine.trim));
   engine.effectiveThrust=thrust;
@@ -155,7 +156,7 @@ export function step(b,e,dt,{sharedStep=true}={}){
   const walk=propWalkForce(S,engine,Math.hypot(u,v),b.planing);force(0,walk,x,y);engine.propWalk=walk;
   // Submerged skeg: flow creates steering even in neutral; stalls at large incidence.
   const axial=(u-b.w*y)*Math.cos(delta)-(v+b.w*x)*Math.sin(delta);
-  const skeg=(b.enginesRaised||S.jet||S.air||S.propulsion==='inboard'?0:engine.immersion)*-.5*1000*(.022+engine.hp*.00012)*1.1*Math.hypot(axial,lateral)*lateral;
+  const skeg=(b.enginesRaised||S.jet||S.air||S.propulsion==='inboard'?0:engine.immersion)*-.5*1000*(S.racing?.035:.022+engine.hp*.00012)*1.1*Math.hypot(axial,lateral)*lateral;
   force(skeg*Math.sin(delta),skeg*Math.cos(delta),x,y);
  });
  // Oars/paddle, when occupied, supply human power rather than an invisible engine.
@@ -177,7 +178,7 @@ export function step(b,e,dt,{sharedStep=true}={}){
  const vdot=(Y-S.mass*ur*b.w)/(S.mass+(S.my-S.mass)*wetFraction);
  // Empirical hull stability cancels the bare potential-flow Munk moment.
  // Leaving it uncalibrated amplifies sideslip into a spin at planing speed.
- const rotationalDrag=(1-.42*(b.powerOn?.release??0))*(S.inflatable?.12:S.air?.35:1)*.5*1000*S.beam*S.length**4*(.004+.003*b.planing)*b.w*Math.abs(b.w);
+ const rotationalDrag=(1-.42*(b.powerOn?.release??0))*(1-.35*(b.racingSlide??0))*(S.inflatable?.12:S.air?.35:1)*.5*1000*S.beam*S.length**4*(.004+.003*b.planing)*b.w*Math.abs(b.w);
  const rdot=(N-rotationalDrag)/S.iz-(.10+.04*Math.abs(u)/S.length)*b.w;
  // Convert body acceleration to world acceleration without double-counting frame rotation.
  const du=udot-b.w*vr,dv=vdot+b.w*ur;
@@ -188,5 +189,5 @@ export function step(b,e,dt,{sharedStep=true}={}){
  if(wetFraction>.1&&bottomAt(b.x,b.y).depth>0){recordHullWake(b.wake,b,env.current);recordBrakingWave(b,env.current,dt);}else b.wake=[];
  contacts(b,dt);boomContacts(b,dt);trafficStep(b,e,dt,{integrate:sharedStep});if(sharedStep&&e.traffic)for(const q of b.traffic)boomContacts(q,dt,b);if(sharedStep)boomStep(b,e,dt);
  if(b.damage>=100){b.throttle=0;b.throttle2=0;}
- b.telemetry={surge:ur,sway:vr,thrust:totalThrust,drag:Math.abs(drag),acceleration:udot,shaftPower:b.engines.reduce((sum,en)=>sum+en.hp*735.5*en.n**3,0)};
+ b.telemetry={surge:ur,sway:vr,thrust:totalThrust,drag:Math.abs(drag),acceleration:udot,shaftPower:b.engines.reduce((sum,en)=>sum+(en.shaftPower??en.hp*735.5*en.n**3),0)};
 }

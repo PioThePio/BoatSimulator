@@ -89,7 +89,7 @@ a wyścigowa do 600 KM na silnik,
 To zakres eksperymentów, nie potwierdzenie dopuszczalności takich
 konfiguracji przez producenta.
 
-Benzyna ma 0,745 kg/l, olej napędowy wyścigowej 0,84 kg/l, woda zęzowa 1 kg/l. Zanurzenie rośnie według
+Benzyna ma 0,745 kg/l, opcjonalny olej napędowy 0,84 kg/l, woda zęzowa 1 kg/l. Zanurzenie rośnie według
 `Δm / (1000 × L × B × 0.7)`. Woda i paliwo położone bliżej rufy zmieniają
 środek masy i moment bezwładności. Masa dodana wzdłużna to 1,08m,
 boczna 1,65m (zabawki dmuchane 1,15m); moment yaw jest powiększony
@@ -148,28 +148,60 @@ pełzający nie są stałą etykietą liczbową — obroty mają dynamikę.
 ## Wyścigowa i turbodoładowanie
 
 Oddzielny profil `racing.js`: deep-V 27°, L/B 9,2/2,35 m, kadłub 1850 kg,
-2 × 600 KM, 450 l oleju napędowego, trym początkowy 20%, 1,5 obrotu koła.
-Normalne profile zachowują dawny limit mocy i kalibrację. Wariant bez
-strumieniowych jest bazą porównawczych audytów napędów, niezależnie od
-nowych domyślnych opcji wyposażenia kabinowej/wypornościowej.
+2 × 600 KM, 450 l benzyny, trym początkowy 20%, 1,5 obrotu koła.
+To umowny turbodoładowany silnik benzynowy, a nie katalogowy diesel.
+Na spokojnej wodzie przy domyślnej masie i trymie 20% test 70 s daje około
+164 km/h i 6800 RPM. Zakres 160–180 km/h jest celem kalibracji tej jednostki,
+nie gwarancją dla dowolnego kadłuba 1200 KM. Opory, masa, trym, fala,
+wentylacja i skręt nadal zmieniają osiągi. Zegary mają zakresy 200 km/h i 7000 RPM.
 
-Wyłącznie ten profil ma szybszą stałą narastania obrotów 0,22–0,38 s,
-RPM biegu jałowego 720 i zakres wału około 3450 RPM ponad pracę biegu.
-Opór w ślizgu mnoży się przez `0.48 + 0.5 × clamp(abs(trim-.20)/.22,0,1)`;
-w wyporności korekta zanika z udziałem ślizgu. To jawne przybliżenie
-mniejszej powierzchni zwilżonej smukłego wyścigowego kadłuba. Nadal działają
-masy dodane, rozłożone siły boczne, energia zwrotu, poślizg, wentylacja,
-fale, kolizje i termika. W pomiarze 30 s spokojnej wody domyślna jednostka
-osiąga około 114,5 km/h; pełny zwrot zmniejsza prędkość do około 44 km/h
-po 10 s. Wyniki są modelowe, nie dane producenta.
+Stała narastania obrotów wynosi 0,22–0,38 s. Bieg jałowy: 800 RPM,
+zakres wału: 6000 RPM ponad bieg jałowy, z istniejącym obciążeniem,
+falowaniem i wentylacją. Doładowanie narasta osobno ze stałą 0,65 s,
+opada 0,16 s i zależy od obrotów, żądania gazu i obciążenia. Rzeczywista
+moc wału to `KM × 735.5 × n³ × (0.48+0.52×boost)`. Przy niskich obrotach
+nie ma pełnej mocy; po rozkręceniu turbo rośnie zarówno moc, jak i dźwięk.
+Ciąg jest ograniczony mocą użyteczną 68% mocy wału i charakterystyką
+śruby o większym skoku; nie ma sztucznego dodawania prędkości.
 
-Spalanie używa współczynnika 0,225 zamiast 0,29 przy członie KM × n³.
-Turbo korzysta z rzeczywistych `n`, obciążenia i stanu silnika: boost
-`n² × (.25+.75×load)`, gwizd 850–4050 Hz, głośność do 0,018 na silnik.
-Gwałtowne odjęcie polecenia przy boost >0,18 uruchamia krótkie syknięcie
-BOV z szumu. Wygasające obroty bez kolejnej zmiany polecenia nie powtarzają
-syku. To dodatkowe głosy audio; dawne głosy silników, kliknięć i stacyjki
-zostają. Pauza/wyciszenie oraz głośność silników obejmują nowy napęd.
+Opór w ślizgu mnoży się przez `0.20 + 0.5 × clamp(abs(trim-.20)/.22,0,1)`;
+w wyporności korekta zanika. To kalibracja powierzchni zwilżonej i oporu,
+bez danych z prób konkretnej marki. Opór płetwy Z-etki korzysta z efektywnego
+pola 0,035 m². Silnie skręcony napęd pod mocą zmniejsza boczny opór rufy
+wyścigówki; efekt zanika wraz z małym ciągiem, prostowaniem napędu i dużą
+prędkością. Wszystkie sekcje kadłuba nadal odbierają energię ruchowi.
+Ostry zwrot wytraca prędkość i powoduje poślizg; moc nie utrzymuje 164 km/h
+przy 45° wychylenia. Pozostałe profile zachowują swoją kalibrację.
+
+Spalanie wyścigówki wynika z mocy wału: przyjęto 0,32 kg/kWh i benzynę
+0,745 kg/l plus jałowy pobór. Gwizd turbo 850–4050 Hz odczytuje fizyczne
+`boost`. Nagłe odjęcie gazu przy boost >0,18 uruchamia krótkie BOV;
+wyłączony silnik nie generuje doładowania ani gwizdu. Suwak Silniki,
+pauza i wyciszenie obejmują cały napęd.
+
+### Opcjonalny diesel
+
+Benzyna pozostaje domyślna. Diesel można wybrać dla motorówki z Z-drive,
+kabinowej z Z-drive/wałem i wypornościowej z wałem, również we Flocie.
+Zaburtowe, waterjet, airboat i wyścigówka nie dostają przypadkowego diesla.
+`combustion.js` oddziela paliwo i charakterystykę silnika od sposobu sterowania
+napędem. Zachowany jest ten sam układ elektryczny, chłodzenie, trym/ster i przekładnia.
+
+Model diesla ma 700 RPM jałowo i około 3500 RPM pod pełnym obciążeniem
+(tarcza 4000 RPM). Krzywa mocy `n^2.65`, mniejszy spadek obrotów pod obciążeniem
+oraz podłużna charakterystyka uciągu dają szerszy dolny zakres. Moment wału
+wynika z `P / (RPM × π/30)`: większy moment przy niższych RPM nie oznacza
+większej mocy znamionowej ani darmowego wzrostu prędkości maksymalnej.
+Przyjęto masę silnika `115+1.05×KM` kg, paliwo 0,84 kg/l i zużycie
+0,225 kg/kWh plus pobór jałowy. Większa masa silnika i paliwa zwiększa
+masę całkowitą oraz zanurzenie względem benzynowego wariantu. Dźwięk
+ma niższą częstotliwość i inny układ harmonicznych.
+
+Punkty odniesienia: [Yanmar 4JH110](https://www.yanmar.com/marine/product/engines/4jh110/)
+— 110 mhp przy 3200 RPM, [Yanmar 6LY](https://www.yanmar.com/marine/product/engines/6ly/)
+— 440 mhp przy 3300 RPM. Nasz zakres i masa są przybliżeniem kilku klas,
+nie kopią tych konkretnych silników. [Go-Fast: prędkość łodzi](https://www.go-fast.com/Knowledge-base/Boat-Speed-calculator)
+podkreśla wpływ masy gotowej do rejsu, mocy wału i poślizgu śruby.
 
 Niskoprędkościowy impuls mocy (`maneuver-transient.js`) odczytuje wzrost
 rzeczywistej bocznej składowej ciągu, nie same położenie manetki.
@@ -244,7 +276,7 @@ podmienia jego dzieci bez zmiany trybu, więc nie gubi kliknięcia.
 Wyłączone instrumenty mają wskazówki na minimum (BAT pozostaje czynny),
 a master OFF wyłącza także BAT. Odczyty cyfrowe wtedy pokazują kreskę.
 
-Zużycie silnika [l/h] jest empiryczne:
+Zużycie standardowego silnika benzynowego [l/h] jest empiryczne:
 `0.45 + 0.003×KM + 0.29×KM×n^3×(0.55+0.45×load)`.
 Dotyczy logicznej godziny; masa znika ze zbiornika zgodnie z tym samym
 ubytkiem. Zbiorniki rozdzielają paliwo proporcjonalnie. Tankowanie
@@ -833,12 +865,36 @@ zamiast tylko wyszukiwania funkcji w kodzie. `npm run benchmark`
 mierzy czas CPU kroku floty i 8000 zapytań o pole wake; opcjonalnie
 może wskazywać katalog `src` innego checkoutu. Wynik zależy od sprzętu
 i obciążenia. Nie jest pomiarem FPS użytkownika ani obietnicą płynności.
-Porównanie z poprzednim stanem na tym samym środowisku: krok floty w
-skrypcie CPU około 2,99→1,43 ms; samo renderowanie Canvas 1400×600
-z wiatrem 7 m/s i kilwaterem około 7,49→5,26 ms. Test 8000 zapytań
-pola przy jednym stałym czasie wyniósł około 17,6→21,4 ms (ten mikrotest
-nie poprawił się); suma kontrolna pola pozostała zgodna do 1e-12.
-To pojedyncze pomiary, bez gwarancji tych wartości na innym komputerze.
+Profilowanie przeglądarki obejmuje także renderowanie, sterowanie i telemetrię.
+W kontrolowanej spokojnej scenie 1440×1000, z CPU Chromium spowolnionym ×4,
+mediana klatki zmalała około 200→50–67 ms (około 5→15–20 kl./s). To obciążający test,
+nie wynik dla komputera użytkownika ani gwarancja 60 FPS. Pomiar CPU floty
+z wiatrem, prądem i holowanym bananem zmalał około 3,2→1,9 ms/krok;
+suma kontrolna wake pozostała 0,6842715283806693.
+
+Optymalizacje nie zmieniają kroku 1/120 s: buforowane są dokładne zapytania
+brzegu/dna (bez zaokrąglania współrzędnych), osłona i lokalny prąd korzystają
+z indeksu przestrzennego, a nie pełnego skanu pomostów. Zmiana kąta slipu
+unieważnia cache dna. Boje obu nowych portów próbkują pole co 0,05 s,
+a siły, sprężyny i ich ruch są nadal całkowane 120 razy na sekundę.
+
+Całkiem nieruchoma zacumowana łódź o zerowych siłach pomija zerowe obliczenia;
+pierwsza fala, wiatr, ruch polera/boi, zmiana liny lub kontakt przywraca normalne
+obliczenia. Statyczną kolizję można pominąć tylko gdy suma przesunięcia
+kadłuba i maksymalnego przesunięcia od obrotu jest mniejsza od dokładnie
+zmierzonego odstępu. Kontaktujące odbijacze zawsze trafiają do solvera.
+Nieruchomy teren jest buforowany na Canvas; ruch kamery/zoom odświeża bufor
+po wyjściu poza jego zakres. Zmarszczki rysuje się w klipie wspólnej geometrii
+wody, bez zapytania fizycznego dla każdej kreski. To optymalizacja obrazu,
+nie nowa maska kolizji. `npm run benchmark:browser -- --cpu=4` mierzy klatki
+lokalnego serwera; `--seconds=5` ustala długość próby.
+
+Regresje `engine-performance.test.js` obejmują realną prędkość/RPM/moc,
+boost, zarzucanie rufy, diesla i zachowanie postępu przy odczycie starej
+wyścigówki. `performance-regression.test.js` sprawdza cache boi,
+wybudzanie cum, konserwatywne pomijanie kontaktów i zmianę kąta slipu.
+`engine-cockpit.spec.js` sprawdza tarcze, sąsiedztwo manetek, wybór diesla,
+kontynuację oraz unieważnianie wizualnego cache terenu.
 
 Program i style są budowane do jednego HTML. Nie ma streamingu mapy,
 zdjęć ani sampli audio podczas rejsu. Ograniczenia to CPU fizyki i

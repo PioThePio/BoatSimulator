@@ -1,3 +1,4 @@
+import {combustionType,engineMass,turboStep,shaftPowerFraction,engineRPMRange} from './combustion.js';
 import {RACING_PROFILE} from './racing.js';
 import {STARTER_LIMITS} from './electrical.js';
 import {trimAngle} from './drive.js';
@@ -34,12 +35,13 @@ export function specification(options={}){
  // A sterndrive is an inboard engine with a steerable, tiltable leg. It must
  // never share the fixed-shaft/rudder branch (inboard) merely by engine location.
  const propulsion=p.propulsions.includes(options.propulsion)?options.propulsion:p.propulsions[0];
- const structureMass=hullMass+powers.reduce((sum,hp)=>sum+(p.jet?0:28+hp*.62),0)+fuelCapacity*.08+2*tankCount+(p.jet?0:22*(Number(bowThruster)+Number(sternThruster)));
+ const engineType=combustionType(profile,propulsion,options.engineType),diesel=engineType==='diesel';
+ const structureMass=hullMass+powers.reduce((sum,hp)=>sum+(p.jet?0:engineMass(hp,engineType)),0)+fuelCapacity*.08+2*tankCount+(p.jet?0:22*(Number(bowThruster)+Number(sternThruster)));
  const dryMass=structureMass+crewMass+equipmentMass;
- const mass=dryMass+fuelCapacity*.75*(p.diesel?.84:.745);
- const base={...p,fuelDensity:p.diesel?.84:.745,profile,length,beam,hullMass,engineCount,powers,fuelCapacity,tankCount,dryMass,mass,structureMass,crewCount,crewMass,equipmentMass,propulsion,
+ const mass=dryMass+fuelCapacity*.75*(diesel?.84:.745);
+ const base={...p,engineType,diesel,fuelDensity:diesel?.84:.745,profile,length,beam,hullMass,engineCount,powers,fuelCapacity,tankCount,dryMass,mass,structureMass,crewCount,crewMass,equipmentMass,propulsion,
   propWalkStrength:clamp(Number(options.propWalkStrength??p.propWalkStrength),0,1),windageFactor:clamp(Number(options.windageFactor??p.windageFactor),0,2),
-  referenceMass:structureMass+(p.jet?75:150)+(p.jet?5:25)+fuelCapacity*.75*(p.diesel?.84:.745),referenceDraft:p.draft*(hullMass/p.hullMass)**.32,draft:p.draft*(hullMass/p.hullMass)**.32,engineSpacing:engineCount===2?beam*.46:0,maxSteer:(p.jet?p.steeringDegrees:clamp(Number(options.steeringLimit)||p.steeringDegrees,30,45))*Math.PI/180,
+  referenceMass:structureMass-(diesel?powers.reduce((sum,hp)=>sum+engineMass(hp,'diesel')-engineMass(hp,'petrol'),0):0)+(p.jet?75:150)+(p.jet?5:25)+fuelCapacity*.75*.745,referenceDraft:p.draft*(hullMass/p.hullMass)**.32,draft:p.draft*(hullMass/p.hullMass)**.32,engineSpacing:engineCount===2?beam*.46:0,maxSteer:(p.jet?p.steeringDegrees:clamp(Number(options.steeringLimit)||p.steeringDegrees,30,45))*Math.PI/180,
   wheelTurns:({tender:1.5,runabout:2.5,cabin:3,cruiser:3.5,pwc:.25,flat:1.5,rib:2,swamp:.75,racing:1.5})[profile],steeringLockTime:({tender:1,runabout:1.4,cabin:1.7,cruiser:1.9,pwc:.45,flat:1,rib:1.1,swamp:.65,racing:.6})[profile],thrusterRating:clamp(length*beam*45,220,1550),
   engineLever:p.jet?-.40*length:p.air?-.50*length:propulsion==='inboard'?-.36*length:-.44*length,rudderLever:-.53*length,bowThruster,sternThruster};
  return updateMass(base,fuelCapacity*.75);
@@ -87,7 +89,7 @@ export function updateEngine(en,command,inflow,dt,damage=0,context={}){
   if(en.crankProgress>1.15)en.key='running';
   else if(voltage<9||en.startTime>STARTER_LIMITS.timeout){en.key='ignition';en.rpm=0;en.startFailure=true;}return 0;
  }
- if(en.key!=='running'||context.noFuel){en.n*=Math.exp(-dt/.35);en.rpm=0;en.thrust=0;en.gear=0;en.load=0;en.governorLoad=0;en.opposingFlow=0;en.waveLoad=0;en.ventilation=0;en.propGrip=0;en.burst=0;en.regrip=0;if(context.noFuel)en.key='ignition';return 0;}
+ if(en.key!=='running'||context.noFuel){en.n*=Math.exp(-dt/.35);en.rpm=0;en.shaftPower=0;en.crankTorque=0;en.boost=0;en.thrust=0;en.gear=0;en.load=0;en.governorLoad=0;en.opposingFlow=0;en.waveLoad=0;en.ventilation=0;en.propGrip=0;en.burst=0;en.regrip=0;if(context.noFuel)en.key='ignition';return 0;}
  const desired=Math.abs(cmd)<.035?0:Math.sign(cmd);
  const airExposure=context.air?0:clamp((.70-(context.immersion??1))/.70,0,1);
  const highAngle=context.fixedDrive||context.air?0:clamp((trimAngle(en.trim)*180/Math.PI-10)/38,0,1);
@@ -110,20 +112,21 @@ export function updateEngine(en,command,inflow,dt,damage=0,context={}){
  if(desired!==en.gear){en.n*=Math.exp(-dt/(context.jet?.14:.28));en.shift+=dt;if(en.n<.055&&en.shift>=(context.jet?.22:.65)){en.gear=desired;en.shift=0;}}
  else{
   en.shift=0;const demand=desired?.23+.77*clamp((Math.abs(cmd)-.08)/.92,0,1)**.65:0;
-  const target=clamp(demand*(1-.035*en.load-.025*transientLoad)+en.ventilation*.13,0,1);
+  const target=clamp(demand*(1-(context.engineType==='diesel'?.020:.035)*en.load-.025*transientLoad)+en.ventilation*.13,0,1);
   const tau=target>en.n?(context.jet?.25+.18*en.load:context.racing?.22+.16*en.load:.65+.30*(en.hp/350)**.3+.35*en.load):(context.jet?.22:.4);
   en.n+=(target-en.n)*(1-Math.exp(-dt/tau));
  }
- const n=en.n,gear=en.gear;
+ const n=en.n,gear=en.gear,boost=context.racing?turboStep(en,cmd,dt):0,powerFraction=shaftPowerFraction(n,context,boost);
+ en.shaftPower=en.hp*735.5*powerFraction;
  // A short-lived disturbed jet after clutch engagement / rapid spool-up.
  // This is engine-time state, independent of render frame rate.
  const burstTarget=gear?clamp(((n-previousN)/dt-.12)*1.6,0,1):0;
  en.burst=Math.max(burstTarget,(en.burst??0)*Math.exp(-dt/.65));
- const staticThrust=(context.air?40:context.jet?62:85)*en.hp**.8,advance=gear*inflow;
- const advanceFactor=context.air?clamp(1-.16*advance/(8+30*n),.3,1.1):clamp(1-.22*advance/(2+11*n),.12,1.35);
+ const staticThrust=(context.air?40:context.jet?62:context.racing?60:85)*en.hp**.8,advance=gear*inflow;
+ const advanceFactor=context.air?clamp(1-.16*advance/(8+30*n),.3,1.1):clamp(1-.22*advance/(2+(context.racing?32:11)*n),.12,1.35);
  const reverse=context.jet?.34:.58;
- const bollard=staticThrust*n*n*(gear<0?reverse:1)*advanceFactor;
- const powerLimit=(context.jet?.63:.55)*en.hp*735.5*n**3/Math.max(context.air?5:1,Math.abs(inflow));
+ const bollard=staticThrust*n**(context.engineType==='diesel'?1.8:2)*(context.racing?.48+.52*boost:1)*(gear<0?reverse:1)*advanceFactor;
+ const powerLimit=(context.jet?.63:context.racing?.68:.55)*en.shaftPower/Math.max(context.air?5:1,Math.abs(inflow));
  // Loss of wet grip is immediate; refilling an aired propeller stream/intake
  // takes time. A returning wave cannot restore the whole thrust in one tick.
  const previousGrip=en.propGrip??1,grip=(1-.90*en.ventilation)*(context.immersion??1);
@@ -133,13 +136,14 @@ export function updateEngine(en,command,inflow,dt,damage=0,context={}){
  en.regrip=Math.max(recovery,(en.regrip??0)*Math.exp(-dt/.45));
  en.thrust=desired===gear?gear*Math.min(bollard,powerLimit)*(1-damage/100)*(1-en.propDamage/100)**1.5*en.propGrip*en.thermalLimit:0;
  // Idle governor responds to clutch load; small combustion/governor ripple, independent per engine.
- const idle=(context.racing?720:750)+(gear!==0?65*clamp(n/.22,0,1):0),shaft=(context.racing?3450:4750)*clamp((n-.23)/.77,0,1);
+ const range=engineRPMRange(context),idle=range.idle+(gear!==0?65*clamp(n/.22,0,1):0),shaft=range.span*clamp((n-.23)/.77,0,1);
  const ripple=(11+9*n)*Math.sin(en.clock*8.1+en.y*2.7)+5*Math.sin(en.clock*13.7+en.hp*.01);
  // Cold idle hunting fades with temperature and throttle; each engine has its
  // own phase. It never introduces RPM on an engine that has stopped.
  const cold=clamp((60-en.temperature)/42,0,1)*(1-clamp((n-.23)/.25,0,1)),phase=en.y*2.3+en.hp*.013;
  const hunting=cold*(18*Math.sin(en.clock*2.1+phase)+9*Math.sin(en.clock*3.3-phase));
  en.rpm=idle+shaft+en.ventilation*450+ripple+hunting;
- en.fuelFlow=.45+.003*en.hp+(context.racing?.225:.29)*en.hp*n**3*(.55+.45*en.load);
+ en.crankTorque=en.shaftPower/Math.max(1,en.rpm*Math.PI/30);
+ en.fuelFlow=context.engineType==='diesel'?.35+.002*en.hp+en.shaftPower/1000*.225/.84:context.racing?.65+.003*en.hp+en.shaftPower/1000*.32/.745:.45+.003*en.hp+.29*en.hp*powerFraction*(.55+.45*en.load);
  return en.thrust;
 }

@@ -97,18 +97,24 @@ natychmiastowego ciągu. Dwa silniki mają własne obroty, stacyjki i siły.
 Można je rozsprzęgnąć, ustawić przeciwne biegi, a w ustawieniach kierownicy
 rozdzielić kąty dwóch zaburtówek/Z-etek. Trym jest wspólny.
 
+Silnik benzynowy pozostaje domyślny. Diesel wybierzesz w konfiguracji dla
+motorówki z Z-etką, kabinowej z Z-etką/wałem i wypornościowej z wałem.
+Pracuje przy niższych RPM (około 3500), ma większy moment na wale,
+większą masę i inny dźwięk. Masa diesla i cięższego paliwa zwiększa zanurzenie;
+sama zmiana paliwa nie daje dodatkowych koni mechanicznych.
+
 ## Wyścigowa offshore
 
 Wyścigowa jest w menu nowej próby i Flocie. Ma 9,2 m długości, głęboki
-kadłub V i dwa wysokoprężne napędy Z-drive po maksymalnie 600 KM.
+kadłub V i dwa turbodoładowane benzynowe napędy Z-drive po maksymalnie 600 KM.
 Manetki szybciej podnoszą obroty. Sprzężenie manetek, osobne stacyjki,
 niezależne kąty i trym działają jak w pozostałych łodziach.
 
 Optimum modelu trymu jest w pobliżu 20%. Za niski i wysoki zwiększają
 opór; nadmierne podniesienie nadal napowietrza śruby i ogranicza chłodzenie.
 Na spokojnej wodzie konfiguracja domyślna w pomiarze modelowym osiąga
-około 115 km/h. Masa, paliwo, trym, skręt i fala zmieniają osiągi.
-Prędkościomierz ma zakres 200 km/h, obrotomierze 4500 RPM.
+około 164 km/h przy około 6800 RPM. Masa, paliwo, trym, skręt i fala zmieniają osiągi.
+Prędkościomierz ma zakres 200 km/h, obrotomierze 7000 RPM.
 Głęboki dźwięk dwóch silników uzupełnia gwizd turbo rosnący z obciążeniem
 i obrotami oraz syk po gwałtownym odjęciu gazu. Suwak Silniki reguluje
 pracę napędu; cały dźwięk nadal podlega wyciszeniu i pauzie.
@@ -134,7 +140,7 @@ uruchomi silnika. Wskaźnik pokazuje V i pozostały procent. Wyłączenie
 samego odbiornika zachowuje jego ustawienie przy następnym zasileniu.
 
 Zegary pokazują RPM (osobne dla dwóch silników), prędkość, paliwo, trym,
-temperaturę i napięcie. RPM L/P, TRIM, L/h i SOC są na tarczach. Napisy V, Paliwo i Temp są wewnątrz tarcz.
+temperaturę i napięcie. RPM L/P, TRIM, KM/H, PALIWO, BAT i TEMP mają jednakową czcionkę na tarczach. Spalanie L/h leży drobniej między E/F, a SOC między 8/16. Pod tarczami są wartości: km/h, litry, V i °C.
 Spalanie w L/h również jest na tarczy paliwa. Wartości są pod tarczami:
 prędkość z km/h, ilość paliwa w litrach i temperatura z °C.
 Wyłączenie instrumentów opuszcza wskazówki poza BAT; wyłączenie głównego

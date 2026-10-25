@@ -29,15 +29,15 @@ test('white-wind parameters are exactly silent at zero and linear in real live w
  assert.equal(windSound(0).level,0);near(windSound(12).level,2*windSound(6).level);assert.equal(windSound(12,false).level,0);assert.ok(windSound(12).cutoff>windSound(6).cutoff);const b=createBoat('lake',{coldStart:true});near(soundParameters(b,{windSpeed:10}).wind.level,.04);assert.equal(soundParameters(b,{windSpeed:10,windSound:false}).wind.level,0);
 });
 test('racer alone allows twin 600 HP Z-drives; regular limits and propulsion restrictions stay intact',()=>{
- const r=specification({profile:'racing',powers:[900,580],engineCount:1,propulsion:'jet'});assert.deepEqual(r.powers,[600,580]);assert.equal(r.engineCount,2);assert.equal(r.propulsion,'zdrive');assert.ok(r.deadrise>25);assert.equal(r.diesel,true);assert.equal(specification({powers:[600]}).powers[0],350);assert.equal(specification({profile:'pwc',engineCount:2}).engineCount,1);
+ const r=specification({profile:'racing',powers:[900,580],engineCount:1,propulsion:'jet'});assert.deepEqual(r.powers,[600,580]);assert.equal(r.engineCount,2);assert.equal(r.propulsion,'zdrive');assert.ok(r.deadrise>25);assert.equal(r.diesel,false);assert.equal(r.engineType,'petrol');assert.equal(specification({powers:[600]}).powers[0],350);assert.equal(specification({profile:'pwc',engineCount:2}).engineCount,1);
 });
 test('racing drivetrain physically accelerates and planes far beyond a default runabout without changing normal engine dynamics',()=>{
  const r=createBoat('lake',{profile:'racing'}),b=createBoat('lake');r.throttle=b.throttle=1;
  for(let i=0;i<3600;i++)for(const q of [r,b]){step(q,calm,dt);q.x=80;q.y=110;}
- assert.ok(r.telemetry.surge>25,r.telemetry.surge);assert.ok(r.telemetry.surge>b.telemetry.surge*1.7);assert.ok(r.planing>.8);assert.equal(r.damage,0);assert.ok(r.engines.every(e=>e.rpm>3000&&e.rpm<4500));
+ assert.ok(r.telemetry.surge>25,r.telemetry.surge);assert.ok(r.telemetry.surge>b.telemetry.surge*1.7);assert.ok(r.planing>.8);assert.equal(r.damage,0);assert.ok(r.engines.every(e=>e.rpm>6200&&e.rpm<7000));
 });
-test('racing throttle spools faster and its diesel fuel has physical mass',()=>{
- const a=engineState(600),b=engineState(600);a.gear=b.gear=1;for(let i=0;i<60;i++){updateEngine(a,1,0,dt,0,{racing:true});updateEngine(b,1,0,dt);}assert.ok(a.n>b.n);const r=specification({profile:'racing'});near(r.mass-r.dryMass,r.fuelCapacity*.75*.84);
+test('racing throttle spools faster and its petrol fuel has physical mass',()=>{
+ const a=engineState(600),b=engineState(600);a.gear=b.gear=1;for(let i=0;i<60;i++){updateEngine(a,1,0,dt,0,{racing:true});updateEngine(b,1,0,dt);}assert.ok(a.n>b.n);const r=specification({profile:'racing'});near(r.mass-r.dryMass,r.fuelCapacity*.75*.745);
 });
 test('turbo tracks real load/spool, drops boost at engine stop and produces a single release on an abrupt throttle cut',()=>{
  const e={key:'running',n:.9,load:.9,command:1,gear:1},p=turboParameters(e);assert.ok(p.level>0&&p.frequency>2000);assert.ok(p.boost>turboParameters({...e,load:.1}).boost);assert.equal(turboParameters({...e,command:0},{...e,boost:p.boost}).bov,true);assert.equal(turboParameters({...e,command:0,gear:0},{key:'running',boost:.7,command:0,gear:1}).bov,false);assert.equal(turboParameters({...e,key:'off'}).level,0);

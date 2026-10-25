@@ -1,6 +1,6 @@
 # Przystań — symulator manewrów na Zegrzu
 
-**[Uruchom w przeglądarce](https://piothepio.github.io/BoatSimulator/?v=30.0.0)** · komputer, telefon lub tablet, bez konta i instalowania gry.
+**[Uruchom w przeglądarce](https://piothepio.github.io/BoatSimulator/?v=31.0.0)** · komputer, telefon lub tablet, bez konta i instalowania gry.
 
 Symulator z widokiem z góry do ćwiczenia manewrów, cumowania, kotwiczenia,
 holowania i wodowania z przyczepy. Ma dziewięć profili łodzi, pięć rodzajów
@@ -70,4 +70,5 @@ ustawić zmienną `CHROMIUM_PATH`. Szczegóły pomiarów i zakres testów opisuj
 [Model](docs/MODEL.md#testy-i-wydajność).
 
 Aby odtworzyć trzy widoki porównawcze mapy, uruchom serwer `npm run dev`,
-a następnie `npm run capture:map`. Wyniki trafiają do `docs/images/`.
+a następnie `npm run capture:map`. Zrzuty trafiają do `docs/images/`.
+Pomiar klatek: `npm run benchmark:browser -- --cpu=4`.

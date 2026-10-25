@@ -14,8 +14,8 @@ export function soundParameters(b,e={}){
    const bubbles=working?en.n**2*vent*clamp(wet/.25,0,1):0;
    const raising=working?en.n*4*wet*(1-wet)*clamp(en.trimRate/.1,0,1):0;
    const churn=running&&!b.spec.air?clamp(.10*Math.sqrt(braking/30000)+.075*bubbles+.045*raising,0,.15):0;
-   return{timbre:b.spec.jet?'jet':v8?'v8':'light',carStarter:car&&starting,starterFrequency:155+35*clamp((en.startTime??0)/.25,0,1),frequency:Math.max(12,en.rpm/60*(b.spec.jet?2.5:v8?1:b.spec.profile==='cruiser'?3:2)),
-    harmonicRatio:v8?4:2.015,harmonicMix:v8?.065+.095*load:.10+.08*load,bass:v8?.22:0,mechanicalMix:v8?.025:.035,
+   return{timbre:b.spec.jet?'jet':v8?'v8':'light',carStarter:car&&starting,starterFrequency:155+35*clamp((en.startTime??0)/.25,0,1),frequency:Math.max(12,en.rpm/60*(b.spec.diesel?1.5:b.spec.jet?2.5:v8?1:b.spec.profile==='cruiser'?3:2)),
+    harmonicRatio:b.spec.diesel?3:v8?4:2.015,harmonicMix:v8?.065+.095*load:.10+.08*load,bass:v8?.22:0,mechanicalMix:v8?.025:.035,
     level:running?(.013+.020*en.n)*(1+.15*load)*(b.spec.racing?1.25:1):starting&&!car?.038:0,
     cutoff:starting?750:v8?220+en.rpm*.11+load*180:260+en.rpm*(b.spec.jet?.28:.23)+load*220,
     exhaust:running?(v8?.025:.008)+(v8?.070:.030)*en.n*(.2+.8*load):0,exhaustCutoff:130+en.n*(v8?270:500)+load*140,

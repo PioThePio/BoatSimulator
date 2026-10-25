@@ -1,5 +1,7 @@
 import {contacts} from './contacts.js';
 import {nearbySolids} from './solid-index.js';
+import {bodyAtRest,waterAtRest} from './rest-state.js';
+import {clearOfStaticSolids} from './static-clearance.js';
 import {beginFenderStep,fenderGeometry,fenderContact} from './fenders.js';
 import {hullContactSamples} from './hull-geometry.js';
 import {sampleWater,wakeHistories} from './wave-field.js';
@@ -37,6 +39,9 @@ export function trafficStep(b,e,dt,{integrate=true}={}){
    q.fieldCache={flow:environment(b.time,e,q.x,q.y),wave:sample(q.x,q.y),ends:[sample(aft.x,aft.y),sample(fore.x,fore.y)]};q.fieldAt=b.time+.05;
   }
   const {flow,wave,ends}=q.fieldCache,m=q.mass;
+  const rest=q.restPose,still=bodyAtRest(q)&&waterAtRest(flow,wave,ends)&&q.ropes.every(r=>r.tension===0);
+  const sameTargets=still&&rest&&rest.targets?.length===q.ropes.length&&q.ropes.every((r,i)=>{const p=mooringPoint(b,r.bollard),old=rest.targets[i];return p.x===old.x&&p.y===old.y&&r.length===old.length;});
+  if(!sameTargets||q.x!==rest.x||q.y!==rest.y||q.a!==rest.a){
   const windSide=-flow.wind.x*Math.sin(q.a)+flow.wind.y*Math.cos(q.a),rollTarget=Math.atan(-wave.sx*Math.sin(q.a)+wave.sy*Math.cos(q.a))*1.3+windSide*Math.abs(windSide)*q.spec.freeboard/(m*2);
   for(const [key,target,omega,damping]of [['heave',wave.eta,3.8,.34],['roll',clamp(rollTarget,-.25,.25),Math.sqrt(9.81/(q.beam*.35)),.24],['pitch',Math.atan(wave.sx*Math.cos(q.a)+wave.sy*Math.sin(q.a)),3.5,.4]]){const velocity=key+'Velocity';q[velocity]+=(omega*omega*(target-q[key])-2*damping*omega*q[velocity])*dt;q[key]+=q[velocity]*dt;}
   const c0=Math.cos(q.a),s0=Math.sin(q.a),u=(q.vx-flow.current.x)*c0+(q.vy-flow.current.y)*s0,v=-(q.vx-flow.current.x)*s0+(q.vy-flow.current.y)*c0;
@@ -51,7 +56,9 @@ export function trafficStep(b,e,dt,{integrate=true}={}){
   moorTraffic(b,q,dt);
   q.x+=q.vx*dt;q.y+=q.vy*dt;q.a+=q.w*dt;
   const candidates=cached?nearbySolids(SOLIDS,q.x,q.y,q.spec.length*.65+1):null;
-  contacts(q,dt,candidates);
+  const before={x:q.x,y:q.y,a:q.a};if(!clearOfStaticSolids(q,SOLIDS))contacts(q,dt,candidates);
+  q.restPose=still&&bodyAtRest(q)&&q.x===before.x&&q.y===before.y?{...before,targets:q.ropes.map(r=>{const p=mooringPoint(b,r.bollard);return{x:p.x,y:p.y,length:r.length};})}:null;
+  }
   }
   if(Math.hypot(b.x-q.x,b.y-q.y)>(b.spec.length+q.spec.length)*.6+1)continue;
   const otherRadius=q.beam*.45,offset=q.length*.5-otherRadius;

@@ -1,3 +1,4 @@
+import {nearbySolids} from './solid-index.js';
 import {closestSolidPoint,orientedFaces,pierSegment,solidPoint} from './solid-geometry.js';
 import {NIEPORET_REFERENCE} from './nieporet-reference.js';
 import {projectNieporet} from './zegrze.js';
@@ -85,7 +86,7 @@ export function shoreAt(x,y){
  for(const q of ISLANDS){
   if(q.outline){const box=q.bounds,dx=Math.max(box.left-x,0,x-box.right),dy=Math.max(box.top-y,0,y-box.bottom);if((dx||dy)&&(best.distance<=0||Math.hypot(dx,dy)>=best.distance))continue;
    const hit=islandQueries.get(q.id)(x,y);if(-hit.distance<best.distance)best={distance:-hit.distance,nx:-hit.nx,ny:-hit.ny,qx:hit.qx,qy:hit.qy,edge:'island',along:Math.atan2(y-q.y,x-q.x),island:q.id};
-  }else{const a=Math.atan2(y-q.y,x-q.x),d=Math.hypot(x-q.x,y-q.y)-islandRadius(a,q);if(d<best.distance)best={distance:d,nx:Math.cos(a),ny:Math.sin(a),edge:'island',along:a};}
+  }else{if(Math.hypot(x-q.x,y-q.y)-Math.max(q.rx,q.ry)*1.11>Math.max(0,best.distance))continue;const a=Math.atan2(y-q.y,x-q.x),d=Math.hypot(x-q.x,y-q.y)-islandRadius(a,q);if(d<best.distance)best={distance:d,nx:Math.cos(a),ny:Math.sin(a),edge:'island',along:a};}
  }
  const canal=canalAt(x),inRzadza=x>rz.x-500&&x<rz.x+2600&&Math.abs(y-canal.y)<100;
  if(inRzadza&&best.edge==='lake')best.edge='canal';
@@ -132,7 +133,12 @@ for(const id of ['178815906','178815911','310824661','1185783075','1185783076'])
 MAP_STARTS.pilawa=PILAWA.start;MAP_STARTS.nieporet=NIEPORET.start;MAP_STARTS.zeranski={...projectNieporet([21.03427,52.43295]),a:Math.PI/2};MAP_STARTS.euzebia={x:EUZEBIA.x-EUZEBIA.rx-35,y:EUZEBIA.y,a:Math.PI/2};
 const surveyDredgeY=projectNieporet([21.038,52.4355]).y;
 export const NIEPORET_SURVEY_BOUNDS={left:projectNieporet([21.029,52.44]).x,right:projectNieporet([21.0447,52.44]).x,top:projectNieporet([21.038,52.4402]).y,bottom:WORLD.bottom};
+let depthCache=new Map(),depthAngle;
 export function bottomAt(x,y){
+ if(depthAngle!==SERVICE_STATION.slip.angle){depthCache.clear();depthAngle=SERVICE_STATION.slip.angle;}
+ const key=x+','+y;let value=depthCache.get(key);if(!value){value=computeBottomAt(x,y);if(depthCache.size>=2048)depthCache.delete(depthCache.keys().next().value);depthCache.set(key,value);}return{...value};
+}
+function computeBottomAt(x,y){
  const shore=shoreAt(x,y),dist=shore.distance,slope=shore.island==='euzebia'?euzebiaSlope(shore.along):shore.beach?.085:shore.edge==='canal'?.65:.21*(1+.28*Math.sin(x*.027)+.16*Math.cos(y*.041));
  const basin=shore.edge==='canal'?3.2:8.5;
  let depth=dist>=0?basin*(1-Math.exp(-dist*slope/basin)):dist*(shore.beach?.07:.32);
@@ -161,6 +167,7 @@ export function bottomAt(x,y){
 }
 export function bottomGradient(x,y){const d=.12;return{x:(bottomAt(x+d,y).depth-bottomAt(x-d,y).depth)/(2*d),y:(bottomAt(x,y+d).depth-bottomAt(x,y-d).depth)/(2*d)};}
 export function reedDensityAt(x,y){if(shoreAt(x,y).land)return 0;return REEDS.reduce((v,r)=>Math.max(v,clamp(1-Math.hypot(x-r.x,y-r.y)/r.r,0,1)),0);}
+let shelterBoxes;
 export function environment(t,e={},x=null,y=null){
  const weather=weatherAt(t,e),a=weather.windDirection*Math.PI/180,c=weather.currentDirection*Math.PI/180;
  let wind={x:Math.sin(a)*weather.windSpeed,y:-Math.cos(a)*weather.windSpeed},current={x:Math.sin(c)*weather.currentSpeed,y:-Math.cos(c)*weather.currentSpeed},shelter=1;
@@ -168,7 +175,8 @@ export function environment(t,e={},x=null,y=null){
   const wx=Math.sin(a),wy=-Math.cos(a),dx=x-ISLAND.x,dy=y-ISLAND.y,down=dx*wx+dy*wy,side=-dx*wy+dy*wx;
   if(down>0)shelter-=.70*Math.exp(-Math.max(0,down-70)/160)*Math.exp(-((side/75)**2));
   const shore=shoreAt(x,y);if(shore.edge==='canal')shelter*=.45;
-  for(const d of DOCKS){const px=x-(d.x+d.w/2),py=y-(d.y+d.h/2),back=px*wx+py*wy,lateral=Math.abs(-px*wy+py*wx);if(back>0&&back<18&&lateral<Math.max(d.w,d.h)*.5)shelter*=.90;}
+  shelterBoxes??=DOCKS.map(d=>{const r=Math.hypot(18,Math.max(d.w,d.h)*.5);return{x:d.x+d.w/2-r,y:d.y+d.h/2-r,w:r*2,h:r*2};});
+  for(const i of nearbySolids(shelterBoxes,x,y,.001)){const d=DOCKS[i],px=x-(d.x+d.w/2),py=y-(d.y+d.h/2),back=px*wx+py*wy,lateral=Math.abs(-px*wy+py*wx);if(back>0&&back<18&&lateral<Math.max(d.w,d.h)*.5)shelter*=.90;}
   wind={x:wind.x*shelter,y:wind.y*shelter};
   const V=Math.hypot(current.x,current.y);
   if(V>0){
@@ -176,7 +184,7 @@ export function environment(t,e={},x=null,y=null){
    current.x-=normal*shore.nx*block;current.y-=normal*shore.ny*block;
    if(shore.edge==='canal'){const canal=canalAt(x),flow=(Math.sin(c)+canal.slope*(-Math.cos(c)))*V*1.65;current={x:flow/Math.sqrt(1+canal.slope**2),y:flow*canal.slope/Math.sqrt(1+canal.slope**2)};}
    else{const ux=Math.sin(c),uy=-Math.cos(c),behind=dx*ux+dy*uy,across=-dx*uy+dy*ux;if(behind>45){const wake=.6*Math.exp(-(behind-45)/120)*Math.exp(-((across/55)**2));current.x*=1-wake;current.y*=1-wake;const swirl=.20*V*Math.sin(t*.13+behind*.05)*wake;current.x+=-uy*swirl;current.y+=ux*swirl;}}
-   for(const d of DOCKS){const near=closestSolidPoint(d,x,y),px=near.x,py=near.y,rx=x-px,ry=y-py,dist=Math.hypot(rx,ry);if(dist>0&&dist<7){const q=.17*V*(1-dist/7)*Math.sin(t*.2+d.x);current.x+=-ry/dist*q;current.y+=rx/dist*q;}}
+   for(const i of nearbySolids(DOCKS,x,y,7.001)){const d=DOCKS[i],near=closestSolidPoint(d,x,y),px=near.x,py=near.y,rx=x-px,ry=y-py,dist=Math.hypot(rx,ry);if(dist>0&&dist<7){const q=.17*V*(1-dist/7)*Math.sin(t*.2+d.x);current.x+=-ry/dist*q;current.y+=rx/dist*q;}}
   }
  }
  const dry=x!==null&&bottomAt(x,y).depth<=0;
@@ -212,9 +220,10 @@ export function reflectionFacesNear(x,y,radius=70){
  return faces;
 }
 export function waveAt(x,y,t,e){
- if(bottomAt(x,y).depth<=0)return{eta:0,sx:0,sy:0,vx:0,vy:0,ax:0,ay:0,direction:{x:0,y:0}};
- const H=waveHeight(e,t)*(e.spatialEffects?environment(t,e,x,y).waveScale:1),a=(e.waveDirection??e.windDirection??90)*Math.PI/180,n={x:Math.sin(a),y:-Math.cos(a)};let eta=0,sx=0,sy=0,vx=0,vy=0,ax=0,ay=0;
- const h=Math.max(.4,bottomAt(x,y).depth),faces=H>0?reflectionFacesNear(x,y,24):[];
+ const floor=bottomAt(x,y);if(floor.depth<=0)return{eta:0,sx:0,sy:0,vx:0,vy:0,ax:0,ay:0,direction:{x:0,y:0}};
+ const rawHeight=waveHeight(e,t),a=(e.waveDirection??e.windDirection??90)*Math.PI/180,n={x:Math.sin(a),y:-Math.cos(a)};if(rawHeight===0)return{eta:0,sx:0,sy:0,vx:0,vy:0,ax:0,ay:0,direction:n};
+ const H=rawHeight*(e.spatialEffects?environment(t,e,x,y).waveScale:1);let eta=0,sx=0,sy=0,vx=0,vy=0,ax=0,ay=0;
+ const h=Math.max(.4,floor.depth),faces=H>0?reflectionFacesNear(x,y,24):[];
  for(const [weight,period,phase,offset]of [[.65,2.8,0,0],[.25,1.9,1.7,.32],[.1,3.9,3.2,-.4]]){
   const omega=2*Math.PI/period;let k=omega*omega/9.81;for(let i=0;i<5;i++)k=omega*omega/(9.81*Math.tanh(k*3));
   const nx=Math.sin(a+offset),ny=-Math.cos(a+offset),A=H*.5*weight,theta=k*(x*nx+y*ny)-omega*t+phase,co=Math.cos(theta),si=Math.sin(theta),orb=A*omega/Math.tanh(Math.max(.2,k*h));

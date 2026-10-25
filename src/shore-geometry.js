@@ -8,8 +8,9 @@ export function createShoreQuery(points){
   const axis=box.maxX-box.minX>box.maxY-box.minY?'X':'Y';items.sort((a,b)=>(a['min'+axis]+a['max'+axis])-(b['min'+axis]+b['max'+axis]));const middle=items.length>>1;
   return{...box,left:build(items.slice(0,middle)),right:build(items.slice(middle))};
  }
- const root=build(segments);
+ const root=build(segments);const exact=new Map();
  return(x,y)=>{
+  const key=x+','+y;if(exact.has(key))return{...exact.get(key)};
   let inside=false,best=Infinity,qx=0,qy=0;
   const distance=n=>Math.max(n.minX-x,0,x-n.maxX)**2+Math.max(n.minY-y,0,y-n.maxY)**2;
   function visit(node){
@@ -22,6 +23,6 @@ export function createShoreQuery(points){
    }}else{const first=distance(node.left)<distance(node.right)?node.left:node.right;visit(first);visit(first===node.left?node.right:node.left);}
   }
   visit(root);const d=Math.sqrt(best),sign=inside?1:-1;
-  return{distance:sign*d,qx,qy,nx:d>0?sign*(x-qx)/d:0,ny:d>0?sign*(y-qy)/d:1};
+  const result={distance:sign*d,qx,qy,nx:d>0?sign*(x-qx)/d:0,ny:d>0?sign*(y-qy)/d:1};if(exact.size>=1024)exact.delete(exact.keys().next().value);exact.set(key,result);return{...result};
  };
 }
