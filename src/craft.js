@@ -30,7 +30,9 @@ export function specification(options={}){
  const engineCount=p.fixedEngineCount??(p.jet||p.air?1:options.engineCount===2?2:1);
  const bowThruster=!p.jet&&!p.air&&!!(options.bowThruster??p.defaultBow),sternThruster=!p.jet&&!p.air&&!!(options.sternThruster??p.defaultStern);
  const powers=Array.from({length:engineCount},(_,i)=>clamp(Number(options.powers?.[i])||p.hp,10,p.maxHp));
- const fuelCapacity=clamp(Number(options.fuelCapacity)||p.fuel,10,800),tankCount=options.tankCount===2?2:1;
+ // The selected litres are a fill level, never a different-sized tank.
+ // Keep the old option as an input alias for integrations using the setup form.
+ const fuelCapacity=p.fuel,initialFuelLitres=clamp(Number(options.initialFuelLitres??options.fuelCapacity??fuelCapacity*.75),0,fuelCapacity),tankCount=options.tankCount===2?2:1;
  const crewCount=clamp(Math.round(Number(options.crewCount??(p.jet?1:2))),0,12),crewMass=crewCount*75,equipmentMass=clamp(Number(options.equipmentMass??(p.jet?5:25)),0,1500);
  // A sterndrive is an inboard engine with a steerable, tiltable leg. It must
  // never share the fixed-shaft/rudder branch (inboard) merely by engine location.
@@ -38,13 +40,13 @@ export function specification(options={}){
  const engineType=combustionType(profile,propulsion,options.engineType),diesel=engineType==='diesel';
  const structureMass=hullMass+powers.reduce((sum,hp)=>sum+(p.jet?0:engineMass(hp,engineType)),0)+fuelCapacity*.08+2*tankCount+(p.jet?0:22*(Number(bowThruster)+Number(sternThruster)));
  const dryMass=structureMass+crewMass+equipmentMass;
- const mass=dryMass+fuelCapacity*.75*(diesel?.84:.745);
- const base={...p,engineType,diesel,fuelDensity:diesel?.84:.745,profile,length,beam,hullMass,engineCount,powers,fuelCapacity,tankCount,dryMass,mass,structureMass,crewCount,crewMass,equipmentMass,propulsion,
+ const mass=dryMass+initialFuelLitres*(diesel?.84:.745);
+ const base={...p,fuelModelVersion:1,engineType,diesel,fuelDensity:diesel?.84:.745,profile,length,beam,hullMass,engineCount,powers,fuelCapacity,initialFuelLitres,tankCount,dryMass,mass,structureMass,crewCount,crewMass,equipmentMass,propulsion,
   propWalkStrength:clamp(Number(options.propWalkStrength??p.propWalkStrength),0,1),windageFactor:clamp(Number(options.windageFactor??p.windageFactor),0,2),
   referenceMass:structureMass-(diesel?powers.reduce((sum,hp)=>sum+engineMass(hp,'diesel')-engineMass(hp,'petrol'),0):0)+(p.jet?75:150)+(p.jet?5:25)+fuelCapacity*.75*.745,referenceDraft:p.draft*(hullMass/p.hullMass)**.32,draft:p.draft*(hullMass/p.hullMass)**.32,engineSpacing:engineCount===2?beam*.46:0,maxSteer:(p.jet?p.steeringDegrees:clamp(Number(options.steeringLimit)||p.steeringDegrees,30,45))*Math.PI/180,
   wheelTurns:({tender:1.5,runabout:2.5,cabin:3,cruiser:3.5,pwc:.25,flat:1.5,rib:2,swamp:.75,racing:1.5})[profile],steeringLockTime:({tender:1,runabout:1.4,cabin:1.7,cruiser:1.9,pwc:.45,flat:1,rib:1.1,swamp:.65,racing:.6})[profile],thrusterRating:clamp(length*beam*45,220,1550),
   engineLever:p.jet?-.40*length:p.air?-.50*length:propulsion==='inboard'?-.36*length:-.44*length,rudderLever:-.53*length,bowThruster,sternThruster};
- return updateMass(base,fuelCapacity*.75);
+ return updateMass(base,initialFuelLitres);
 }
 export function updateMass(spec,fuelLitres,bilgeLitres=0){
  spec.mass=spec.dryMass+Math.max(0,fuelLitres)*(spec.fuelDensity??.745)+Math.max(0,bilgeLitres);
@@ -54,17 +56,27 @@ export function updateMass(spec,fuelLitres,bilgeLitres=0){
  spec.mx=spec.mass*1.08;spec.my=spec.mass*(spec.inflatable?1.15:1.65);spec.iz=spec.inertia*(spec.inflatable?1.2:1.55);
  return spec;
 }
+export function restoreFuelCapacity(b){
+ const S=b.spec,target=CRAFTS[S.profile]?.fuel;if(!target||S.passive||S.fuelModelVersion===1)return;
+ // Do not discard fuel from an old, manually enlarged tank. Such an existing
+ // tank remains a legacy fit; all newly created boats use the fixed profile.
+ const capacity=b.fuel.litres>target?b.fuel.capacity:target,delta=(capacity-S.fuelCapacity)*.08,referenceDelta=(capacity-S.fuelCapacity)*(.08+.75*.745);
+ S.fuelCapacity=b.fuel.capacity=capacity;S.fuelModelVersion=1;S.legacyFuelCapacity=capacity!==target;S.initialFuelLitres=b.fuel.litres;
+ S.structureMass+=delta;S.dryMass+=delta;S.referenceMass+=referenceDelta;
+ for(const t of b.fuel.tanks){t.capacity=capacity/b.fuel.tanks.length;t.litres=b.fuel.litres/b.fuel.tanks.length;}
+ updateMass(S,b.fuel.litres,b.bilge?.litres??0);
+}
 export function engineState(hp,y=0,coldStart=false){return{hp,y,clock:0,operatingHours:0,fuelUsed:0,thermalStage:'normal',command:0,gear:0,n:0,shift:0,thrust:0,rpm:coldStart?0:750,propDamage:0,propContact:false,propClearance:10,lastStrike:-10,key:coldStart?'off':'running',startTime:0,trim:.10,trimTarget:.10,trimRate:0,immersion:1,intake:1,propDepth:.4,ventilation:0,load:0,governorLoad:0,inflow:0,opposingFlow:0,waveLoad:0,fuelFlow:0,temperature:18,cooling:0,overheated:false,thermalLimit:1,thermalTrip:false};}
 export function engineKey(b,index,action){
  if(b.spec.passive)return{ok:false,message:'Ta jednostka nie ma silnika.'};
- if(b.disabledEngine&&action!=='off')return{ok:false,message:'Awaria napędu · odholuj jednostkę do serwisu.'};
  const en=b.engines[index];if(!en)return{ok:false,message:'Brak silnika.'};
- if(action==='off'){en.key='off';en.startTime=0;en.gear=0;en.thrust=0;en.ventilation=0;return{ok:true,message:'Silnik wyłączony.'};}
- if(action!=='off'&&b.electrics?.floodFault)return{ok:false,message:'Instalacja zalana · wymagany serwis.'};
- if(action==='ignition'&&b.electrics?.master===false)return{ok:false,message:'Włącz główne zasilanie łodzi.'};
- if(action==='ignition'){en.key='ignition';en.thrust=0;en.gear=0;return{ok:true,message:'Zapłon włączony.'};}
+ if(action==='off'){en.key='off';en.keyStartUntil=0;en.startTime=0;en.gear=0;en.thrust=0;en.ventilation=0;return{ok:true,message:'Silnik wyłączony.'};}
+ if(action==='ignition'){en.key='ignition';en.thrust=0;en.gear=0;return{ok:true,message:b.electrics?.master===false?'Kluczyk w I · główne zasilanie wyłączone.':'Zapłon włączony.'};}
  if(action==='start'){
-  if(b.electrics?.master===false)return{ok:false,message:'Włącz główne zasilanie łodzi.'};
+  // Mechanical START springs back to I even with a disconnected battery.
+  en.keyStartUntil=b.time+.3;
+  if(b.electrics?.master===false||b.electrics?.floodFault){en.key='ignition';return{ok:true,message:b.electrics?.floodFault?'Kluczyk START · instalacja zalana, brak prądu.':'Kluczyk START · główne zasilanie wyłączone, rozrusznik nie pracuje.'};}
+  if(b.disabledEngine)return{ok:false,message:'Awaria napędu · odholuj jednostkę do serwisu.'};
   if(en.flooded||b.sunken)return{ok:false,message:'Silnik zalany · wypompuj wodę i napraw łódź w serwisie.'};
   if(en.key==='running')return{ok:true,message:'Silnik już pracuje.'};
   if(en.temperature>THERMAL_LIMITS.restart)return{ok:false,message:'Silnik przegrzany — poczekaj, aż ostygnie poniżej 110°C.'};

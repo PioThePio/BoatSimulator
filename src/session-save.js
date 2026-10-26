@@ -1,10 +1,11 @@
-import {updateMass} from './craft.js';
+import {updateMass,restoreFuelCapacity} from './craft.js';
+import {migrateFuelBerth} from './fuel-migration.js';
 import {migrateSiteSave} from './site-migration.js';
 import {migrateNieporetSave} from './nieporet-migration.js';
 import {CRAFTS} from './craft.js';
 import {createFleetCraft,TOWABLES} from './fleet-craft.js';
 import {syncFleetWorld,MAX_FLEET} from './fleet.js';
-import {BOLLARDS,MAP_STARTS,shoreAt,bottomAt,SOLIDS} from './world.js';
+import {BOLLARDS,MAP_STARTS,shoreAt,bottomAt,SOLIDS,NIEPORET} from './world.js';
 import {WORLD_DISTANCE_SCALE} from './zegrze.js';
 import {createRescue,validRescueState} from './rescue.js';
 
@@ -12,10 +13,10 @@ export const SAVE_KEY='przystan-session-v1',BACKUP_KEY=SAVE_KEY+'-backup',SAVE_V
 const omitted=new Set(['booms','buoys','traffic','towRig','worldRig','wakeSources']);
 function boatData(b){return Object.fromEntries(Object.entries(b).filter(([key])=>!omitted.has(key)));}
 export function snapshotSession(session,now=Date.now()){
- const {fleet,env,start,boatOptions,vehicle,ui={},weather={}}=session,world=fleet.boats[0];
- return{version:SAVE_VERSION,siteGeometryVersion:3,worldScale:WORLD_DISTANCE_SCALE,savedAt:now,
+ const {fleet,env,start,boatOptions,vehicle,ui={},weather={}}=session,world=fleet.boats[0],rig=session.towRig??fleet.boats.find(b=>b.id===fleet.rigBoatId)?.towRig;
+ return{version:SAVE_VERSION,siteGeometryVersion:3,fuelBerthVersion:1,worldScale:WORLD_DISTANCE_SCALE,savedAt:now,
   fleet:{...fleet,boats:fleet.boats.map(boatData),tows:fleet.tows.map(r=>({...r,control:0,rate:0}))},
-  world:{booms:world.booms,buoys:world.buoys,traffic:world.traffic},rig:session.towRig??fleet.boats.find(b=>b.id===fleet.rigBoatId)?.towRig??null,
+  world:{booms:world.booms,buoys:world.buoys,traffic:world.traffic},rig:rig?Object.fromEntries(Object.entries(rig).filter(([key])=>key!=='audioBoat')):null,
   env,start,boatOptions,vehicle,ui,weather};
 }
 const finite=(v,lo=-1e8,hi=1e8)=>typeof v==='number'&&Number.isFinite(v)&&v>=lo&&v<=hi;
@@ -41,8 +42,9 @@ export function restoreSession(value,{validateOnly=false}={}){
   expectedBoomCount??=createFleetCraft('runabout').booms.length;if(!Array.isArray(data.world?.booms)||data.world.booms.length!==expectedBoomCount||!data.world.buoys||!Array.isArray(data.world.traffic))throw Error('Błędny stan akwenu.');
   if(data.rig&&(!finite(data.rig.car?.x)||!finite(data.rig.car?.y)||!finite(data.rig.trailer?.x)||!finite(data.rig.trailer?.y)||!data.rig.winch))throw Error('Błędny stan SUV-a.');
   if(validateOnly)return{ok:true};
-  const base=createFleetCraft('runabout'),context={points:BOLLARDS,starts:MAP_STARTS,shoreAt,bottomAt,solids:SOLIDS,world:base};const skip=migrateSiteSave(data,context);migrateNieporetSave(data,{...context,skip});
-  f.boats=f.boats.map(saved=>{const b=createFleetCraft(saved.fleetKind??saved.spec.profile);Object.assign(b,saved);const name=TOWABLES[b.fleetKind]?.name??CRAFTS[b.spec.profile]?.name??b.spec.name;if(b.name===b.spec.name||/ · \d+$/.test(b.name??''))b.name=name+(b.name?.match(/ · \d+$/)?.[0]??'');b.spec.name=name;if(!b.spec.engineType){b.spec.engineType='petrol';if(b.spec.racing){b.spec.diesel=false;b.spec.fuelDensity=.745;updateMass(b.spec,b.fuel.litres,b.bilge?.litres??0);}}if(b.fleetKind==='banana'||b.fleetKind==='mat')b.spec.inflatable=true;for(const r of b.ropes){r.control=0;r.rate=0;r.effortTime=0;}b.thrusters.bow=b.thrusters.stern=0;return b;});
+  const oldSite=data.siteGeometryVersion??1,base=createFleetCraft('runabout'),context={points:BOLLARDS,starts:MAP_STARTS,shoreAt,bottomAt,solids:SOLIDS,world:base};const skip=migrateSiteSave(data,context);migrateNieporetSave(data,{...context,skip});
+  if(oldSite>=3)migrateFuelBerth(data,NIEPORET.fuel,{x:NIEPORET.anchor.x+8,y:NIEPORET.anchor.y},BOLLARDS);
+  f.boats=f.boats.map(saved=>{const b=createFleetCraft(saved.fleetKind??saved.spec.profile);Object.assign(b,saved);const name=TOWABLES[b.fleetKind]?.name??CRAFTS[b.spec.profile]?.name??b.spec.name;if(b.name===b.spec.name||/ · \d+$/.test(b.name??''))b.name=name+(b.name?.match(/ · \d+$/)?.[0]??'');b.spec.name=name;if(!b.spec.engineType){b.spec.engineType='petrol';if(b.spec.racing){b.spec.diesel=false;b.spec.fuelDensity=.745;updateMass(b.spec,b.fuel.litres,b.bilge?.litres??0);}}restoreFuelCapacity(b);if(b.fleetKind==='banana'||b.fleetKind==='mat')b.spec.inflatable=true;for(const r of b.ropes){r.control=0;r.rate=0;r.effortTime=0;}b.thrusters.bow=b.thrusters.stern=0;return b;});
   const trafficById=new Map(data.world.traffic.map(q=>[q.id,q]));
   data.world.traffic=base.traffic.map(q=>trafficById.get(q.id)??q);
   data.world.buoys=base.buoys.map((q,i)=>data.world.buoys[i]??q);

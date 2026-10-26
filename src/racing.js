@@ -9,5 +9,8 @@ export function racingSternRelease(spec,engines,steer,speed){
 export function turboParameters(engine,previous=null){
  const running=engine.key==='running',boost=running?clamp(engine.boost??engine.n**2*(.25+.75*(engine.load??0)),0,1):0;
  const release=previous?.key==='running'&&previous.boost>.18&&(Math.abs(previous.command??0)-Math.abs(engine.command??0)>.22||engine.gear===0&&previous.gear!==0&&Math.abs(previous.command??0)>.035);
- return{boost,frequency:850+boost*3200,level:running?.018*boost:0,bov:!!release};
+ // Audible spool, then a much softer steady whistle. Air noise replaces the
+ // old piercing continuous 4 kHz sine at full boost.
+ const spool=clamp((engine.boostRise??0)*1.1,0,1);
+ return{boost,frequency:650+boost*1550,level:running?boost*(.0015+.0045*spool):0,airLevel:running?boost*(.008+.012*spool):0,bov:!!release||!!previous&&(engine.bovSequence??0)>(previous.bovSequence??0),bovStrength:engine.bovStrength??previous?.boost??0};
 }

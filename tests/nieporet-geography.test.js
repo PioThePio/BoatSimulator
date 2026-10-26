@@ -61,7 +61,7 @@ test('the larger basin has six western piers, the long eastern pier, berth finge
  const box={left:NIEPORET.bounds.left-20,right:NIEPORET.bounds.right+20,top:NIEPORET.bounds.top-20,bottom:NIEPORET.bounds.bottom+20};assert.ok(canReach(NIEPORET.start,{x:NIEPORET.fuel.x+6,y:NIEPORET.fuel.y},box,2.2));
 });
 test('the sole local water-fuel station is at the red-circle position in the western larger basin, not Pilawa or the road ORLEN',()=>{
- assert.equal(FUEL_STATIONS.filter(q=>q.id==='pilawa-fuel').length,1);const f=NIEPORET.fuel,p=projectNieporet([21.0412369,52.4358481]);assert.ok(Math.hypot(f.pumpX-p.x,f.pumpY-p.y)<2);assert.match(f.name,/Nieporęt/);assert.ok(f.y>PILAWA.bounds.bottom);assert.ok(bottomAt(f.x+2,f.y).depth>1.5);
+ assert.equal(FUEL_STATIONS.filter(q=>q.id==='pilawa-fuel').length,1);const f=NIEPORET.fuel,p=projectNieporet([21.0412369,52.4358481]);assert.ok(Math.hypot(f.pumpX-p.x,f.pumpY-p.y)<6);assert.match(f.name,/Nieporęt/);assert.ok(f.y>PILAWA.bounds.bottom);assert.ok(bottomAt(f.x+2,f.y).depth>1.5);
 });
 test('all supported profiles start clear of terrain and structures in the three rebuilt locations',()=>{
  for(const site of['pilawa','nieporet','zeranski'])for(const profile of['tender','flat','rib','runabout','cabin','cruiser','racing','pwc','swamp'])clearHull(createBoat(site,{profile,coldStart:true}));

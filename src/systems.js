@@ -6,17 +6,17 @@ import {serviceStep} from './service.js';
 import {createBilge,bilgeStep} from './bilge.js';
 import {createElectrics,electricalStep} from './electrical.js';
 import {createOperations,operationsStep,consumeOperatingFuel} from './operations.js';
+import {fuelFrame,fuelLocal} from './fuel-geometry.js';
 export function createSystems(spec,cold=false){return{bilge:createBilge(spec),electrics:createElectrics(),operations:createOperations(),
- fuel:{capacity:spec.fuelCapacity,litres:spec.fuelCapacity*.75,flow:0,refueling:false,status:'',tanks:Array.from({length:spec.tankCount},(_,i)=>({capacity:spec.fuelCapacity/spec.tankCount,litres:spec.fuelCapacity*.75/spec.tankCount,x:-.16*spec.length,y:spec.tankCount===1?0:(i===0?-1:1)*spec.beam*.22}))},
+ fuel:{capacity:spec.fuelCapacity,litres:spec.initialFuelLitres??spec.fuelCapacity*.75,flow:0,refueling:false,status:'',tanks:Array.from({length:spec.tankCount},(_,i)=>({capacity:spec.fuelCapacity/spec.tankCount,litres:(spec.initialFuelLitres??spec.fuelCapacity*.75)/spec.tankCount,x:-.16*spec.length,y:spec.tankCount===1?0:(i===0?-1:1)*spec.beam*.22}))},
  service:{active:false,progress:0,initial:0,status:''},battery:{capacity:spec.jet?35:80+80*(Number(spec.bowThruster)+Number(spec.sternThruster)),soc:.85,voltage:12.65,current:0},thrusters:{bow:0,stern:0,bowActual:0,sternActual:0,bowForce:0,sternForce:0},coldStart:cold};}
 export function fuelBerthStatus(b){
- // A real hull side must lie alongside the marked east face of the fuel pier.
- const S=b.spec,angle=Math.abs(Math.cos(b.a));
- const face=b.x-Math.abs(Math.sin(b.a))*S.beam*.5-Math.abs(Math.cos(b.a))*S.length*.5;
- const station=FUEL_STATIONS.find(q=>angle<.40&&b.y>=q.alongMin&&b.y<=q.alongMax&&face>=q.x-.25&&face<=q.x+q.maxGap);
+ // Work in the actual berth frame, including the angled shore at Nieporęt.
+ const S=b.spec,c=Math.cos(b.a),s=Math.sin(b.a);
+ const station=FUEL_STATIONS.find(q=>{const f=fuelFrame(q),p=fuelLocal(q,b),angle=Math.abs(c*f.nx+s*f.ny),half=angle*S.length*.5+Math.abs(-s*f.nx+c*f.ny)*S.beam*.5,gap=p.normal-half;return angle<.40&&Math.abs(p.along)<=f.halfLength&&gap>=-.25&&gap<=q.maxGap;});
  const positioned=!!station;
  if(!positioned)return{ok:false,message:'Podejdź burtą do oznaczonego stanowiska paliwowego z odbijaczami.'};
- const tied=b.ropes.some(r=>{const q=mooringPoint(b,r.bollard),p=cleat(b,r.end);return q&&q.kind==='bollard'&&Math.abs(q.x-station.x)<.3&&q.y>=station.alongMin-2&&q.y<=station.alongMax+2&&Math.hypot(p.x-q.x,p.y-q.y)<=r.length+.3;});
+ const tied=b.ropes.some(r=>{const q=mooringPoint(b,r.bollard),p=cleat(b,r.end);if(!q||q.kind!=='bollard')return false;const local=fuelLocal(station,q);return Math.abs(local.normal)<.3&&Math.abs(local.along)<=fuelFrame(station).halfLength+2&&Math.hypot(p.x-q.x,p.y-q.y)<=r.length+.3;});
  if(!tied)return{ok:false,message:'Przywiąż co najmniej jedną cumę do stanowiska paliwowego.'};
  if(Math.hypot(b.vx,b.vy)>.15)return{ok:false,message:'Zatrzymaj łódź przed tankowaniem.'};
  if(b.engines.some(e=>e.key!=='off'))return{ok:false,message:'Wyłącz silniki i zapłon przed tankowaniem.'};

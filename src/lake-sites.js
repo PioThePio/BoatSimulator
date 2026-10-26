@@ -3,6 +3,7 @@ import {EUZEBIA_REFERENCE} from './site-geography-data.js';
 import {NIEPORET_REFERENCE as REFERENCE} from './nieporet-reference.js';
 import {localAttachment} from './attachment-points.js';
 import {pierSegment,solidPoint,circleSolidHit} from './solid-geometry.js';
+import {fuelPoint} from './fuel-geometry.js';
 // Published OSM/PRNG outline. Geographic distances follow the world's 50% scale.
 const outline=EUZEBIA_REFERENCE.coordinates.slice(0,-1).map(([lon,lat])=>fromGeo(lat,lon));
 const bounds={left:Math.min(...outline.map(p=>p.x)),right:Math.max(...outline.map(p=>p.x)),top:Math.min(...outline.map(p=>p.y)),bottom:Math.max(...outline.map(p=>p.y))};
@@ -32,9 +33,10 @@ export function createNieporetSite(bank){
  // The thin northern shield is land in the common shore polygon, not a second
  // overlapping dock. These virtual segments only preserve old attachment IDs.
  const breakwaters=[pierSegment(root,mid,4,{id:'pilawa-breakwater-n'}),pierSegment(mid,tip,4,{id:'pilawa-breakwater-s'})];
- const fuel={id:'pilawa-fuel',name:'ORLEN na wodzie · Port Nieporęt',x:origin.x+8,y:origin.y,pumpX:origin.x+1,pumpY:origin.y,alongMin:origin.y-9,alongMax:origin.y+9,maxGap:1.4};
- docks.push({id:'nieporet-fuel',x:fuel.x-2.8,y:fuel.alongMin-1,w:2.8,h:20,site:'nieporet',fuel:true});
- for(const dy of[-8,-2,4,10])bollards.push({id:'PIL-F-'+dy,x:fuel.x,y:origin.y+dy,kind:'bollard',site:'nieporet',fuel:fuel.id,label:'ORLEN · Nieporęt · poler'});
+ const bankAtFuel=bank(origin.x,origin.y),{nx,ny}=bankAtFuel,tx=-ny,ty=nx;
+ const fuel={id:'pilawa-fuel',name:'ORLEN na wodzie · Port Nieporęt',x:bankAtFuel.qx+nx*2.4,y:bankAtFuel.qy+ny*2.4,pumpX:bankAtFuel.qx+nx*.7,pumpY:bankAtFuel.qy+ny*.7,alongMin:origin.y-9,alongMax:origin.y+9,maxGap:1.4,frame:{tx,ty,nx,ny,halfLength:9}};
+ docks.push(pierSegment(fuelPoint(fuel,-10,-1.4),fuelPoint(fuel,10,-1.4),2.8,{id:'nieporet-fuel',site:'nieporet',fuel:true}));
+ for(const [i,along]of[-8,-2,4,8].entries())bollards.push({id:'PIL-F-'+[-8,-2,4,10][i],...fuelPoint(fuel,along),kind:'bollard',site:'nieporet',fuel:fuel.id,label:'ORLEN · Nieporęt · poler'});
  for(const [i,p]of breakwaters.entries())for(let j=0;j<(i?4:7);j++){const v=solidPoint(p,-p.pose.length/2+(j+.5)*p.pose.length/(i?4:7),2),q=bank(v.x,v.y);bollards.push({x:q.qx-q.nx*.15,y:q.qy-q.ny*.15,id:p.id+'-'+j,kind:'bollard',site:'nieporet',shoreMooring:true,legacyRotation:p.pose.a-Math.PI/2,label:'Nieporęt · osłona'});}
  for(let row=4;row<piers.length;row++)for(let j=0;j<6;j++)for(const side of[-1,1])extraBollards.push({...solidPoint(piers[row],-piers[row].pose.length/2+(j+.5)*piers[row].pose.length/6,side*1.05),id:`PIL-EX-${row}-${j}-${side}`,kind:'bollard',site:'nieporet',label:'Nieporęt · pomost '+(row+1)});
  // Narrow berth fingers share the main pier's pose; their spacing leaves hull
@@ -45,9 +47,9 @@ export function createNieporetSite(bank){
  // Short shore piers visible in the recesses; use mapped paths rather than
  // treating white boat silhouettes as additional concrete structures.
  for(const id of ['1202630071','1202630072']){const q=feature(id);for(let i=0;i<q.length-1;i++)docks.push(pierSegment(project(q[i]),project(q[i+1]),1.2,{id:`nieporet-cove-${id}-${i}`,site:'nieporet',sourceWay:id}));}
- const fenders=Array.from({length:5},(_,i)=>({x:fuel.x,y:fuel.alongMin+1+i*4,w:.22,h:.7,fender:true,id:'pilawa-fender-'+i}));
+ const fenders=Array.from({length:5},(_,i)=>pierSegment(fuelPoint(fuel,-8+i*4,.11),fuelPoint(fuel,-8+i*4+.7,.11),.22,{fender:true,id:'pilawa-fender-'+i}));
  const start=project([21.0419,52.4378]),bounds={left:origin.x-90,right:origin.x+180,top:origin.y-230,bottom:origin.y+85};
- return{...project([21.0422,52.43635]),id:'nieporet',name:'Port Nieporęt',anchor:{x:origin.x,y:origin.y},docks,bollards,extraBollards,traffic,fuel,fenders,start:{...start,a:Math.PI/2},bounds,route:[start,{x:origin.x+43,y:origin.y-130},{x:origin.x+55,y:origin.y-90},{x:origin.x+50,y:origin.y-55},{x:origin.x+48,y:origin.y-28},{x:fuel.x+10,y:fuel.y-20}],source:'https://www.openstreetmap.org/way/871129083'};
+ return{...project([21.0422,52.43635]),id:'nieporet',name:'Port Nieporęt',anchor:{x:origin.x,y:origin.y},docks,bollards,extraBollards,traffic,fuel,fenders,start:{...start,a:Math.PI/2},bounds,route:[start,{x:origin.x+43,y:origin.y-130},{x:origin.x+55,y:origin.y-90},{x:origin.x+50,y:origin.y-55},{x:origin.x+48,y:origin.y-28},fuelPoint(fuel,0,14)],source:'https://www.openstreetmap.org/way/871129083'};
 }
 
 export function createPilawaSite(bank){

@@ -61,7 +61,7 @@ test('unpowered hulls drift in current, ground with their own draft, and human p
  const f=fresh(),a=f.boats[0],b=add(f,'kayak');b.throttle=1;run(f,.5);assert.equal(b.vx,0);selectFleetBoat(f,b.id);b.throttle=1;run(f,1);assert.ok(b.vx>.1);assert.equal(b.engines[0].rpm,0);assert.equal(b.fuel.litres,0);const c=fresh(),mat=add(c,'mat');run(c,1,{...calm,currentSpeed:.4,currentDirection:90});assert.ok(mat.vx>0);assert.equal(mat.spec.sealed,true);assert.equal(mat.bilge.litres,0);
 });
 test('a disabled boat cannot generate thrust and can still receive a tow and move under the towing force',()=>{
- const f=fresh(),a=f.boats[0],b=add(f,'runabout',-16,{condition:'broken'});assert.equal(b.disabledEngine,true);assert.equal(engineKey(b,0,'ignition').ok,false);connectMarineTow(f,a.id,b.id);a.engines[0].key='running';a.throttle=.5;run(f,3);assert.ok(b.vx>.1);assert.equal(b.engines[0].thrust,0);
+ const f=fresh(),a=f.boats[0],b=add(f,'runabout',-16,{condition:'broken'});assert.equal(b.disabledEngine,true);assert.equal(engineKey(b,0,'ignition').ok,true);assert.equal(engineKey(b,0,'start').ok,false);connectMarineTow(f,a.id,b.id);a.engines[0].key='running';a.throttle=.5;run(f,3);assert.ok(b.vx>.1);assert.equal(b.engines[0].thrust,0);
 });
 test('a towable can use the same bollard/cleat mooring, with finite dynamic tension instead of freezing',()=>{
  const f=fresh(),b=add(f,'rowboat'),q=BOLLARDS.find(q=>q.kind==='bollard'&&!q.trailer);Object.assign(b,{x:q.x+3,y:q.y,a:Math.PI});assert.equal(attachRope(b,'bow',BOLLARDS.indexOf(q)).ok,true);b.vx=.3;run(f,.1);assert.ok(Number.isFinite(b.ropes[0]?.tension??0));assert.notEqual(b.x,q.x+3);

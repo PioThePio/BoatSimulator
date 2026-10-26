@@ -8,7 +8,7 @@ const dt=1/120,run=(b,t)=>{for(let i=0;i<t*120;i++)step(b,{},dt);};
 
 test('master disconnect removes every electrical load, stops the engine and actual thruster force, then requires a new key start',()=>{
  const b=createBoat('lake',{bowThruster:true});b.thrusters.bow=1;b.bilge.manual=true;b.bilge.litres=100;systemsStep(b,1);assert.ok(b.bilge.running&&b.thrusters.bowForce>0);
- setMainPower(b,false);const charge=b.battery.soc;run(b,1);assert.equal(b.battery.loadCurrent,0);assert.equal(b.battery.alternatorCurrent,0);assert.equal(b.battery.soc,charge);assert.equal(b.bilge.outflow,0);assert.equal(b.thrusters.bowForce,0);assert.equal(b.engines[0].key,'ignition');assert.ok(Object.values(b.electrics.powered).every(q=>q===false));assert.equal(engineKey(b,0,'ignition').ok,false);assert.equal(engineKey(b,0,'start').ok,false);
+ setMainPower(b,false);const charge=b.battery.soc;run(b,1);assert.equal(b.battery.loadCurrent,0);assert.equal(b.battery.alternatorCurrent,0);assert.equal(b.battery.soc,charge);assert.equal(b.bilge.outflow,0);assert.equal(b.thrusters.bowForce,0);assert.equal(b.engines[0].key,'ignition');assert.ok(Object.values(b.electrics.powered).every(q=>q===false));assert.equal(engineKey(b,0,'ignition').ok,true);assert.equal(engineKey(b,0,'start').ok,true);assert.equal(b.engines[0].key,'ignition');assert.equal(b.battery.loadCurrent,0);
  setMainPower(b,true);assert.equal(b.engines[0].key,'ignition');assert.ok(b.electrics.powered.gps);assert.ok(engineKey(b,0,'ignition').ok);
 });
 test('thrusters work with every ignition OFF, consume real charge and voltage, and stop through their own switch',()=>{

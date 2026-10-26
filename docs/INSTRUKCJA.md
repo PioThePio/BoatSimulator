@@ -7,7 +7,7 @@ parametrów i stopnia realizmu znajduje się w [opisie modelu](MODEL.md).
 
 Otwórz [symulator](https://piothepio.github.io/BoatSimulator/). Wybierz łódź,
 wymiary, masę kadłuba, dopuszczony dla niej napęd, liczbę silników i moc.
-Ustaw zbiorniki, opcjonalne strumieniowe, załogę i wyposażenie. Podsumowanie
+Ustaw ilość paliwa na start, liczbę zbiorników, opcjonalne strumieniowe, załogę i wyposażenie. Pojemność zbiornika jest stała dla typu łodzi; podział na dwa zbiorniki nie podwaja jej. Podsumowanie
 pokazuje rzeczywistą masę startową z paliwem oraz zanurzenie.
 
 Kabinowa ma domyślnie strumieniowy dziobowy, a wypornościowa dziobowy i rufowy; można je odznaczyć. Wyścigowa ma zawsze dwa Z-drive do 600 KM każdy. Pozostałe jednostki zachowują limit 350 KM na silnik.
@@ -116,13 +116,14 @@ Na spokojnej wodzie konfiguracja domyślna w pomiarze modelowym osiąga
 około 164 km/h przy około 6800 RPM. Masa, paliwo, trym, skręt i fala zmieniają osiągi.
 Prędkościomierz ma zakres 200 km/h, obrotomierze 7000 RPM.
 Głęboki dźwięk dwóch silników uzupełnia gwizd turbo rosnący z obciążeniem
-i obrotami oraz syk po gwałtownym odjęciu gazu. Suwak Silniki reguluje
+i obrotami podczas rozkręcania, cichszy szum przy ustalonym doładowaniu oraz wyraźny syk po odjęciu gazu. Suwak Silniki reguluje
 pracę napędu; cały dźwięk nadal podlega wyciszeniu i pauzie.
 
 ## Rozruch, elektryka i przyrządy
 
 Włącz główne zasilanie, ustaw N, przekręć stacyjkę w prawo: 0 → I → START.
 Po rozruchu wraca do I. Obrót w lewo wyłącza silnik i zapłon do 0.
+Kluczyk można przekręcać także bez głównego zasilania: pozycja I pozostaje, a START sprężynuje do I, lecz rozrusznik nie kręci i nie pobiera prądu.
 Strzałki sterowania nie obracają stacyjki. Włączony zapłon bez pracującego
 silnika daje ciągły sygnał; wyłączenie zapłonu go ucisza. SUV nie ma tego
 alarmu. Po zimnym rozruchu obroty lekko falują.
@@ -306,6 +307,8 @@ osiadanie i niższą rufę.
 Nominalnie: otwarta/płaskodenna/swamp/skuter 32 l/min, RIB/motorówka 50,
 kabinowa 95, wypornościowa 126. Napięcie wpływa na faktyczną wydajność.
 
+Stałe pojemności: otwarta i płaskodenna 45 l, motorówka i RIB 100 l, kabinowa 250 l, wypornościowa 400 l, skuter 60 l, swamp boat 90 l, wyścigowa 450 l. Wybranie 225 l w wyścigowej daje połowę skali E–F. Domyślnie na starcie jest 75% paliwa. Starszy zapis z paliwem ponad nową pojemność zachowuje dawny większy zbiornik, aby nie usuwać zapasu.
+
 Tankuj burtą przy oznaczonym pomoście paliwowym w Ryni albo przy wodnej
 stacji ORLEN na zachodnim brzegu większego Portu Nieporęt. W Pilawie
 nie ma tej stacji; drogowy ORLEN przy rondzie nie jest punktem obsługi łodzi.
@@ -407,6 +410,7 @@ Rozruch jest możliwy w P/N. W/↑ gaz, S/↓ hamulec, A/D skręt. Spacja
 przełącza ręczny. Q/E wybiera poprzedni/następny bieg PRND, działają też
 1–4. Gaz jest po prawej, hamulec po lewej; pedały narastają stopniowo.
 Reset SUV-a ustawia pojazd na parkingu bez rozpoczynania nowego rejsu.
+Osobny **Reset przyczepy** odzyskuje również odpiętą przyczepę na stanowisku parkingowym, z hamulcem i podporą. Nie przenosi samochodu ani już zwodowanej łodzi. Zabezpieczona łódź pozostaje na odzyskiwanej przyczepie.
 
 Na suchym podłożu można zaparkować i odczepić przyczepę. Aby podpiąć,
 podjedź hakiem do zaczepu, zatrzymaj się w odległości ≤0,8 m i z różnicą

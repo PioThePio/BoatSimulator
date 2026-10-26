@@ -6,9 +6,12 @@ import {lockedSupport,trailerBoatContact} from './trailer-support.js';
 import {attachRope} from './rigging.js';
 import {recordImpact} from './impacts.js';
 import {createWinch,connectWinch,winchStep,loadingScoreStep} from './trailer-winch.js';
+import {parkingContact,solveParkingContact} from './parking-brake.js';
+import {circleSolidHit} from './solid-geometry.js';
 export {bodyPoint,bodyLocal};
 export const SUV=SUV_GEOMETRY;
 const G=9.81,wrap=a=>Math.atan2(Math.sin(a),Math.cos(a));
+const audioBoats=new WeakMap();
 export const trailerBollardIndex=()=>BOLLARDS.findIndex(p=>p.trailer);
 function body(x,y,a,mass,iz){return{x,y,a,mass,iz,vx:0,vy:0,w:0,z:0,pitch:0};}
 export function createTowRig(b,{loaded=false,atSlip=false,slipCarY=7,misalignment=(loaded&&!atSlip ? .065 : 0)}={}){
@@ -85,6 +88,18 @@ export function resetTowVehicle(r,b){
  updateTowGeometry(r);r.status='SUV ustawiony na parkingu · P i ręczny · stan łodzi zachowany';
  return{ok:true,message:r.status};
 }
+export function resetTowTrailer(r,b){
+ const carry=r.boatLoaded&&r.secured,t=r.trailer;
+ // Recover only the trailer. The SUV and any already-launched boat stay put.
+ // A detached bay east of the ramp leaves space to reverse up to its coupler.
+ r.attached=false;r.trailerPark=true;t.x=151;t.y=-23;t.a=-Math.PI/2;t.vx=t.vy=t.w=0;
+ r.trailerDamage=r.hitchDamage=0;r.postBroken=false;r.ropeForce={x:0,y:0,torque:0};r.drawbarForce=0;r.articulation=0;r.unloadedTime=0;
+ if(!carry){b.ropes=b.ropes.filter(line=>line.bollard!==trailerBollardIndex());r.boatLoaded=r.secured=false;}
+ r.winch.attached=false;r.winch.control=r.winch.rate=r.winch.tension=0;r.winch.broken=false;
+ r.loadingScore={active:false,best:0,quality:0,samples:0,angleSum:0,offsetSum:0};
+ updateTrailerMass(r,b);updateTowGeometry(r);if(carry){placeTrailerBoat(r,b);connectWinch(r,b);}
+ r.status='Przyczepa na stanowisku parkingowym · odczepiona, podparta i zahamowana';return{ok:true,message:r.status};
+}
 export function placeTrailerBoat(r,b){
  updateTowGeometry(r);const t=r.trailer,pose=r.securedPose??{x:t.offset,y:0,angle:0},p=bodyPoint(t,pose.x,pose.y);b.x=p.x;b.y=p.y;b.a=t.a+pose.angle;b.vx=p.vx;b.vy=p.vy;b.w=t.w;b.pitch=t.pitch;b.roll=0;
  b.heave=bunkZ(t,pose.x)+b.spec.draft;b.heaveVelocity=0;b.pitchVelocity=0;b.rollVelocity=0;b.planing=0;b.grounded=false;b.underKeel=t.bunkHeight;b.groundLoad=0;b.cameraZoom=1;
@@ -131,7 +146,7 @@ function roadContact(q,length,beam,r,dt){
  for(const x of [-length*.38,0,length*.38]){const p=bodyPoint(q,x),radius=beam*.48;
   let corrections=[];
   if(p.x<minX+radius)corrections.push({nx:1,ny:0,d:minX+radius-p.x});if(p.x>maxX-radius)corrections.push({nx:-1,ny:0,d:p.x-maxX+radius});if(p.y<minY+radius)corrections.push({nx:0,ny:1,d:minY+radius-p.y});
-  for(const o of obstacles){const px=clamp(p.x,o.x,o.x+o.w),py=clamp(p.y,o.y,o.y+o.h),dx=p.x-px,dy=p.y-py,d=Math.hypot(dx,dy);if(d>0&&d<radius)corrections.push({nx:dx/d,ny:dy/d,d:radius-d});else if(d===0){const sides=[{nx:-1,ny:0,d:p.x-o.x+radius},{nx:1,ny:0,d:o.x+o.w-p.x+radius},{nx:0,ny:-1,d:p.y-o.y+radius},{nx:0,ny:1,d:o.y+o.h-p.y+radius}];corrections.push(sides.sort((a,b)=>a.d-b.d)[0]);}}
+  for(const o of obstacles){const hit=circleSolidHit(p,radius,o);if(hit)corrections.push({nx:hit.n.x,ny:hit.n.y,d:hit.depth});}
   for(const hit of corrections){q.x+=hit.nx*hit.d*.45;q.y+=hit.ny*hit.d*.45;const arm={x:p.x-q.x,y:p.y-q.y},lever=arm.x*hit.ny-arm.y*hit.nx,closing=p.vx*hit.nx+p.vy*hit.ny;if(closing<0){const j=-closing/(1/q.mass+lever*lever/q.iz);kick(q,j*hit.nx,j*hit.ny,arm.x,arm.y);if(closing<-.3){r.contacts++;r.status='Kontakt zestawu z przeszkodą';}}}
  }
 }
@@ -147,9 +162,9 @@ export function towStep(r,b,dt){
  const speed=c.vx*Math.cos(c.a)+c.vy*Math.sin(c.a),direction=r.gear==='D'?1:r.gear==='R'?-1:0,running=en.key==='running';r.speed=speed;
  const front=bodyPoint(c,SUV.wb/2),rear=bodyPoint(c,-SUV.wb/2),axle=bodyPoint(t,t.axleX),sf=vehicleSurface(front.x,front.y),sr=vehicleSurface(rear.x,rear.y),st=vehicleSurface(axle.x,axle.y);
  const supportKg=b.trailerSupport?.near?b.trailerSupport.kg:0;
- const supported=t.emptyMass+supportKg,tongue=r.attached?(t.emptyMass*(-t.axleX)/(t.hitch-t.axleX)+supportKg*(t.offset-t.axleX)/(t.hitch-t.axleX))*G:0;
+ const supported=t.emptyMass+supportKg,tongueSupport=(t.emptyMass*(-t.axleX)/(t.hitch-t.axleX)+supportKg*(t.offset-t.axleX)/(t.hitch-t.axleX))*G,tongue=r.attached?tongueSupport:0;
  const baseNormal=SUV.mass*G*clamp(1-Math.max(0,d.frontDepth+d.rearDepth-.65)*.4,.2,1)*Math.cos(grade),transfer=baseNormal*Math.sin(c.pitch)*.22;
- const nf=Math.max(baseNormal*.20,baseNormal*.48-tongue*.4-transfer),nr=Math.max(baseNormal*.20,baseNormal*.52+tongue*1.4+transfer),tn=Math.max(0,supported*G-(r.attached?tongue:0))*Math.cos(trailerGrade);
+ const nf=Math.max(baseNormal*.20,baseNormal*.48-tongue*.4-transfer),nr=Math.max(baseNormal*.20,baseNormal*.52+tongue*1.4+transfer),tn=Math.max(0,supported*G-tongueSupport)*Math.cos(trailerGrade);
  const nominalAxle=SUV.mass*G*.5,frontSoil=sf.soft?1+.45*Math.max(0,nf/nominalAxle-1):1,rearSoil=sr.soft?1+.45*Math.max(0,nr/nominalAxle-1):1;
  const muf=sf.mu/frontSoil*clamp(1-r.frontSink*1.8,.25,1),mur=sr.mu/rearSoil*clamp(1-r.rearSink*1.8,.25,1),frontLimit=muf*nf,rearLimit=mur*nr;
  const maxSpeed=r.gear==='R'?3.2:13,command=running&&direction?direction*(450+12650*r.pedal)*clamp((maxSpeed-Math.abs(speed))/.8,0,1)*Math.max(0,1-r.carDamage/100):0;
@@ -174,21 +189,29 @@ export function towStep(r,b,dt){
   const factor=normal*dt/Math.hypot(1,gradient.x,gradient.y);
   kick(body,-gradient.x*factor,-gradient.y*factor);
  }
+ if(!r.attached){const p=bodyPoint(t,t.hitch),g=vehicleGradient(p.x,p.y),factor=tongueSupport*dt/Math.hypot(1,g.x,g.y);kick(t,-g.x*factor,-g.y*factor,p.x-t.x,p.y-t.y);}
  const waterDrag=500*clamp((d.frontDepth+d.rearDepth)*.5,0,2)*Math.hypot(c.vx,c.vy);c.vx/=1+waterDrag/c.mass*dt;c.vy/=1+waterDrag/c.mass*dt;
  const ts=t.vx*Math.cos(t.a)+t.vy*Math.sin(t.a),trailerBrake=(r.trailerPark?1:t.braked?foot*.7:0)*st.mu*tn,drag=Math.min(tn*st.rolling+trailerBrake,Math.abs(ts)*t.mass/dt);
  kick(t,-Math.sign(ts)*drag*Math.cos(t.a)*dt,-Math.sign(ts)*drag*Math.sin(t.a)*dt);
  const frontGrip=Math.sqrt(Math.max(.04,1-(ff/Math.max(1,frontLimit))**2)),rearGrip=Math.sqrt(Math.max(.025,1-(rf/Math.max(1,rearLimit))**2))*(r.handbrake?.18:1);
  r.frontGrip=frontGrip;r.rearGrip=rearGrip;
  tyre(c,SUV.wb/2,c.a+r.actualSteer,nf,muf*frontGrip,20000,dt);tyre(c,-SUV.wb/2,c.a,nr,mur*rearGrip,21000,dt);tyre(t,t.axleX,t.a,tn,st.mu,22000,dt);
- if(r.trailerPark){t.vx*=Math.exp(-dt*9);t.vy*=Math.exp(-dt*9);t.w*=Math.exp(-dt*9);}
  kick(t,r.ropeForce.x*dt,r.ropeForce.y*dt);t.w+=r.ropeForce.torque/t.iz*dt;r.ropeForce={x:0,y:0,torque:0};
  let drawbar=0;if(r.attached)for(let i=0;i<8;i++)drawbar+=hitch(r,dt);r.drawbarForce=drawbar;
  // Static braking at very low speed uses the same finite friction budget.
  // It holds a parked rig without integrating a small gravity creep each step.
- if((foot>.5||r.handbrake)&&Math.abs(speed)<.08){for(let i=0;i<10;i++){
-  const u=c.vx*Math.cos(c.a)+c.vy*Math.sin(c.a),j=clamp(-u*c.mass,-brakeLimit*dt/10,brakeLimit*dt/10);kick(c,Math.cos(c.a)*j,Math.sin(c.a)*j);
-  const v=t.vx*Math.cos(t.a)+t.vy*Math.sin(t.a),jt=clamp(-v*t.mass,-trailerBrake*dt/10,trailerBrake*dt/10);kick(t,Math.cos(t.a)*jt,Math.sin(t.a)*jt);if(r.attached)hitch(r,dt);
- }}
+ const parking=[];
+ if((foot>.5||r.handbrake)&&Math.hypot(c.vx,c.vy)<.15){
+  for(const side of[-1,1]){
+   if(foot>.5)parking.push(parkingContact(c,SUV.wb/2,side*SUV.beam*.4,nf*.5,muf*foot,dt));
+   parking.push(parkingContact(c,-SUV.wb/2,side*SUV.beam*.4,nr*.5,mur*Math.max(foot,r.handbrake?1:0),dt));
+  }
+ }
+ if((r.trailerPark||r.attached&&t.braked&&foot>.5)&&Math.hypot(t.vx,t.vy)<.15){
+  for(const side of[-1,1])parking.push(parkingContact(t,t.axleX,side*t.beam*.4,tn*.5,st.mu*(r.trailerPark?1:foot*.7),dt));
+  if(!r.attached){const p=bodyPoint(t,t.hitch),surface=vehicleSurface(p.x,p.y);parking.push(parkingContact(t,t.hitch,0,tongueSupport,surface.mu,dt));}
+ }
+ for(let i=0;i<20&&parking.length;i++){for(const contact of parking)solveParkingContact(contact);if(r.attached)hitch(r,dt);}
  for(const q of [c,t]){q.x+=q.vx*dt;q.y+=q.vy*dt;q.a=wrap(q.a+q.w*dt);}
  roadContact(c,SUV.length,SUV.beam,r,dt);roadContact(t,b.spec.length,t.beam,r,dt);
  const previousAngle=r.articulation??0,articulation=Math.abs(wrap(t.a-c.a));r.articulation=articulation;
@@ -208,4 +231,4 @@ export function towStep(r,b,dt){
  updateTowGeometry(r);if(r.boatLoaded&&r.secured)placeTrailerBoat(r,b);
 }
 export function trailerContact(r,b,dt){winchStep(r,b,dt);trailerBoatContact(r,b,dt);loadingScoreStep(r,b,dt);}
-export function towAudioBoat(r,b){r.audioBoat??={};return Object.assign(r.audioBoat,{...b,tyreSlip:r.tyreSlip??0,suppressIgnitionAlarm:true,spec:{...b.spec,profile:'suv',jet:false,racing:false,diesel:false},time:r.time,engines:[r.engine],throttle:r.pedal,throttle2:0,planing:0,telemetry:{surge:0,sway:0,thrust:0},thrusters:{},fuel:{refueling:false}});}
+export function towAudioBoat(r,b){let voice=audioBoats.get(r);if(!voice){voice={};audioBoats.set(r,voice);}return Object.assign(voice,{...b,tyreSlip:r.tyreSlip??0,suppressIgnitionAlarm:true,spec:{...b.spec,profile:'suv',jet:false,racing:false,diesel:false},time:r.time,engines:[r.engine],throttle:r.pedal,throttle2:0,planing:0,telemetry:{surge:0,sway:0,thrust:0},thrusters:{},fuel:{refueling:false}});}

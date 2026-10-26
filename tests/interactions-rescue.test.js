@@ -1,3 +1,4 @@
+import {fuelPoint,fuelFrame,fuelLocal} from '../src/fuel-geometry.js';
 import {circleSolidHit,solidPoint} from '../src/solid-geometry.js';
 import {COAST_PATCHES} from '../src/world.js';
 import test from 'node:test';
@@ -98,7 +99,7 @@ test('Pilawa contains mixed, individually moored sail/motor/PWC boats with clear
  for(const q of traffic){assert.ok(bottomAt(q.x,q.y).depth>q.spec.draft);assert.ok(q.ropes.length>=2);for(const r of q.ropes){assert.ok(r.bollard>=332);const p=cleat(q,r.end),target=BOLLARDS[r.bollard];close(r.length,Math.hypot(p.x-target.x,p.y-target.y)+.12);}assert.ok(!DOCKS.some(d=>circleSolidHit(q,.01,d)));}
 });
 test('both fuel sites require own mooring, idle hull and engines/key off, preserving the original station',()=>{
- for(const station of FUEL_STATIONS){const b=createBoat('lake',{coldStart:true});Object.assign(b,{x:station.x+b.spec.beam/2+.5,y:station.y,a:Math.PI/2});assert.equal(fuelBerthStatus(b).ok,false);const i=BOLLARDS.findIndex(q=>q.kind==='bollard'&&Math.abs(q.x-station.x)<.3&&Math.abs(q.y-station.y)<6);assert.ok(i>=0);assert.ok(attachRope(b,'bow',i).ok||attachRope(b,'portStern',i).ok);assert.equal(fuelBerthStatus(b).ok,true);b.engines[0].key='ignition';assert.equal(fuelBerthStatus(b).ok,false);}
+ for(const station of FUEL_STATIONS){const b=createBoat('lake',{coldStart:true});Object.assign(b,{...fuelPoint(station,0,b.spec.beam/2+.5),a:Math.atan2(fuelFrame(station).ty,fuelFrame(station).tx)});assert.equal(fuelBerthStatus(b).ok,false);const i=BOLLARDS.findIndex(q=>q.kind==='bollard'&&Math.abs(fuelLocal(station,q).normal)<.3&&Math.abs(fuelLocal(station,q).along)<6);assert.ok(i>=0);assert.ok(attachRope(b,'bow',i).ok||attachRope(b,'portStern',i).ok);assert.equal(fuelBerthStatus(b).ok,true);b.engines[0].key='ignition';assert.equal(fuelBerthStatus(b).ok,false);}
  assert.equal(FUEL_STATION,FUEL_STATIONS[0]);
 });
 test('legacy localStorage fixture restores old state and numeric ropes, adds new marina without resetting the session',()=>{

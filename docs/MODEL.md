@@ -85,7 +85,7 @@ Drugi silnik zwiększa masę i ma osobną dynamikę.
 Parametry edytowalne: długość 2,8–11 m, szerokość 1,1–3,8 m, kadłub
 200–8000 kg, 1/2 silniki (skuter/airboat tylko 1; wyścigowa zawsze 2), 10–350 KM na silnik,
 a wyścigowa do 600 KM na silnik,
-10–800 l paliwa, 1/2 zbiorniki, 0–12 osób, 0–1500 kg wyposażenia.
+0–100% paliwa w stałym zbiorniku z tabeli, podzielonym opcjonalnie na 1/2 zbiorniki, 0–12 osób, 0–1500 kg wyposażenia.
 To zakres eksperymentów, nie potwierdzenie dopuszczalności takich
 konfiguracji przez producenta.
 
@@ -174,9 +174,10 @@ Ostry zwrot wytraca prędkość i powoduje poślizg; moc nie utrzymuje 164 km/h
 przy 45° wychylenia. Pozostałe profile zachowują swoją kalibrację.
 
 Spalanie wyścigówki wynika z mocy wału: przyjęto 0,32 kg/kWh i benzynę
-0,745 kg/l plus jałowy pobór. Gwizd turbo 850–4050 Hz odczytuje fizyczne
-`boost`. Nagłe odjęcie gazu przy boost >0,18 uruchamia krótkie BOV;
-wyłączony silnik nie generuje doładowania ani gwizdu. Suwak Silniki,
+0,745 kg/l plus jałowy pobór. Gwizd turbo 650–2200 Hz odczytuje fizyczne
+`boost` i tempo jego wzrostu. Ustalony gwizd ma wzmocnienie 0,0015×boost; podczas rozkręcania dochodzi do 0,006×boost. Towarzyszy mu filtrowany szum.
+Spadek żądania gazu o ponad 0,2 przy boost >0,25 zapisuje zdarzenie BOV w kroku silnika; nie zależy od odstępu między klatkami audio. Jedno odjęcie gazu generuje jeden syk białego szumu przez 0,38 s (pasmo schodzi 2600→950 Hz). Kolejne rozpędzenie ponownie uzbraja upust.
+Wyłączony silnik nie generuje doładowania ani gwizdu. Suwak Silniki,
 pauza i wyciszenie obejmują cały napęd.
 
 ### Opcjonalny diesel
@@ -195,11 +196,13 @@ większej mocy znamionowej ani darmowego wzrostu prędkości maksymalnej.
 Przyjęto masę silnika `115+1.05×KM` kg, paliwo 0,84 kg/l i zużycie
 0,225 kg/kWh plus pobór jałowy. Większa masa silnika i paliwa zwiększa
 masę całkowitą oraz zanurzenie względem benzynowego wariantu. Dźwięk
-ma niższą częstotliwość i inny układ harmonicznych.
+ma niższą częstotliwość i inny układ harmonicznych. Osobna warstwa szumu około 1450 Hz jest bramkowana impulsami spalania z częstością RPM/30, jako umowny czterocylindrowy czterosuw. Daje klekot, wyraźniejszy przy małych obrotach, zależny od obciążenia; gaśnie wraz z silnikiem.
+
+Przy tej samej znamionowej mocy i właściwie dobranej przekładni diesel nie ma dodatkowej energii na śrubie. Większy moment wału wynika z niższych RPM; przełożenie i śruba przekształcają moment i obroty. W modelu różnią się krzywa częściowej mocy i regulacja pod obciążeniem, a cięższy napęd może utrudniać ślizg i pogarszać przyspieszenie. Efektywny uciąg pozostaje ograniczony mocą wału.
 
 Punkty odniesienia: [Yanmar 4JH110](https://www.yanmar.com/marine/product/engines/4jh110/)
 — 110 mhp przy 3200 RPM, [Yanmar 6LY](https://www.yanmar.com/marine/product/engines/6ly/)
-— 440 mhp przy 3300 RPM. Nasz zakres i masa są przybliżeniem kilku klas,
+— 440 mhp przy 3300 RPM; [Yanmar 4LV250](https://www.yanmar.com/marine/product/engines/4lv250/) — 250 mhp przy 3800 RPM, 334 kg bez przekładni (4JH110: 229 kg). Nasz zakres i masa są przybliżeniem kilku klas,
 nie kopią tych konkretnych silników. [Go-Fast: prędkość łodzi](https://www.go-fast.com/Knowledge-base/Boat-Speed-calculator)
 podkreśla wpływ masy gotowej do rejsu, mocy wału i poślizgu śruby.
 
@@ -268,7 +271,7 @@ obciążonego napięcia; minimum 185 RPM i ograniczony czas próby powodują,
 Przełączniki i główne OFF korzystają z tego samego modelu co pompa,
 strumieniowe, GPS i instrumenty. Strumieniowe nie wymagają zapłonu.
 Master OFF gasi silnik, zachowując kluczyk w I i zapobiegając samoczynnemu
-rozruchowi po powrocie zasilania. Zwarcie od zalania nadal ma osobny
+rozruchowi po powrocie zasilania. Ruch kluczyka jest mechanicznie dostępny także bez prądu; START jest wtedy tylko chwilowym wychyleniem grafiki, bez prądu rozrusznika lub RPM. Zwarcie od zalania nadal ma osobny
 zatrzask i wyłącza kluczyki. Winda jest kolejnym odbiornikiem tego samego
 akumulatora: moc / (0,7 × napięcie), z małym poborem przy wydawaniu.
 Przycisk pompy zmienia tylko OFF→AUTO→ON; odświeżenie telemetryczne nie
@@ -282,7 +285,9 @@ Dotyczy logicznej godziny; masa znika ze zbiornika zgodnie z tym samym
 ubytkiem. Zbiorniki rozdzielają paliwo proporcjonalnie. Tankowanie
 0,65 l/s używa czasu fizycznego i wymaga lokalnego stanowiska,
 rzeczywistej cumy, prędkości ≤0,15 m/s i stacyjek OFF. Rynia i Port Nieporęt
-korzystają z jednej wspólnej logiki, nie dwóch niezależnych systemów.
+korzystają z jednej wspólnej logiki. Stanowisko ma styczną do pomostu i normalną ku wodzie. Osiowość kadłuba, odstęp burty oraz mocowanie cumy sprawdzane są w tym lokalnym układzie, także dla ukośnego pomostu. W Nieporęcie pomost 20×2,8 m, polery i odbijacze wynikają z tej samej osi dopasowanej do brzegu. Dystrybutor przesunięto o około 5 m od wcześniejszego punktu, z lądu na pomost.
+
+`initialFuelLitres` określa wyłącznie zapełnienie. `fuelCapacity` pochodzi z profilu łodzi, również przy dwóch zbiornikach. Wskaźnik pokazuje litry/pojemność. Przy wczytaniu starszej konfiguracji pojemność jest poprawiana bez usuwania paliwa; jeśli zapas przekracza pojemność profilu, pozostaje dawny większy zbiornik. Przeorientowanie starej cumy przy stacji zachowuje jej identyfikator, paliwo, motogodziny i akumulator.
 
 ## Zęza, przecieki i zalewanie
 
@@ -606,6 +611,10 @@ nadal mogą ograniczać przyczepność. Poślizg ma dźwięk.
 Parking jest poziomy; dopiero slip opada. Kąt ustawiany 4–18°, domyślnie
 8°. Profil liczy oddzielne pochylenie całego SUV-a oraz przyczepy na
 podstawie kontaktów osi/haka. Nie obraca jedynie rysunku kół.
+
+Na postoju kontakt lewego/prawego koła hamowanej osi oraz podpora dyszla rozwiązują dwuwymiarowe impulsy z ograniczeniem Coulomba μ×N×dt. Budżet impulsu jest wspólny dla 20 iteracji, więc nie mnoży się z ich liczbą. Utrzymuje położenie i obrót w granicach przyczepności, ale duża zewnętrzna siła może przesunąć zestaw. Ręczny działa na tył SUV-a, P na obie osie; odpięta przyczepa ma hamulec i podporę. Nacisk podpory i osi sumuje się do ciężaru. Kolizje drogowe również korzystają z rzeczywistego obróconego obrysu pomostów.
+
+Osobny reset odpiętej przyczepy zeruje jej ruch i uszkodzenie zaczepu na stanowisku parkingowym, zachowuje samochód i zwodowaną łódź. Audio SUV-a jest przechowywane w WeakMap, poza zapisywanym stanem: nie tworzy cyklicznego odwołania blokującego JSON/autozapis.
 
 Po zwolnieniu pasów pozostaje fizyczne podparcie i tarcie. Zanurzenie
 zmniejsza nacisk kg i tarcie: podparta → częściowo pływa → pływa.
@@ -988,3 +997,6 @@ wejścia obu basenów i drogę do stanowiska paliwowego z obsadą portową.
 Oddzielnie sprawdzane są fizyczne przepłynięcia podejść, postój i tankowanie
 pięciu profili, poprawne starty dziewięciu profili, cumowanie floty,
 wyświetlanie tej samej wody na minimapie, układ zegarów i migracja zapisów.
+
+
+Testy napraw eksploatacyjnych (`marine-fixes.test.js`, `marine-fixes.spec.js`) sprawdzają mechaniczny kluczyk bez prądu, połowę i pusty zbiornik, migrację paliwa, wieloklatkowe BOV, słyszalność upustu i klekotu w OfflineAudioContext, 90-sekundowy postój skośnego zestawu, skończony uciąg hamulca, reset odpiętej przyczepy, zapis po audio SUV-a i rzeczywiste tankowanie pięciu kadłubów w obu kierunkach przy obu stacjach. Testy wcześniejszych stacji zostały przeliczone we wspólnym układzie pomostu; warunki bezpieczeństwa tankowania pozostały te same.
