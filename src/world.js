@@ -169,7 +169,7 @@ function computeBottomAt(x,y){
 export function bottomGradient(x,y){const d=.12;return{x:(bottomAt(x+d,y).depth-bottomAt(x-d,y).depth)/(2*d),y:(bottomAt(x,y+d).depth-bottomAt(x,y-d).depth)/(2*d)};}
 export function reedDensityAt(x,y){if(shoreAt(x,y).land)return 0;return REEDS.reduce((v,r)=>Math.max(v,clamp(1-Math.hypot(x-r.x,y-r.y)/r.r,0,1)),0);}
 export function environment(t,e={},x=null,y=null){
- const weather=weatherAt(t,e),a=weather.windDirection*Math.PI/180,c=weather.currentDirection*Math.PI/180;
+ const weather=weatherAt(t,e,x,y),a=weather.windDirection*Math.PI/180,c=weather.currentDirection*Math.PI/180;
  let wind={x:Math.sin(a)*weather.windSpeed,y:-Math.cos(a)*weather.windSpeed},current={x:Math.sin(c)*weather.currentSpeed,y:-Math.cos(c)*weather.currentSpeed},shelter=1;
  if(e.spatialEffects&&x!==null){
   const wx=Math.sin(a),wy=-Math.cos(a),dx=x-ISLAND.x,dy=y-ISLAND.y,down=dx*wx+dy*wy,side=-dx*wy+dy*wx;
@@ -193,7 +193,18 @@ export function environment(t,e={},x=null,y=null){
  return{wind,current,shelter,waveScale:dry?0:.4+.6*shelter};
 }
 export function waveHeight(e,t=0){return e.autoWaves?windSea(weatherAt(t,e)).height:(e.waveHeight??0);}
-export function waveDirection(e,t=0){return e.autoWaves?windSea(weatherAt(t,e)).angle:(e.waveDirection??e.windDirection??90)*Math.PI/180;}
+export function waveReference(e){return weatherAt(0,e);}
+export function waveDirection(e,t=0){return e.autoWaves?windSea(waveReference(e)).angle:(e.waveDirection??e.windDirection??90)*Math.PI/180;}
+// Nominal crest-to-trough height, not the instantaneous elevation at a point.
+// Keep the same regional phase/spectrum as waveAt; a wind zone does not rotate
+// an established wave train instantaneously when the boat crosses its edge.
+export function waveHeightAt(x,y,t,e,flow=null){
+ if(bottomAt(x,y).depth<=0)return 0;
+ const H=waveHeight(e,t)*(e.spatialEffects?(flow??environment(t,e,x,y)).waveScale:1);if(H===0)return 0;
+ const a=waveDirection(e,t),w=waveReference(e),c=w.currentDirection*Math.PI/180;let height=0;
+ for(const [weight,period,offset]of[[.65,2.8,0],[.25,1.9,.32],[.1,3.9,-.4]]){const nx=Math.sin(a+offset),ny=-Math.cos(a+offset),q=waveCurrent(period,3,w.currentSpeed*(Math.sin(c)*nx-Math.cos(c)*ny));height+=2*Math.min(H*.5*weight*q.heightScale,.23/q.k);}
+ return height;
+}
 let dockReflectionFaces,reflectionGrid;
 function staticReflectionFaces(){
  if(dockReflectionFaces)return dockReflectionFaces;
@@ -225,7 +236,7 @@ export function waveAt(x,y,t,e){
  const floor=bottomAt(x,y);if(floor.depth<=0)return{eta:0,sx:0,sy:0,vx:0,vy:0,ax:0,ay:0,direction:{x:0,y:0}};
  const rawHeight=waveHeight(e,t),a=waveDirection(e,t),n={x:Math.sin(a),y:-Math.cos(a)};if(rawHeight===0)return{eta:0,sx:0,sy:0,vx:0,vy:0,ax:0,ay:0,direction:n};
  const local=environment(t,e,x,y),H=rawHeight*(e.spatialEffects?local.waveScale:1);let eta=0,sx=0,sy=0,vx=0,vy=0,ax=0,ay=0;
- const h=Math.max(.4,floor.depth),faces=H>0?reflectionFacesNear(x,y,24):[],weather=weatherAt(t,e),ca=weather.currentDirection*Math.PI/180,cx=Math.sin(ca)*weather.currentSpeed,cy=-Math.cos(ca)*weather.currentSpeed;
+ const h=Math.max(.4,floor.depth),faces=H>0?reflectionFacesNear(x,y,24):[],weather=waveReference(e),ca=weather.currentDirection*Math.PI/180,cx=Math.sin(ca)*weather.currentSpeed,cy=-Math.cos(ca)*weather.currentSpeed;
  for(const [weight,period,phase,offset]of [[.65,2.8,0,0],[.25,1.9,1.7,.32],[.1,3.9,3.2,-.4]]){
   // One regional phase field (3 m reference depth), not k(x)*x: varying that
   // product with every bottom sample creates spurious high-frequency waves.

@@ -1,9 +1,9 @@
 import {nearbyEngines} from './spatial-audio.js';
 import {windSound} from './wind-response.js';
 import {turboParameters} from './racing.js';
-import {clamp,waveHeight,weatherAt} from './world.js';
+import {clamp,waveHeight,environment} from './world.js';
 export function soundParameters(b,e={}){
- const speed=Math.hypot(b.telemetry.surge??0,b.telemetry.sway??0),weather=weatherAt(b.time,e);
+ const speed=Math.hypot(b.telemetry.surge??0,b.telemetry.sway??0),air=environment(b.time,e,b.x,b.y).wind,weather={windSpeed:Math.hypot(air.x,air.y)};
  const plane=clamp((b.planing-.2)/.6,0,1),skimming=plane*plane*(3-2*plane),car=b.spec.profile==='suv';
  return{wind:windSound(weather.windSpeed,e.windSound!==false),engines:b.engines.map(en=>{
    const running=en.key==='running',starting=en.key==='starting',v8=!b.spec.jet&&en.hp>=150;

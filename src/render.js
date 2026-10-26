@@ -3,11 +3,11 @@ import {heelProjection} from './attitude.js';
 import {drawHeelEdges} from './render-attitude.js';
 import {drawMooringBuoy} from './render-buoy.js';
 import {waveCurrent} from './wave-current.js';
-import {waveDirection} from './world.js';
+import {waveDirection,waveReference} from './world.js';
 import {fuelFrame} from './fuel-geometry.js';
 import {cachedTerrain} from './terrain-cache.js';
 import {drawBrakingWaves} from './braking-waves.js';
-import {windSurface} from './wind-response.js';
+import {drawWeatherSurface} from './render-weather.js';
 import {drawNavigation} from './render-navigation.js';
 import {drawEuzebiaShallows,drawNieporetDepths} from './render-shallows.js';
 import {euzebiaBeachWeight} from './island-approach.js';
@@ -118,17 +118,16 @@ function drawMapNames(ctx,state,view){
  }ctx.restore();return placed;
 }
 function drawSurfaceFlow(ctx,b,e,bounds,scale){
- const flow=environment(b.time,e,b.x,b.y),wind=Math.hypot(flow.wind.x,flow.wind.y),current=Math.hypot(flow.current.x,flow.current.y),spacing=Math.max(12,70/scale);
- if(wind<2&&current<.03)return;
+ const flow=environment(b.time,e,b.x,b.y),current=Math.hypot(flow.current.x,flow.current.y),spacing=Math.max(12,70/scale);
+ if(current<.03)return;
  for(let y=Math.floor(bounds.top/spacing)*spacing;y<bounds.bottom;y+=spacing)for(let x=Math.floor(bounds.left/spacing)*spacing;x<bounds.right;x+=spacing){
   const seed=(Math.sin(x*17.23+y*51.71)*43758.5)%1,age=(b.time*.12+Math.abs(seed)*7)%7;
-  if(wind>2){const nx=flow.wind.x/wind,ny=flow.wind.y/wind,px=x+nx*age*2,py=y+ny*age*2;if(!shoreAt(px,py).land){const length=.5+wind*.11;ctx.strokeStyle=`rgba(237,247,237,${clamp((wind-2)/24,0,.38)})`;ctx.lineWidth=.04+wind*.006;ctx.beginPath();ctx.moveTo(px,py);ctx.quadraticCurveTo(px+nx*length*.6-ny*.15,py+ny*length*.6+nx*.15,px+nx*length,py+ny*length);ctx.stroke();}}
   if(current>.03){const a=(b.time+Math.abs(seed)*14)%14,px=x+flow.current.x*a,py=y+flow.current.y*a;if(shoreAt(px,py).land)continue;ctx.strokeStyle='#cdebe7bb';ctx.lineWidth=.10;ctx.beginPath();ctx.moveTo(px,py);ctx.lineTo(px-flow.current.x*.6,py-flow.current.y*.6);ctx.stroke();ctx.beginPath();ctx.arc(px,py,.06+.08*current,0,Math.PI*2);ctx.stroke();}
  }
 }
 function drawReflectedWeather(ctx,b,e,faces){
  const H=waveHeight(e,b.time);if(H<=0)return;
- const a=waveDirection(e,b.time),n={x:Math.sin(a),y:-Math.cos(a)},weather=weatherAt(b.time,e),ca=weather.currentDirection*Math.PI/180,spectrum=waveCurrent(2.8,3,weather.currentSpeed*(Math.sin(ca)*n.x-Math.cos(ca)*n.y)),{k,omega}=spectrum;
+ const a=waveDirection(e,b.time),n={x:Math.sin(a),y:-Math.cos(a)},weather=waveReference(e),ca=weather.currentDirection*Math.PI/180,spectrum=waveCurrent(2.8,3,weather.currentSpeed*(Math.sin(ca)*n.x-Math.cos(ca)*n.y)),{k,omega}=spectrum;
  for(const f of faces){
   const incident=n.x*f.nx+n.y*f.ny;if(incident>=-.08)continue;
   const r=mirrorVector(n,f),dx=f.b.x-f.a.x,dy=f.b.y-f.a.y,length=Math.hypot(dx,dy);
@@ -181,19 +180,7 @@ export function renderWorld(ctx,state){
  // Clip water effects once; thousands of visual ripples need no physical shore queries.
  if(!waterMask){waterMask=new Path2D();waterMask.addPath(shapePath(LAKE));for(const q of ISLANDS)waterMask.addPath(shapePath(outline(q)));for(const q of COAST_PATCHES)waterMask.addPath(shapePath(q.outline));}
  ctx.save();ctx.clip(shapePath(LAKE));ctx.clip(waterMask,'evenodd');
- // Sparse anchored surface features replace the metre grid. They make translation legible.
- const H=waveHeight(env,b.time),speed=.07+H*.6,angle=waveDirection(env,b.time),nx=Math.sin(angle),ny=-Math.cos(angle);
- const weather=weatherAt(b.time,env),ca=weather.currentDirection*Math.PI/180,spectrum=waveCurrent(2.8,3,weather.currentSpeed*(Math.sin(ca)*nx-Math.cos(ca)*ny));
- const wind=windSurface(weather.windSpeed,env.windVisuals!==false);if(wind.tint){ctx.fillStyle=`rgba(100,114,124,${wind.tint})`;ctx.fillRect(bounds.left,bounds.top,bounds.right-bounds.left,bounds.bottom-bounds.top);}
- const whiteTexture=new Path2D(),blueTexture=new Path2D();
- const textureStep=Math.max(2.6,9/scale,Math.max(5,22/scale)*wind.spacing*Math.sqrt(clamp(spectrum.wavelength/11.38,.5,2)));
- for(let y=Math.floor(bounds.top/textureStep)*textureStep;y<bounds.bottom+textureStep;y+=textureStep)for(let x=Math.floor(bounds.left/textureStep)*textureStep;x<bounds.right+textureStep;x+=textureStep){
-  const seed=Math.sin(x*12.9898+y*78.233)*43758.5453,part=seed-Math.floor(seed),phase=(b.time*speed+part*4)%4;
-  const px=x+part*4.7+nx*phase,py=y+part*4.8+ny*phase;
-  const curl=(.10+H*.22)*Math.sin(b.time*1.15+part*Math.PI*2),sway=.06*Math.sin(b.time*.8+part*11);
-  const texture=part>.55-wind.white*.3?whiteTexture:blueTexture,tx=-ny,ty=nx;texture.moveTo(px-tx*.7+nx*sway,py-ty*.7+ny*sway);texture.bezierCurveTo(px-tx*.28+nx*(-.12+curl),py-ty*.28+ny*(-.12+curl),px+tx*.25+nx*(.12-curl),py+ty*.25+ny*(.12-curl),px+tx*.7-nx*sway,py+ty*.7-ny*sway);
- }
- ctx.lineWidth=.07+wind.white*.07;ctx.strokeStyle=`rgba(250,254,249,${wind.opacity})`;ctx.stroke(whiteTexture);ctx.strokeStyle='#b3cecd';ctx.stroke(blueTexture);
+ drawWeatherSurface(ctx,b,env,bounds,scale);
  for(const history of wakeHistories(b))if(history.length){drawHullWake(ctx,history,b.time);drawReflectedWake(ctx,history,b.time,reflectionFacesNear(camera.x,camera.y));}
  for(const h of [b.brakingWaves??[],...(b.wakeSources??[]).map(q=>q.braking??[])])drawBrakingWaves(ctx,h,b.time);
  if(!overview)drawSurfaceFlow(ctx,b,env,bounds,scale);

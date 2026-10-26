@@ -1,6 +1,6 @@
 # Przystań — symulator manewrów na Zegrzu
 
-**[Uruchom w przeglądarce](https://piothepio.github.io/BoatSimulator/?v=32.0.0)** · komputer, telefon lub tablet, bez konta i instalowania gry.
+**[Uruchom w przeglądarce](https://piothepio.github.io/BoatSimulator/?v=32.1.0)** · komputer, telefon lub tablet, bez konta i instalowania gry.
 
 Symulator z widokiem z góry do ćwiczenia manewrów, cumowania, kotwiczenia,
 holowania i wodowania z przyczepy. Ma dziewięć profili łodzi, pięć rodzajów

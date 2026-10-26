@@ -59,6 +59,10 @@ prostej, nie wyznaczona trasa omijająca ląd. Wyłączony GPS ukrywa odczyty.
 
 Wiatr 8 m/s to około 29 km/h; nie oznacza takiej prędkości dryfu. Kabina i nadbudówka zwiększają napór oraz zmieniają obrót łodzi. Jednostajny prąd może przesuwać całą łódź po prostej; w pobliżu przeszkód różny przepływ na dziobie i rufie może ją obrócić. Nie trzeba oczekiwać ciągłego obrotu przy każdym ustawieniu dziobu.
 
+Na wodzie osobno pokazujemy: krótkie, ciepłobiałe strzałki **wiatru** (grot wskazuje kierunek ruchu powietrza), łagodne wygięte pasma **fal**, małe zanikające skupiska **piany** oraz turkusowe znaczniki **prądu**. Mocny wiatr nie zagęszcza pola strzałek. Pod wskaźnikiem prądu jest wysokość **FALA** w metrach, od doliny do grzbietu; to orientacyjna wysokość w tym miejscu, a nie chwilowe uniesienie łodzi.
+
+Przy włączonych lokalnych efektach i zmienności wiatru nad akwenem przemieszczają się płynne strefy siły/kierunku. Korzystają z wybranych zakresów, bez dodatkowego ustawiania burzy. Równe końce zakresu siły oznaczają stałą siłę, zerowa zmienność kierunku — stały kierunek. Wyłączenie lokalnych efektów pozostawia wspólną zmienność czasową dla całego jeziora. Podmuch obraca/dryfuje łódź przez zwykłe siły; nie przestawia jej natychmiast.
+
 Automatyczna fala uwzględnia wiatr i prąd: przeciwny prąd skraca i zaostrza falę, zgodny ją rozciąga. Pomosty odbijają część fal; ich ruch współpracuje z cumami i odbijaczami. Boje cumownicze kołyszą się, pochylają po napięciu liny i ustępują przy potrąceniu, lecz pozostają zakotwiczone. Zejście ze ślizgu wytwarza krótką falę wyprzedzającą łódź.
 
 ## Tor wodny i znaki
@@ -194,12 +198,12 @@ Nacisk na dno jest stale pokazywany w kg obok zanurzenia (siła / 9,81).
 
 ☀ Pogoda otwiera przesuwalne okno. Dwa uchwyty określają minimum i maksimum
 siły wiatru/prądu, osobny suwak zmienność kierunku ±. Zrównanie końców
-daje stałą siłę. Fala może zależeć od wiatru albo mieć własną wysokość
+daje stałą siłę. Fala może zależeć od wiatru i prądu albo mieć własną wysokość
 i kierunek. Można włączać lokalne osłony, zacumowane łodzie oraz nowe
 oddziaływanie ssania brzegowego i poprzecznej fali na holowane zabawki.
 
 Przy 0–3 m/s tafla pozostaje spokojniejsza. Powyżej 6 m/s rośnie liczba
-białych zmarszczek i piany, a woda staje się bardziej szarawa. Szum wiatru
+lokalnych skupisk piany, a woda staje się bardziej szarawa. Szum wiatru
 rośnie płynnie z aktualną siłą i milknie przy zerze. Efekty wizualne
 i szum można wyłączyć osobno w Pogodzie, bez zmiany samych sił wiatru.
 

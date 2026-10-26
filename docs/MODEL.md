@@ -394,6 +394,8 @@ Nie odtwarzają rzeczywistych prądów Zegrza. Niskie pomosty i wąskie odnogi n
 
 `wind-loads.js` liczy cztery panele na ramionach −0,36/−0,12/+0,14/+0,37 długości kadłuba. Rozkład udziałów zależy od profilu: kabinowa jest bardziej wystawiona z przodu, wypornościowa ma bardziej równomierną zabudowę, swamp boat ma silny napór na tylną osłonę śmigła. Stosuje się prędkość powietrza względem poruszającego i obracającego się panelu. Składowe siły mają postać `0.5×1.225×Cd×A×|Vrel|×VrelComponent`; boczna powierzchnia nadal zawiera WindageFactor. Moment wynika z rzeczywistego ramienia panelu, bez losowego obracania łodzi. Przy bocznym wietrze 8 m/s domyślna motorówka otrzymuje około 147 N, kabinowa 592 N, wypornościowa 926 N; prędkość wiatru nie jest prędkością dryfu.
 
+`wind-field.js` dodaje ciągłe, deterministyczne strefy tylko przy `spatialEffects` i niezerowej zmienności. Współrzędne są w metrach fizycznych; skale pola to 180 m wzdłuż średniego wiatru i 130 m w poprzek, adwekcja `0.8+0.18×średniaSiła` m/s. Trzy gładkie składowe przestrzenne dają 55% odchylenia, dotychczasowa regionalna zmienność czasowa 45%. Siła i kierunek korzystają z osobnych pól i pozostają w zakresach użytkownika; stałych ustawień pole nie zmienia. Nie są to sztywne komórki ani symulacja frontu burzowego. Te same lokalne warunki trafiają do sił kadłuba, zakotwiczonych jednostek, strzałek i szumu wiatru. Zapis zachowuje czas pola i parametry, bez losowania nowej pogody po Kontynuuj.
+
 Łódź zachowuje wektor prędkości X/Y. Nie ustawia go automatycznie w osi dziobu. W równomiernym prądzie, po wyrównaniu prędkości z wodą, prostoliniowe przesuwanie jest prawidłowe. Przy przeszkodach `current-shear.js` próbkuje prąd na dziobie/rufie co 0,05 s; różnica bocznego przepływu zmienia siły rozłożone na 13 sekcjach kadłuba i generuje moment. Integracja ruchu nadal odbywa się 120 Hz.
 
 Zwykła fala to suma trzech składowych o okresach 2,8/1,9/3,9 s,
@@ -402,6 +404,8 @@ Fale wymuszają heave, roll i pitch oraz chwilowe zanurzenie napędu.
 Heave jest wizualizowany także subtelną zmianą wielkości łodzi. W trybie AUTO wysokość jest przybliżona przez `min(0.55, 0.004×|wiatr−prąd|²)`, z umownym stałym rozbiegiem; model nie prognozuje narastania fal przez wiele godzin ani rzeczywistego rozbiegu dla konkretnego kierunku na Zegrzu. Sama jednostajnie płynąca woda przy bezwietrznej pogodzie nie tworzy dużej fali.
 
 `wave-current.js` rozwiązuje dyspersję `(omega−kU)²=gk tanh(kh)`: przeciwny prąd skraca falę i zwiększa stromiznę, zgodny wydłuża ją. Wzrost wysokości wynika z przybliżonego zachowania strumienia działania falowego, ograniczonego do 1,65; przy blokowaniu fala traci energię, a stromizna `A×k` nie przekracza 0,23. Trzy regionalne składowe mają referencyjną głębokość fazy 3 m; rzeczywista lokalna głębokość zmienia ruch orbitalny. Nie liczy się `k(x)×x` od nowa dla każdej próbki dna, bo taki skrót wytwarzałby fałszywe szybkie oscylacje. Nie ma pełnego modelu refrakcji ani łamania fal. Zmienny prąd przy pomostach nadal działa na kadłub i obiekty; regionalna faza pozostaje spójna. Niezmienne widmo jest buforowane maksymalnie w 512 wpisach.
+
+Kierunek i liczba falowa istniejącego morza korzystają ze średnich, regionalnych parametrów ustawionych zakresów (`waveReference`), a nie z lokalnych podmuchów. Wysokość AUTO nadal reaguje na zmienną siłę. Zapobiega to natychmiastowemu obrotowi fal w strefie i fałszywym oscylacjom `k(t)×pozycja` daleko od początku mapy. Nie jest to model stopniowego narastania nowego widma po zmianie kierunku. Wysokość w prawym górnym panelu (`waveHeightAt`) sumuje wysokości tych samych trzech składowych po osłonie, wpływie prądu i ograniczeniu stromizny; na lądzie jest zerowa. Nie pokazuje chwilowego heave ani samej amplitudy jednej składowej.
 
 Przechył dodatni podnosi prawą burtę, opuszcza lewą. W ślizgu prawy zakręt daje przechył ujemny, czyli na prawą burtę. Samo ścieśnienie przez `cos(roll)` nie rozróżnia znaków, więc grafika przesuwa nadbudówkę zgodnie z `−sin(roll)×wysokość` i zaznacza zanurzoną/unoszoną burtę. Obok schematu dziobu jest przekrój poprzeczny i odczyt stopni L/P. Docelowy przechył w zakręcie ma limit zależny od profilu (motorówka około 11,5°, kabinowa 10,3°, skuter 16°), tłumienie 0,62; fala i wiatr nadal dodają własne wymuszenie. Wiatr przechyla kadłub w stronę, w którą pcha nadwodną część. Pochylenie dziobu korzysta z rzeczywistego przyspieszenia wzdłuż kadłuba, nie pochodnej prędkości w obracającym się układzie; wkład hamowania jest ograniczony do −0,03 rad.
 
@@ -430,17 +434,11 @@ rysowany nad wodą; kolidują jego podpory, nie cały przelot.
 
 ## Wizualna i akustyczna reakcja na wiatr
 
-`wind-response.js` jest czystym odwzorowaniem aktualnej prędkości pogody.
-Do 3 m/s brak dodatkowego zagęszczenia; od 6 m/s rośnie biała część
-akcentów, gęstość do ×3,8 i delikatna szara domieszka w kolorze wody.
-Warstwa jest wycięta obrysem jeziora i wysp, nie barwi lądu. Renderowanie
-nie zmienia równań fal ani sił. Osobny przełącznik wyłącza tę warstwę.
+`render-weather.js` rozdziela trzy warstwy. `surface-weather.js` wyznacza krótkie strzałki zgodne z lokalnym wektorem wiatru (6–10 px, maksymalnie 40 w kadrze), wygięte, półprzezroczyste pasma grzbietów oraz niewielkie, nieregularne skupiska piany. Grzbiety poruszają się według dominującej fazy `k×n.dot(pozycja)−omega×czas`, nie według prędkości strzałek. Piana jest ograniczona do 14 skupisk, ma gładki cykl zanikania i pojawia się na części grzbietów przy wietrze powyżej 6 m/s. W oddaleniu pomijane są szczegóły, zamiast generować tysiące fal. To przybliżenie wyglądu, bez zmiany sił wake, cum i kolizji.
 
-Nowy generator to osobny bufor białego szumu i filtr lowpass. Gain
-`0.004 × windSpeed`, cutoff `250+95×windSpeed` Hz, z wygładzaniem
-zmian w czasie rzeczywistym. Przy 0 m/s cel głośności jest 0.
-Wyciszenie, pauza i przełącznik szumu odcinają efekt. Nie zastępuje
-istniejącej warstwy silników, wody, biegów ani rozruchu.
+`wind-response.js` ustala subtelne przyciemnienie tafli i ilość piany. Znaczniki prądu pozostają osobną turkusową warstwą. Przełącznik „Znaczniki wiatru i piana” ukrywa strzałki, pianę i przyciemnienie; nie wyłącza fizyki wiatru ani obrazu ręcznie ustawionych fal.
+
+Szum powietrza to biały szum przez filtr dolnoprzepustowy. `windSound` wyznacza gain liniowo `0.004×lokalnaPrędkośćWiatru`, cutoff `250+95×prędkość` Hz. Przy zerze i wyłączeniu szumu gain jest zerowy; wygładzanie Web Audio ogranicza trzaski. Zmiany nie przebudowują dźwięków silników, manetek ani stacyjki.
 
 ## Tor wodny, IALA A i podwodne przeszkody
 
@@ -963,6 +961,8 @@ sprawdza te menu w Chromium, logi niepowodzeń, suwaki przy 360–1440 px,
 zawartość tarcz, przycisk cumowania i powiększone światła.
 
 Testy `environment-handling.test.js` / `.spec.js` obejmują 8 m/s naporu i ramiona wiatru, dryf po skosie, brak sztucznego obrotu w jednorodnym prądzie, moment od gradientu, przechył do wnętrza zakrętu, chłodzenie dwóch napędów, dyspersję i blokowanie fal, pracę zacumowanej łodzi na odbijaczach, ugięcie i potrącenie boi, liniowość rzędów boi, zgodność zapisu, cofanie ze sterem wałowym oraz pojedynczą falę hamowania. Kontrolowany test wynurzania śruby ustawia jawnie poziome położenie kadłuba, zamiast dziedziczyć jego dawny błędny kąt po hamowaniu.
+
+`weather-surface.test.js` i `.spec.js` sprawdzają rozdzielenie strzałek/fal/piany, kierunki N/E/S/W, ograniczenie liczby i długości znaków, zgodność grzbietów z fazą, cykl piany, niezależne zakresy stref, ich adwekcję i ciągłość, rzeczywiste siły i zachowanie pędu, lokalny dźwięk, zgodność Kontynuuj, stabilność fal daleko od początku mapy, wysokość w panelu oraz układ telefonu. Starszy test renderowania rozpoznaje nowy kolor strzałek, nadal wymagając osobnego ruchu wiatru i prądu przy wyłączonej fali. Test dawnego zagęszczania kresek sprawdza teraz ograniczoną liczbę strzałek i kolor tafli, zachowując kontrolę rzeczywistych próbek audio. Test mostu wstrzykuje kontrastową falę przez nową operację wypełnienia pasma i nadal wymaga, żeby most ją przykrył.
 
 ## Źródła i pochodzenie założeń
 
