@@ -1,3 +1,4 @@
+import {drawHeelEdges} from './render-attitude.js';
 import {attachmentNames} from './attachment-points.js';
 import {cleat,cleatLocal,CLEATS} from './rigging.js';
 import {mooringPoint} from './marina.js';
@@ -13,7 +14,7 @@ export function drawUnpowered(ctx,b){
   if(kind==='barge'){ctx.strokeStyle='#c0c3a8';for(let x=-3;x<3.5;x+=1){ctx.beginPath();ctx.moveTo(x,-1);ctx.lineTo(x,1);ctx.stroke();}}
   else{ctx.fillStyle='#ded8bb';for(const x of [-.2,.7])ctx.fillRect(x,-S.beam*.35,.12,S.beam*.7);if(S.manual&&b.occupied){const effort=Math.abs(b.throttle),phase=effort>.001?b.time*3:0,reach=.7+.3*Math.sin(phase)*effort;ctx.strokeStyle='#9b7947';ctx.lineWidth=.065;for(const side of [-1,1]){ctx.beginPath();ctx.moveTo(0,side*S.beam*.25);ctx.lineTo(-.5+Math.sin(phase)*.15*effort,side*(S.beam*.5+reach));ctx.stroke();}}}
  }
- for(const end of Object.keys(attachmentNames(b))){const p=cleatLocal(S,end);ctx.fillStyle=end==='stern'||end==='towCenter'?'#152f2b':'#d5a64f';ctx.beginPath();ctx.arc(p.x,p.y,end==='stern'||end==='towCenter'?.19:.12,0,Math.PI*2);ctx.fill();}drawFenders(ctx,b);ctx.restore();
+ for(const end of Object.keys(attachmentNames(b))){const p=cleatLocal(S,end);ctx.fillStyle=end==='stern'||end==='towCenter'?'#152f2b':'#d5a64f';ctx.beginPath();ctx.arc(p.x,p.y,end==='stern'||end==='towCenter'?.19:.12,0,Math.PI*2);ctx.fill();}drawFenders(ctx,b);drawHeelEdges(ctx,b);ctx.restore();
 }
 export function drawFleet(ctx,fleet,active,drawBoat,visible,scale,overview){
  if(!fleet)return;

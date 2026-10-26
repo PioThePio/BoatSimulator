@@ -219,6 +219,8 @@ własne istniejące modele. Wiosła dają dwa podłużne wysiłki po przeciwnych
 burtach: suma maleje z wychyleniem, różnica obraca kadłub. Limit 90 N /
 85 W; pełny skręt daje pracę przeciwną obu wioseł, N daje zerową siłę.
 
+Dla napędu wałowego osobny ster ma powierzchnię `clamp(0.07×L×zanurzenie, 0.18, 0.55)` m² i lokalny napływ `v+yaw×ramięSteru`. Praca naprzód dodaje strumień na ster; cofanie nie daje fikcyjnego strumienia za śrubą, lecz sam wsteczny przepływ tworzy siłę normalną do płetwy. Powierzchnia jest większa w ciężkiej jednostce i daje wyraźniejszą sterowność wstecz przy faktycznym ruchu. Bez przepływu ster nie generuje siły. Prop walk jest zachowany.
+
 ## Trym, wentylacja, grafika i temperatura
 
 Trym zmienia geometrię nogi, pionową składową ciągu, położenie śruby,
@@ -246,7 +248,7 @@ zanurzenia wlotu i przepływu. HIGH TEMP ≥95°C, ALARM ≥105°C,
 OVERHEAT ≥120°C, ochronne wyłączenie ≥145°C. Moc spada do 35% w
 zakresie 105–135°C. Rozruch jest blokowany ponad 110°C, flaga trip
 znika po spadku do 100°C. Nie ma trwałego zatarcia. Chłodzenie i
-temperatura używają fizycznych sekund, nie czasu eksploatacyjnego.
+temperatura używają fizycznych sekund, nie czasu eksploatacyjnego. Alarm wynurzonego wlotu wymaga ciągłego braku zanurzenia przez ponad 0,35 s; samo chłodzenie i temperatura nadal reagują na faktyczne zanurzenie. Krótkie rozbryzgi nie są ogłaszane jako trwała utrata chłodzenia. Prawdziwe podniesienie napędu lub długa utrata wody nadal prowadzą do przegrzania.
 
 ## Instalacja elektryczna i paliwo
 
@@ -386,14 +388,22 @@ Wiatr działa na nadwodny obrys przez względny przepływ i momenty,
 prąd przez prędkość wody względem kadłuba. WindageFactor:
 skuter 0,3, otwarta/płaskodenna 0,55, motorówka 0,6, swamp 0,85,
 RIB 0,9, kabinowa/wypornościowa 1,0. Siła i kierunek mogą zmieniać
-się niezależnie w zadanym zakresie. Osłony wysp/pomostów oraz
+się niezależnie w zadanym zakresie. Osłony wysp i budynków oraz
 zawirowania i kierowanie przy brzegu są lokalnymi przybliżeniami.
-Nie odtwarzają rzeczywistych prądów Zegrza.
+Nie odtwarzają rzeczywistych prądów Zegrza. Niskie pomosty i wąskie odnogi nie tłumią wiatru jak ściany; ich wcześniejsze wielokrotne osłanianie nadmiernie wyciszało port. Zabudowa rzuca słabnący cień do 45 m.
+
+`wind-loads.js` liczy cztery panele na ramionach −0,36/−0,12/+0,14/+0,37 długości kadłuba. Rozkład udziałów zależy od profilu: kabinowa jest bardziej wystawiona z przodu, wypornościowa ma bardziej równomierną zabudowę, swamp boat ma silny napór na tylną osłonę śmigła. Stosuje się prędkość powietrza względem poruszającego i obracającego się panelu. Składowe siły mają postać `0.5×1.225×Cd×A×|Vrel|×VrelComponent`; boczna powierzchnia nadal zawiera WindageFactor. Moment wynika z rzeczywistego ramienia panelu, bez losowego obracania łodzi. Przy bocznym wietrze 8 m/s domyślna motorówka otrzymuje około 147 N, kabinowa 592 N, wypornościowa 926 N; prędkość wiatru nie jest prędkością dryfu.
+
+Łódź zachowuje wektor prędkości X/Y. Nie ustawia go automatycznie w osi dziobu. W równomiernym prądzie, po wyrównaniu prędkości z wodą, prostoliniowe przesuwanie jest prawidłowe. Przy przeszkodach `current-shear.js` próbkuje prąd na dziobie/rufie co 0,05 s; różnica bocznego przepływu zmienia siły rozłożone na 13 sekcjach kadłuba i generuje moment. Integracja ruchu nadal odbywa się 120 Hz.
 
 Zwykła fala to suma trzech składowych o okresach 2,8/1,9/3,9 s,
 z wysokością, kierunkiem, orbitalnymi prędkościami i przyspieszeniami.
 Fale wymuszają heave, roll i pitch oraz chwilowe zanurzenie napędu.
-Heave jest wizualizowany także subtelną zmianą wielkości łodzi.
+Heave jest wizualizowany także subtelną zmianą wielkości łodzi. W trybie AUTO wysokość jest przybliżona przez `min(0.55, 0.004×|wiatr−prąd|²)`, z umownym stałym rozbiegiem; model nie prognozuje narastania fal przez wiele godzin ani rzeczywistego rozbiegu dla konkretnego kierunku na Zegrzu. Sama jednostajnie płynąca woda przy bezwietrznej pogodzie nie tworzy dużej fali.
+
+`wave-current.js` rozwiązuje dyspersję `(omega−kU)²=gk tanh(kh)`: przeciwny prąd skraca falę i zwiększa stromiznę, zgodny wydłuża ją. Wzrost wysokości wynika z przybliżonego zachowania strumienia działania falowego, ograniczonego do 1,65; przy blokowaniu fala traci energię, a stromizna `A×k` nie przekracza 0,23. Trzy regionalne składowe mają referencyjną głębokość fazy 3 m; rzeczywista lokalna głębokość zmienia ruch orbitalny. Nie liczy się `k(x)×x` od nowa dla każdej próbki dna, bo taki skrót wytwarzałby fałszywe szybkie oscylacje. Nie ma pełnego modelu refrakcji ani łamania fal. Zmienny prąd przy pomostach nadal działa na kadłub i obiekty; regionalna faza pozostaje spójna. Niezmienne widmo jest buforowane maksymalnie w 512 wpisach.
+
+Przechył dodatni podnosi prawą burtę, opuszcza lewą. W ślizgu prawy zakręt daje przechył ujemny, czyli na prawą burtę. Samo ścieśnienie przez `cos(roll)` nie rozróżnia znaków, więc grafika przesuwa nadbudówkę zgodnie z `−sin(roll)×wysokość` i zaznacza zanurzoną/unoszoną burtę. Obok schematu dziobu jest przekrój poprzeczny i odczyt stopni L/P. Docelowy przechył w zakręcie ma limit zależny od profilu (motorówka około 11,5°, kabinowa 10,3°, skuter 16°), tłumienie 0,62; fala i wiatr nadal dodają własne wymuszenie. Wiatr przechyla kadłub w stronę, w którą pcha nadwodną część. Pochylenie dziobu korzysta z rzeczywistego przyspieszenia wzdłuż kadłuba, nie pochodnej prędkości w obracającym się układzie; wkład hamowania jest ograniczony do −0,03 rad.
 
 Wake powstaje ze śladu dowolnego emitera, nie tylko gracza. Amplituda
 zależy od prędkości względem wody, masy, L/B, typu kadłuba, liczby
@@ -406,7 +416,11 @@ To samo pole fali jest rysowane i próbkowane przez kadłub, zacumowane
 łodzie, boje, Y-bomy i obiekty ratunkowe. Rozłożone siły dają również
 moment; reakcja zmienia napięcie konkretnych lin i kompresję odbijaczy.
 Boje mają sprężyste zakotwienie i ograniczone przesunięcie, Y-bomy
-zawias/restytucję oraz własną bezwładność; nie są nieruchomymi obrazkami.
+zawias/restytucję oraz własną bezwładność; nie są nieruchomymi obrazkami. Zacumowane jednostki próbkują też orbitalną prędkość wody, więc cykl fali napina/luzuje linę i dociska/odciąża odbijacz. Nie ma wymuszonego losowego odsuwania od pomostu.
+
+Boja cumownicza ma efektywną bezwładność 140 kg i kotwiczenie `k=2500+22000×max(0,d−0.15)²` N/m, tłumienie 1000 Ns/m oraz ograniczony zasięg 0,55 m. Napór cumy pochyla oko boi. Kadłub dotyka miękkiego pływaka o promieniu 0,42 m przez sprężynę 12 kN/m i tłumienie, z przeciwnym impulsem na łódź; kontakt nie jest twardym uderzeniem w pomost. Grafika pokazuje pływający korpus, oko i wodnicę. W Nieporęcie boje każdego rzędu leżą 12 m od osi własnego pomostu; długość cumy zależy od długości łodzi. Odczyt starego zapisu przenosi punkt kotwiczenia z zachowaniem pozycji łodzi oraz dotychczasowego luzu cumy.
+
+Zejście ze ślizgu przy hamowaniu powyżej 0,4 m/s² lub mocne hamowanie śrubą powyżej 1,2 m/s² emituje pojedynczą falę z przodu (przy ruchu wstecz z rufy). Pakiet ma maksymalną amplitudę 0,42 m, prędkość 2–4,8 m/s, tłumienie `exp(−wiek/6)`, zanika po 14 s. Dociera do innych ciał z opóźnieniem; kolejne zmniejszanie gazu w tym samym epizodzie nie produkuje niekończących się fal.
 
 Odbicia wykorzystują lustrzane źródła od skończonych odcinków, najwyżej
 dwa odbicia. Twarde pomosty mają współczynniki około 0,56–0,64, naturalny
@@ -948,7 +962,11 @@ migrację istniejącej cumy i nowy limit rzutu holu 20 m. Plik `.spec.js`
 sprawdza te menu w Chromium, logi niepowodzeń, suwaki przy 360–1440 px,
 zawartość tarcz, przycisk cumowania i powiększone światła.
 
+Testy `environment-handling.test.js` / `.spec.js` obejmują 8 m/s naporu i ramiona wiatru, dryf po skosie, brak sztucznego obrotu w jednorodnym prądzie, moment od gradientu, przechył do wnętrza zakrętu, chłodzenie dwóch napędów, dyspersję i blokowanie fal, pracę zacumowanej łodzi na odbijaczach, ugięcie i potrącenie boi, liniowość rzędów boi, zgodność zapisu, cofanie ze sterem wałowym oraz pojedynczą falę hamowania. Kontrolowany test wynurzania śruby ustawia jawnie poziome położenie kadłuba, zamiast dziedziczyć jego dawny błędny kąt po hamowaniu.
+
 ## Źródła i pochodzenie założeń
+
+Model względnych prędkości, sił i momentów: [Thor I. Fossen — Marine Craft Model](https://www.fossen.biz/html/marineCraftModel.html). Odniesienie prędkości wiatru i stanu morza: [Met Office — Beaufort scale](https://www.metoffice.gov.uk/weather/guides/coast-and-sea/beaufort-scale). Skala stanu otwartego morza nie jest używana wprost jako wysokość fal na jeziorze. Współczynniki poszczególnych rekreacyjnych kadłubów, rozkłady nadbudówki i progi alarmów pozostają jawnymi założeniami treningowego modelu.
 
 Punkty odniesienia konstrukcji modelu, nie przeniesione współczynniki
 realnych motorówek:

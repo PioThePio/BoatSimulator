@@ -7,6 +7,7 @@ import {euzebiaBeachWeight,euzebiaSlope} from './island-approach.js';
 import {ZEGRZE_BOUNDS,ZEGRZE_SHORE,ZEGRZE_ISLANDS,BRIDGES,REMOTE_HARBORS,FUEL_LOCATION,MAP_LABELS,fromAtlas,WORLD_DISTANCE_SCALE} from './zegrze.js';
 import {createShoreQuery} from './shore-geometry.js';
 import {weatherAt} from './weather.js';
+import {windSea,waveCurrent} from './wave-current.js';
 import {mirrorPoint,mirrorVector,wallDistance} from './wave-reflections.js';
 import {EUZEBIA,createNieporetSite,createPilawaSite} from './lake-sites.js';
 export {weatherAt} from './weather.js';
@@ -167,7 +168,6 @@ function computeBottomAt(x,y){
 }
 export function bottomGradient(x,y){const d=.12;return{x:(bottomAt(x+d,y).depth-bottomAt(x-d,y).depth)/(2*d),y:(bottomAt(x,y+d).depth-bottomAt(x,y-d).depth)/(2*d)};}
 export function reedDensityAt(x,y){if(shoreAt(x,y).land)return 0;return REEDS.reduce((v,r)=>Math.max(v,clamp(1-Math.hypot(x-r.x,y-r.y)/r.r,0,1)),0);}
-let shelterBoxes;
 export function environment(t,e={},x=null,y=null){
  const weather=weatherAt(t,e),a=weather.windDirection*Math.PI/180,c=weather.currentDirection*Math.PI/180;
  let wind={x:Math.sin(a)*weather.windSpeed,y:-Math.cos(a)*weather.windSpeed},current={x:Math.sin(c)*weather.currentSpeed,y:-Math.cos(c)*weather.currentSpeed},shelter=1;
@@ -175,8 +175,9 @@ export function environment(t,e={},x=null,y=null){
   const wx=Math.sin(a),wy=-Math.cos(a),dx=x-ISLAND.x,dy=y-ISLAND.y,down=dx*wx+dy*wy,side=-dx*wy+dy*wx;
   if(down>0)shelter-=.70*Math.exp(-Math.max(0,down-70)/160)*Math.exp(-((side/75)**2));
   const shore=shoreAt(x,y);if(shore.edge==='canal')shelter*=.45;
-  shelterBoxes??=DOCKS.map(d=>{const r=Math.hypot(18,Math.max(d.w,d.h)*.5);return{x:d.x+d.w/2-r,y:d.y+d.h/2-r,w:r*2,h:r*2};});
-  for(const i of nearbySolids(shelterBoxes,x,y,.001)){const d=DOCKS[i],px=x-(d.x+d.w/2),py=y-(d.y+d.h/2),back=px*wx+py*wy,lateral=Math.abs(-px*wy+py*wx);if(back>0&&back<18&&lateral<Math.max(d.w,d.h)*.5)shelter*=.90;}
+  // Deck-level piers and 25 cm fingers are not windbreaks. Multiplying a
+  // shadow for every berth previously erased most wind in a dense marina.
+  for(const d of BUILDINGS){const px=x-(d.x+d.w/2),py=y-(d.y+d.h/2),back=px*wx+py*wy,lateral=Math.abs(-px*wy+py*wx),width=Math.max(d.w,d.h)*.5+Math.max(0,back)*.18;if(back>0&&back<45&&lateral<width)shelter*=1-.45*(1-back/45)*(1-lateral/width);}
   wind={x:wind.x*shelter,y:wind.y*shelter};
   const V=Math.hypot(current.x,current.y);
   if(V>0){
@@ -191,7 +192,8 @@ export function environment(t,e={},x=null,y=null){
  if(dry)current={x:0,y:0};
  return{wind,current,shelter,waveScale:dry?0:.4+.6*shelter};
 }
-export function waveHeight(e,t=0){return e.autoWaves?Math.min(.55,.004*weatherAt(t,e).windSpeed**2):(e.waveHeight??0);}
+export function waveHeight(e,t=0){return e.autoWaves?windSea(weatherAt(t,e)).height:(e.waveHeight??0);}
+export function waveDirection(e,t=0){return e.autoWaves?windSea(weatherAt(t,e)).angle:(e.waveDirection??e.windDirection??90)*Math.PI/180;}
 let dockReflectionFaces,reflectionGrid;
 function staticReflectionFaces(){
  if(dockReflectionFaces)return dockReflectionFaces;
@@ -221,20 +223,21 @@ export function reflectionFacesNear(x,y,radius=70){
 }
 export function waveAt(x,y,t,e){
  const floor=bottomAt(x,y);if(floor.depth<=0)return{eta:0,sx:0,sy:0,vx:0,vy:0,ax:0,ay:0,direction:{x:0,y:0}};
- const rawHeight=waveHeight(e,t),a=(e.waveDirection??e.windDirection??90)*Math.PI/180,n={x:Math.sin(a),y:-Math.cos(a)};if(rawHeight===0)return{eta:0,sx:0,sy:0,vx:0,vy:0,ax:0,ay:0,direction:n};
- const H=rawHeight*(e.spatialEffects?environment(t,e,x,y).waveScale:1);let eta=0,sx=0,sy=0,vx=0,vy=0,ax=0,ay=0;
- const h=Math.max(.4,floor.depth),faces=H>0?reflectionFacesNear(x,y,24):[];
+ const rawHeight=waveHeight(e,t),a=waveDirection(e,t),n={x:Math.sin(a),y:-Math.cos(a)};if(rawHeight===0)return{eta:0,sx:0,sy:0,vx:0,vy:0,ax:0,ay:0,direction:n};
+ const local=environment(t,e,x,y),H=rawHeight*(e.spatialEffects?local.waveScale:1);let eta=0,sx=0,sy=0,vx=0,vy=0,ax=0,ay=0;
+ const h=Math.max(.4,floor.depth),faces=H>0?reflectionFacesNear(x,y,24):[],weather=weatherAt(t,e),ca=weather.currentDirection*Math.PI/180,cx=Math.sin(ca)*weather.currentSpeed,cy=-Math.cos(ca)*weather.currentSpeed;
  for(const [weight,period,phase,offset]of [[.65,2.8,0,0],[.25,1.9,1.7,.32],[.1,3.9,3.2,-.4]]){
-  const omega=2*Math.PI/period;let k=omega*omega/9.81;for(let i=0;i<5;i++)k=omega*omega/(9.81*Math.tanh(k*3));
-  const nx=Math.sin(a+offset),ny=-Math.cos(a+offset),A=H*.5*weight,theta=k*(x*nx+y*ny)-omega*t+phase,co=Math.cos(theta),si=Math.sin(theta),orb=A*omega/Math.tanh(Math.max(.2,k*h));
-  eta+=A*co;sx-=A*k*si*nx;sy-=A*k*si*ny;vx+=orb*co*nx;vy+=orb*co*ny;ax+=orb*omega*si*nx;ay+=orb*omega*si*ny;
+  // One regional phase field (3 m reference depth), not k(x)*x: varying that
+  // product with every bottom sample creates spurious high-frequency waves.
+  const nx=Math.sin(a+offset),ny=-Math.cos(a+offset),q=waveCurrent(period,3,cx*nx+cy*ny),{k,omega,sigma}=q,A=Math.min(H*.5*weight*q.heightScale,.23/k),theta=k*(x*nx+y*ny)-omega*t+phase,co=Math.cos(theta),si=Math.sin(theta),orb=A*sigma/Math.tanh(Math.max(.2,k*h));
+  eta+=A*co;sx-=A*k*si*nx;sy-=A*k*si*ny;vx+=orb*co*nx;vy+=orb*co*ny;ax+=orb*sigma*si*nx;ay+=orb*sigma*si*ny;
   for(const f of faces){
    const incident=nx*f.nx+ny*f.ny;if(incident>=-.08)continue;
    const reflected=mirrorVector({x:nx,y:ny},f),d=wallDistance({x,y},f),travel=d/(-incident);
    const hit={x:x-reflected.x*travel,y:y-reflected.y*travel},dx=f.b.x-f.a.x,dy=f.b.y-f.a.y,u=((hit.x-f.a.x)*dx+(hit.y-f.a.y)*dy)/(dx*dx+dy*dy);
    if(u<0||u>1)continue;
    const p=mirrorPoint({x,y},f),theta=k*(p.x*nx+p.y*ny)-omega*t+phase,g=f.coefficient*Math.exp(-travel/30),co=Math.cos(theta)*g,si=Math.sin(theta)*g;
-   eta+=A*co;sx-=A*k*si*reflected.x;sy-=A*k*si*reflected.y;vx+=orb*co*reflected.x;vy+=orb*co*reflected.y;ax+=orb*omega*si*reflected.x;ay+=orb*omega*si*reflected.y;
+   eta+=A*co;sx-=A*k*si*reflected.x;sy-=A*k*si*reflected.y;vx+=orb*co*reflected.x;vy+=orb*co*reflected.y;ax+=orb*sigma*si*reflected.x;ay+=orb*sigma*si*reflected.y;
   }
  }
  return {eta,sx,sy,vx,vy,ax,ay,direction:n};

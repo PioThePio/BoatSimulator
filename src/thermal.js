@@ -7,6 +7,7 @@ export function thermalStep(en,dt,context={}){
  const running=en.key==='running',speed=Math.abs(context.speed??0),n=en.n;
  const intake=context.air?1:(context.intake??(context.onTrailer?0:context.jet?1:1-clamp((trimAngle(en.trim)*180/Math.PI-43)/25,0,1)));
  const blocked=context.air?1:(context.intakeBlocked?.20:1)*(context.raised?0:1);
+ en.coolingLossTime=running&&intake<.25?(en.coolingLossTime??0)+dt:0;
  en.cooling=running?intake*blocked*(.65+.35*clamp(n/.5,0,1)):0;
  const loaded=!context.air&&running&&en.gear!==0&&speed<.8&&n>.5&&(context.moored||context.grounded);
  if(loaded)en.cooling*=.70;
@@ -26,12 +27,12 @@ export function thermalStep(en,dt,context={}){
 export function coolingWarning(b){
  if(b.spec.air||b.spec.passive)return'';
  const working=b.engines.filter(e=>e.key==='running');
- if(working.some(e=>(e.intake??1)<.25)){
+ if(working.some(e=>(e.intake??1)<.25&&(e.coolingLossTime??Infinity)>.35)){
   if(b.spec.jet)return'Wlot chłodzenia wynurzony · zanurz wlot';
   if(b.enginesRaised||working.some(e=>e.intake<.25&&e.trim>.4))return'Brak chłodzenia · opuść napęd';
   return'Wlot chłodzenia nad wodą · sprawdź zanurzenie rufy';
  }
  if(working.some(e=>e.intakeBlocked))return'Wlot chłodzenia przy dnie · odsuń się z płycizny';
- if(working.some(e=>e.cooling<.25&&e.clock>1))return'Słabe chłodzenie · sprawdź wlot i wypływ wody';
+ if(working.some(e=>e.cooling<.25&&e.clock>1&&(e.coolingLossTime??Infinity)>.35))return'Słabe chłodzenie · sprawdź wlot i wypływ wody';
  return'';
 }

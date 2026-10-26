@@ -57,6 +57,10 @@ logiczne, zgodne ze skróconą geografią. ETA pojawia się podczas zbliżania
 do celu, nie na postoju ani podczas oddalania. To kierunek do celu po
 prostej, nie wyznaczona trasa omijająca ląd. Wyłączony GPS ukrywa odczyty.
 
+Wiatr 8 m/s to około 29 km/h; nie oznacza takiej prędkości dryfu. Kabina i nadbudówka zwiększają napór oraz zmieniają obrót łodzi. Jednostajny prąd może przesuwać całą łódź po prostej; w pobliżu przeszkód różny przepływ na dziobie i rufie może ją obrócić. Nie trzeba oczekiwać ciągłego obrotu przy każdym ustawieniu dziobu.
+
+Automatyczna fala uwzględnia wiatr i prąd: przeciwny prąd skraca i zaostrza falę, zgodny ją rozciąga. Pomosty odbijają część fal; ich ruch współpracuje z cumami i odbijaczami. Boje cumownicze kołyszą się, pochylają po napięciu liny i ustępują przy potrąceniu, lecz pozostają zakotwiczone. Zejście ze ślizgu wytwarza krótką falę wyprzedzającą łódź.
+
 ## Tor wodny i znaki
 
 Przycisk ⚑ Znaki otwiera legendę. Umowny kierunek toru biegnie z jeziora
@@ -118,6 +122,8 @@ Prędkościomierz ma zakres 200 km/h, obrotomierze 7000 RPM.
 Głęboki dźwięk dwóch silników uzupełnia gwizd turbo rosnący z obciążeniem
 i obrotami podczas rozkręcania, cichszy szum przy ustalonym doładowaniu oraz wyraźny syk po odjęciu gazu. Suwak Silniki reguluje
 pracę napędu; cały dźwięk nadal podlega wyciszeniu i pauzie.
+
+Obok uniesienia dziobu jest wskaźnik **PRZECHYŁ**: stopnie oraz **L** (lewa burta niżej) / **P** (prawa niżej). Na mapie przesunięcie nadbudówki i rozjaśniony, zanurzony brzeg kadłuba pokazują kierunek przechyłu. Przy szybkim zakręcie motorówka przechyla się do wnętrza łuku.
 
 ## Rozruch, elektryka i przyrządy
 

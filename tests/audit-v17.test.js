@@ -46,7 +46,7 @@ test('wave exposure really removes propeller grip and its return is gradual',()=
  const b=createBoat('lake',{powers:[150]});b.throttle=.65;swim(b,8);const en=b.engines[0],wet=en.thrust;
  // A wave trough at a fixed hull attitude samples the actual disk geometry.
  let low=1,high=0,minThrust=Infinity;const e={waveHeight:.6,waveDirection:90};
- b.heave=.24;
+ b.heave=.32;b.pitch=b.roll=0;
  for(let i=0;i<600;i++){b.time+=dt;propellerContact(b,en,dt,()=>{},e);updateEngine(en,.65,4,dt,0,{immersion:en.immersion,intake:en.intake});low=Math.min(low,en.immersion);high=Math.max(high,en.ventilation);minThrust=Math.min(minThrust,en.thrust);}
  assert.ok(low<.7&&high>.1);assert.ok(wet>0);assert.ok(minThrust<wet*.5);
 });

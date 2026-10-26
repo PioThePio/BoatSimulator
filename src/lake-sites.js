@@ -21,8 +21,8 @@ export function createNieporetSite(bank){
   for(let j=0;j<8;j++)for(const side of[-1,1])bollards.push({...solidPoint(pier,-L/2+(j+.5)*L/8,side*1.05),id:`PIL-${row}-${j}-${side}`,kind:'bollard',site:'nieporet',legacyRotation:pier.pose.a,label:`Nieporęt · pomost ${row+1} / ${j+1}${side<0?' N':' S'}`});
   if(row<3)for(let j=0;j<7;j++){
    if(row===1&&j>4)continue;const type=['motor','sail','motor','pwc','sail','motor','motor'][(j+row)%7],length=type==='sail'?8.1:type==='pwc'?3.1:5.5+j%2,beam=type==='sail'?2.5:type==='pwc'?1.2:2.25,a=pier.pose.a+Math.PI/2;
-   const p=solidPoint(pier,-L/2+(j+1)*L/8,1.2+length*.5+1.05),buoyId=`PIL-B-${row}-${j}`,along=length*.43+1.7;
-   bollards.push({id:buoyId,x:p.x+Math.cos(a)*along,y:p.y+Math.sin(a)*along,kind:'buoy',site:'nieporet',legacyRotation:pier.pose.a,label:'Nieporęt · boja dziobowa'});
+   const p=solidPoint(pier,-L/2+(j+1)*L/8,1.2+length*.5+1.05),buoyId=`PIL-B-${row}-${j}`;
+   bollards.push({id:buoyId,...solidPoint(pier,-L/2+(j+1)*L/8,12),kind:'buoy',site:'nieporet',legacyRotation:pier.pose.a,label:'Nieporęt · boja dziobowa'});
    traffic.push({id:'pilawa-'+row+'-'+j,type,...p,a,length,beam,mass:type==='sail'?2850:type==='pwc'?360:1250+(j%2)*350,site:'nieporet',ties:[['portStern',`PIL-${row}-${j+1}-1`],['starboardStern',`PIL-${row}-${j}-1`],['bow',buoyId]]});
   }
  }

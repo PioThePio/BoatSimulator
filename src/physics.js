@@ -11,6 +11,10 @@ import {sampleBankGeometry,bankForce} from './interaction-scene.js';
 import {createBuoys} from './buoys.js';
 // SI, x east / y south. Heading clockwise from east. Physics reference: docs/MODEL.md.
 import {clamp,DOCKS,SOLIDS,BOLLARDS,SERVICE_STATION,MAP_STARTS,environment,bottomAt,waveAt,reflectionFacesNear,reedDensityAt} from './world.js';
+import {rollTarget as targetRoll} from './attitude.js';
+import {currentShear} from './current-shear.js';
+import {shaftRudderForce} from './shaft-rudder.js';
+import {buoyContacts} from './buoys.js';
 import {trimAngle} from './drive.js';
 import {engineSteering} from './drive-effects.js';
 import {sampleWorldWake,wakeHistories} from './wave-field.js';
@@ -77,8 +81,8 @@ export function step(b,e,dt,{sharedStep=true}={}){
  if(!onSupports)[b.heave,b.heaveVelocity]=oscillator(b.heave,b.heaveVelocity,wave.eta*(1+(S.waveResponse-1)*b.planing)-floodingDepth(b)-(b.anchor.shape?.V??0)/(1000*9.81*S.length*S.beam*.65),4.2+3*b.planing,.65,dt);
  floodingStep(b,dt,wave.eta);applyFloodShort(b,wave.eta);
  const windSide=-env.wind.x*s+env.wind.y*c;
- const rollTarget=clamp(Math.atan(-wave.sx*s+wave.sy*c)*S.waveResponse+windSide*Math.abs(windSide)*S.freeboard/(S.mass*.9)-b.planing*Math.atan((b.telemetry.surge??0)*b.w/9.81)*.6+(S.inflatable&&e.towEffects!==false?(b.towHeel??0):0),-.3,.3);
- if(!onSupports)[b.roll,b.rollVelocity]=oscillator(b.roll,b.rollVelocity,rollTarget,Math.sqrt(9.81/(S.beam*.32)),.28,dt);
+ const rollTarget=targetRoll(S,{crossSlope:-wave.sx*s+wave.sy*c,windSide,surge:b.telemetry.surge??0,yaw:b.w,planing:b.planing,towHeel:S.inflatable&&e.towEffects!==false?(b.towHeel??0):0});
+ if(!onSupports)[b.roll,b.rollVelocity]=oscillator(b.roll,b.rollVelocity,rollTarget,Math.sqrt(9.81/(S.beam*.32)),.62,dt);
  const ur=(b.vx-env.current.x)*c+(b.vy-env.current.y)*s;
  const vr=-(b.vx-env.current.x)*s+(b.vy-env.current.y)*c;
  const u=(b.vx-water.x)*c+(b.vy-water.y)*s;
@@ -95,7 +99,7 @@ export function step(b,e,dt,{sharedStep=true}={}){
  const targetPlaning=S.planing&&u>0?wetFraction*clamp((fn-.48*threshold)/(.4*threshold),0,1)*clamp((liftRatio-(S.jet?.12:.22)*threshold)/(S.jet?.40:.43),0,1):0;
  b.planing+=(targetPlaning-b.planing)*(1-Math.exp(-dt/(targetPlaning>b.planing?2.8:1.4)));
  const hump=Math.exp(-(((fn-.55)/.24)**2))*(1-.65*b.planing);
- const pitchTarget=clamp(Math.atan(wave.sx*c+wave.sy*s)*S.waveResponse+hump*.085+(b.planing*(.045+driveAngle*.42))+(b.telemetry.acceleration??0)*.014-S.cgX/S.length*.3-(b.anchor.shape?.V??0)/(S.mass*9.81)*.5+bilgeTrimAngle(S,b.bilge?.litres),-.12,.24);
+ const pitchTarget=clamp(Math.atan(wave.sx*c+wave.sy*s)*S.waveResponse+hump*.085+(b.planing*(.045+driveAngle*.42))+clamp((b.telemetry.acceleration??0)*.014,-.03,.07)-S.cgX/S.length*.3-(b.anchor.shape?.V??0)/(S.mass*9.81)*.5+bilgeTrimAngle(S,b.bilge?.litres),-.12,.24);
  if(!onSupports)[b.pitch,b.pitchVelocity]=oscillator(b.pitch,b.pitchVelocity,pitchTarget,Math.sqrt(9.81/(S.length*.14)),.65,dt);
  // ITTC-inspired friction + approximate wave-making hump and planing support drag.
  const re=Math.max(1e5,Math.abs(u)*S.length/1e-6),cf=.075/(Math.log10(re)-2)**2;
@@ -118,7 +122,7 @@ export function step(b,e,dt,{sharedStep=true}={}){
  const poweredTurn=clamp(Math.abs(b.actualSteer)/S.maxSteer,0,1)*clamp(b.engines.reduce((sum,en)=>sum+Math.abs(en.thrust),0)/(S.mass*2),0,1)*clamp(1-Math.abs(u)/5,0,1);
  b.powerOn=sternPowerOnState(S,b.engines,b.actualSteer,u,dt,b.powerOn);
  b.racingSlide=racingSternRelease(S,b.engines,b.actualSteer,u);
- if(S.inflatable)inflatableLateral(S,v,b.w,b.planing,force);else hullLateralForces(S,u,v,b.w,b.planing,(x,y,px,py)=>force(x*wetFraction,y*wetFraction,px,py),poweredTurn,Math.max(b.powerOn.release,b.racingSlide));
+ if(S.inflatable)inflatableLateral(S,v,b.w,b.planing,force);else hullLateralForces(S,u,v,b.w,b.planing,(x,y,px,py)=>force(x*wetFraction,y*wetFraction,px,py),poweredTurn,Math.max(b.powerOn.release,b.racingSlide),currentShear(b,e,env.current));
  if(!b.bank||b.time>=(b.bankAt??0)){b.bank=bankInfluence(b);b.bankAt=b.time+.25;}
  const bankSteering=1-.06*b.bank.strength*clamp(Math.abs(u)/2,0,1);
  // Outboards rotate at a finite rate; linked controls copy commands, not engine states.
@@ -148,10 +152,8 @@ export function step(b,e,dt,{sharedStep=true}={}){
   const air=airRudderForce(S,thrust,delta);
   force(S.air?air.x:thrust*Math.cos(driveDelta),S.air?air.y:-thrust*Math.sin(driveDelta),x,y);totalThrust+=thrust;
   if(S.propulsion==='inboard'){
-   const wash=thrust>0?Math.sqrt(thrust/(.5*1000*.18))*.55:0;
-   const flow=u+wash,side=(flow-b.w*y)*Math.sin(delta)+(v+b.w*x)*Math.cos(delta);
-   const rudder=-.5*1000*.16*Math.hypot(flow,side)*side/(1+Math.abs(side)/Math.max(.5,Math.abs(flow)));
-   force(rudder*Math.sin(delta),rudder*Math.cos(delta),S.rudderLever,y);
+   const rudder=shaftRudderForce(S,u,v,b.w,delta,thrust,y);
+   force(rudder.x,rudder.y,S.rudderLever,y);
   }
   const walk=propWalkForce(S,engine,Math.hypot(u,v),b.planing);force(0,walk,x,y);engine.propWalk=walk;
   // Submerged skeg: flow creates steering even in neutral; stalls at large incidence.
@@ -187,7 +189,9 @@ export function step(b,e,dt,{sharedStep=true}={}){
  groundContact(b,wave,dt,m=>event(b,m));
  b.x+=b.vx*dt;b.y+=b.vy*dt;b.a+=b.w*dt;
  if(wetFraction>.1&&bottomAt(b.x,b.y).depth>0){recordHullWake(b.wake,b,env.current);recordBrakingWave(b,env.current,dt);}else b.wake=[];
- contacts(b,dt);boomContacts(b,dt);trafficStep(b,e,dt,{integrate:sharedStep});if(sharedStep&&e.traffic)for(const q of b.traffic)boomContacts(q,dt,b);if(sharedStep)boomStep(b,e,dt);
+ contacts(b,dt);boomContacts(b,dt);buoyContacts(b,dt);trafficStep(b,e,dt,{integrate:sharedStep});if(sharedStep&&e.traffic)for(const q of b.traffic)boomContacts(q,dt,b);if(sharedStep)boomStep(b,e,dt);
  if(b.damage>=100){b.throttle=0;b.throttle2=0;}
- b.telemetry={surge:ur,sway:vr,thrust:totalThrust,drag:Math.abs(drag),acceleration:udot,shaftPower:b.engines.reduce((sum,en)=>sum+(en.shaftPower??en.hp*735.5*en.n**3),0)};
+ // du is physical acceleration along the hull. udot also includes rotating
+ // coordinates; using it for pitch made a sliding turn spuriously lift the stern.
+ b.telemetry={surge:ur,sway:vr,thrust:totalThrust,drag:Math.abs(drag),acceleration:du,shaftPower:b.engines.reduce((sum,en)=>sum+(en.shaftPower??en.hp*735.5*en.n**3),0)};
 }

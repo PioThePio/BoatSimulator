@@ -1,4 +1,9 @@
 import {solidPose} from './solid-geometry.js';
+import {heelProjection} from './attitude.js';
+import {drawHeelEdges} from './render-attitude.js';
+import {drawMooringBuoy} from './render-buoy.js';
+import {waveCurrent} from './wave-current.js';
+import {waveDirection} from './world.js';
 import {fuelFrame} from './fuel-geometry.js';
 import {cachedTerrain} from './terrain-cache.js';
 import {drawBrakingWaves} from './braking-waves.js';
@@ -123,8 +128,7 @@ function drawSurfaceFlow(ctx,b,e,bounds,scale){
 }
 function drawReflectedWeather(ctx,b,e,faces){
  const H=waveHeight(e,b.time);if(H<=0)return;
- const a=(e.waveDirection??e.windDirection??90)*Math.PI/180,n={x:Math.sin(a),y:-Math.cos(a)},omega=2*Math.PI/2.8;
- let k=omega*omega/9.81;for(let i=0;i<5;i++)k=omega*omega/(9.81*Math.tanh(k*3));
+ const a=waveDirection(e,b.time),n={x:Math.sin(a),y:-Math.cos(a)},weather=weatherAt(b.time,e),ca=weather.currentDirection*Math.PI/180,spectrum=waveCurrent(2.8,3,weather.currentSpeed*(Math.sin(ca)*n.x-Math.cos(ca)*n.y)),{k,omega}=spectrum;
  for(const f of faces){
   const incident=n.x*f.nx+n.y*f.ny;if(incident>=-.08)continue;
   const r=mirrorVector(n,f),dx=f.b.x-f.a.x,dy=f.b.y-f.a.y,length=Math.hypot(dx,dy);
@@ -134,7 +138,7 @@ function drawReflectedWeather(ctx,b,e,faces){
    for(let crest=first;crest<first+3;crest++){
     const d=(crest*2*Math.PI-phase)/(-k*incident);if(d>18)continue;
     const px=x+f.nx*d,py=y+f.ny*d;if(bottomAt(px,py).depth<=0)continue;
-    ctx.strokeStyle=`rgba(235,251,240,${Math.min(.45,H*f.coefficient*2)*Math.exp(-d/30)})`;ctx.lineWidth=.08;
+    ctx.strokeStyle=`rgba(235,251,240,${Math.min(.5,H*spectrum.heightScale*f.coefficient*2)*Math.exp(-d/30)})`;ctx.lineWidth=.08;
     ctx.beginPath();ctx.moveTo(px-r.y*.8,py+r.x*.8);ctx.quadraticCurveTo(px+.08*r.x,py+.08*r.y,px+r.y*.8,py-r.x*.8);ctx.stroke();
    }
   }
@@ -178,15 +182,16 @@ export function renderWorld(ctx,state){
  if(!waterMask){waterMask=new Path2D();waterMask.addPath(shapePath(LAKE));for(const q of ISLANDS)waterMask.addPath(shapePath(outline(q)));for(const q of COAST_PATCHES)waterMask.addPath(shapePath(q.outline));}
  ctx.save();ctx.clip(shapePath(LAKE));ctx.clip(waterMask,'evenodd');
  // Sparse anchored surface features replace the metre grid. They make translation legible.
- const H=waveHeight(env,b.time),speed=.07+H*.6,angle=(env.waveDirection??90)*Math.PI/180,nx=Math.sin(angle),ny=-Math.cos(angle);
- const wind=windSurface(weatherAt(b.time,env).windSpeed,env.windVisuals!==false);if(wind.tint){ctx.fillStyle=`rgba(100,114,124,${wind.tint})`;ctx.fillRect(bounds.left,bounds.top,bounds.right-bounds.left,bounds.bottom-bounds.top);}
+ const H=waveHeight(env,b.time),speed=.07+H*.6,angle=waveDirection(env,b.time),nx=Math.sin(angle),ny=-Math.cos(angle);
+ const weather=weatherAt(b.time,env),ca=weather.currentDirection*Math.PI/180,spectrum=waveCurrent(2.8,3,weather.currentSpeed*(Math.sin(ca)*nx-Math.cos(ca)*ny));
+ const wind=windSurface(weather.windSpeed,env.windVisuals!==false);if(wind.tint){ctx.fillStyle=`rgba(100,114,124,${wind.tint})`;ctx.fillRect(bounds.left,bounds.top,bounds.right-bounds.left,bounds.bottom-bounds.top);}
  const whiteTexture=new Path2D(),blueTexture=new Path2D();
- const textureStep=Math.max(2.6,9/scale,Math.max(5,22/scale)*wind.spacing);
+ const textureStep=Math.max(2.6,9/scale,Math.max(5,22/scale)*wind.spacing*Math.sqrt(clamp(spectrum.wavelength/11.38,.5,2)));
  for(let y=Math.floor(bounds.top/textureStep)*textureStep;y<bounds.bottom+textureStep;y+=textureStep)for(let x=Math.floor(bounds.left/textureStep)*textureStep;x<bounds.right+textureStep;x+=textureStep){
   const seed=Math.sin(x*12.9898+y*78.233)*43758.5453,part=seed-Math.floor(seed),phase=(b.time*speed+part*4)%4;
   const px=x+part*4.7+nx*phase,py=y+part*4.8+ny*phase;
   const curl=(.10+H*.22)*Math.sin(b.time*1.15+part*Math.PI*2),sway=.06*Math.sin(b.time*.8+part*11);
-  const texture=part>.55-wind.white*.3?whiteTexture:blueTexture;texture.moveTo(px-.7,py+sway);texture.bezierCurveTo(px-.28,py-.12+curl,px+.25,py+.12-curl,px+.7,py-sway);
+  const texture=part>.55-wind.white*.3?whiteTexture:blueTexture,tx=-ny,ty=nx;texture.moveTo(px-tx*.7+nx*sway,py-ty*.7+ny*sway);texture.bezierCurveTo(px-tx*.28+nx*(-.12+curl),py-ty*.28+ny*(-.12+curl),px+tx*.25+nx*(.12-curl),py+ty*.25+ny*(.12-curl),px+tx*.7-nx*sway,py+ty*.7-ny*sway);
  }
  ctx.lineWidth=.07+wind.white*.07;ctx.strokeStyle=`rgba(250,254,249,${wind.opacity})`;ctx.stroke(whiteTexture);ctx.strokeStyle='#b3cecd';ctx.stroke(blueTexture);
  for(const history of wakeHistories(b))if(history.length){drawHullWake(ctx,history,b.time);drawReflectedWake(ctx,history,b.time,reflectionFacesNear(camera.x,camera.y));}
@@ -214,7 +219,7 @@ export function renderWorld(ctx,state){
  for(const f of ALL_FUEL_FENDERS){const hit=b.lastImpact?.target===f.id&&b.time-b.lastImpact.time<1.6;ctx.fillStyle=hit?'#e2b66b':'#3b5751';ctx.save();if(f.pose){const p=f.pose;ctx.translate(p.x,p.y);ctx.rotate(p.a);ctx.beginPath();ctx.roundRect(-p.length/2,-p.width/2,p.length,p.width,.10);}else{ctx.beginPath();ctx.roundRect(f.x,f.y,f.w,f.h,.10);}ctx.fill();ctx.restore();}
  for(let index=0;index<BOLLARDS.length;index++){const q=mooringPoint(b,index),isSelected=index===selected;if(!visible(q.x,q.y)||q.trailer&&b.towRig?.postBroken)continue;
   if(q.kind==='tree'){ctx.fillStyle='#7b6a47';ctx.beginPath();ctx.arc(q.x,q.y,.32,0,Math.PI*2);ctx.fill();ctx.fillStyle='#7f9d70';for(const [dx,dy,r]of [[-.7,-.7,.85],[.7,-.5,.9],[0,.6,1]]){ctx.beginPath();ctx.arc(q.x+dx,q.y+dy,r,0,Math.PI*2);ctx.fill();}}
-  ctx.beginPath();if(q.kind==='buoy'){ctx.ellipse(q.x,q.y,.45*(1+(q.heave??0)*.25),.45*Math.cos(q.roll??0),q.roll??0,0,Math.PI*2);}else ctx.arc(q.x,q.y,isSelected?.34:.22,0,Math.PI*2);ctx.fillStyle=isSelected?'#bd7541':'#d3a34b';ctx.fill();ctx.strokeStyle='#7b6943';ctx.lineWidth=.07;ctx.stroke();
+  if(q.kind==='buoy'){drawMooringBuoy(ctx,q,isSelected,b.time);continue;}ctx.beginPath();ctx.arc(q.x,q.y,isSelected?.34:.22,0,Math.PI*2);ctx.fillStyle=isSelected?'#bd7541':'#d3a34b';ctx.fill();ctx.strokeStyle='#7b6943';ctx.lineWidth=.07;ctx.stroke();
  }
  // Point velocities relative to local water drive every hull ripple.
  if(previousBoat!==b){wake=[];lastWake=b.time;previousBoat=b;}
@@ -271,10 +276,12 @@ function drawBoat(ctx,b){
   const paint=impactPaint(b,zone);if(!paint.color)continue;
   ctx.save();ctx.globalAlpha=paint.flash>0?.4+.6*paint.flash:.35+.5*paint.damage/100;ctx.strokeStyle=paint.color;ctx.lineWidth=paint.flash>0?.23:.13;ctx.lineCap='round';ctx.beginPath();points.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.stroke();ctx.restore();
  }
+ ctx.save();ctx.translate(0,heelProjection(b.spec,b.roll).deckShift*2.1/b.spec.beam);
  if(b.spec.hullType==='rib'){ctx.strokeStyle='#718c87';ctx.lineWidth=.30;for(const side of [-1,1]){ctx.beginPath();ctx.moveTo(-2.6,side*.85);ctx.quadraticCurveTo(1.2,side*1.18,2.5,0);ctx.stroke();}}if(b.spec.jet){ctx.fillStyle='#364e4d';ctx.beginPath();ctx.ellipse(-.4,0,1.3,.55,0,0,Math.PI*2);ctx.fill();ctx.fillStyle='#d4d5ba';ctx.fillRect(.5,-.6,.18,1.2);}else{
  ctx.fillStyle='#c9b08a';ctx.fillRect(-1.75,-.68,2.05,1.36);ctx.fillStyle='#ebeee4';ctx.fillRect(-1.5,-.55,.4,1.1);ctx.fillStyle='#567d7b';ctx.fillRect(.1,-.7,.58,1.4);ctx.fillStyle='#d0dfda';ctx.fillRect(.18,-.57,.25,1.14);ctx.fillStyle='#eee8d8';ctx.fillRect(-.8,-.52,.65,.43);ctx.fillRect(-.8,.09,.65,.43);
  if(['cabin','cruiser'].includes(b.spec.profile)){ctx.fillStyle='#e8ece2';ctx.fillRect(-.1,-.77,1.6,1.54);ctx.fillStyle='#699393';ctx.fillRect(.9,-.65,.3,1.3);}}
- if(b.spec.racing){ctx.strokeStyle='#fff2d9';ctx.lineWidth=.15;for(const y of [-.28,.28]){ctx.beginPath();ctx.moveTo(.8,y);ctx.lineTo(2.5,y*.15);ctx.stroke();}ctx.fillStyle='#314e52';ctx.beginPath();ctx.roundRect(-.15,-.62,1.1,1.24,.18);ctx.fill();}
+ if(b.spec.racing){ctx.strokeStyle='#fff2d9';ctx.lineWidth=.15;for(const y of [-.28,.28]){ctx.beginPath();ctx.moveTo(.8,y);ctx.lineTo(2.5,y*.15);ctx.stroke();}ctx.fillStyle='#314e52';ctx.beginPath();ctx.roundRect(-.15,-.62,1.1,1.24,.18);ctx.fill();}ctx.restore();
+ ctx.save();ctx.scale(5.5/b.spec.length,2.1/b.spec.beam);drawHeelEdges(ctx,b);ctx.restore();
  for(const engine of b.engines){
   if(b.spec.air){ctx.save();ctx.translate(-1.8,0);ctx.strokeStyle='#4b6255';ctx.lineWidth=.12;ctx.beginPath();ctx.ellipse(0,0,.36,.99,0,0,Math.PI*2);ctx.stroke();ctx.lineWidth=.045;for(const y of [-.75,-.4,0,.4,.75]){ctx.beginPath();ctx.moveTo(-.26,y);ctx.lineTo(.26,y);ctx.stroke();}const phase=engine.key==='running'?b.time*(9+engine.n*30):.5;ctx.strokeStyle='#6d7e63';ctx.lineWidth=.12;for(let i=0;i<3;i++){const a=phase+i*Math.PI*2/3;ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(Math.cos(a)*.2,Math.sin(a)*.88);ctx.stroke();}for(const side of [-1,1]){ctx.save();ctx.translate(-.8,side*.5);ctx.rotate(-b.actualSteer);ctx.fillStyle='#70856a';ctx.fillRect(-.35,-.06,.6,.12);ctx.restore();}ctx.restore();continue;}
   if(['outboard','zdrive'].includes(b.spec.propulsion)){ctx.save();ctx.scale(5.5/b.spec.length,2.1/b.spec.beam);drawSternDrive(ctx,b,engine);ctx.restore();}
@@ -286,7 +293,7 @@ function drawBoat(ctx,b){
  if(b.spec.jet){const eye=cleatLocal(b.spec,'bow');ctx.save();ctx.scale(5.5/b.spec.length,2.1/b.spec.beam);ctx.strokeStyle='#f4e6ba';ctx.fillStyle='#193b36';ctx.lineWidth=.07;ctx.beginPath();ctx.arc(eye.x,eye.y,.16,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.restore();}
  if(b.electrics?.powered.navigationLights){for(const [x,y,color]of [[1.65,-.50,'#e2685b'],[1.65,.50,'#74d794'],[-2.4,0,'#fff8dc']]){ctx.fillStyle='#f9fbf0';ctx.beginPath();ctx.arc(x,y,.29,0,Math.PI*2);ctx.fill();ctx.fillStyle=color;ctx.beginPath();ctx.arc(x,y,.23,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#244c43';ctx.lineWidth=.04;ctx.stroke();}}
  drawDeckWater(ctx,b);
- ctx.strokeStyle='#5c8a88';ctx.lineWidth=.035;ctx.beginPath();ctx.moveTo(-2,Math.sin(b.roll)*3);ctx.lineTo(1.5,Math.sin(b.roll)*3);ctx.stroke();ctx.fillStyle='#d5a64f';for(const end of Object.keys(attachmentNames(b))){const p=cleatLocal(b.spec,end);ctx.fillStyle=end==='stern'?'#152f2b':'#d5a64f';ctx.beginPath();ctx.arc(p.x*5.5/b.spec.length,p.y*2.1/b.spec.beam,end==='stern'?.20:.10,0,Math.PI*2);ctx.fill();}ctx.restore();
+ ctx.fillStyle='#d5a64f';for(const end of Object.keys(attachmentNames(b))){const p=cleatLocal(b.spec,end);ctx.fillStyle=end==='stern'?'#152f2b':'#d5a64f';ctx.beginPath();ctx.arc(p.x*5.5/b.spec.length,p.y*2.1/b.spec.beam,end==='stern'?.20:.10,0,Math.PI*2);ctx.fill();}ctx.restore();
 }
 export function renderMinimap(canvas,b,view){
  const c=canvas.getContext('2d'),w=canvas.width,h=canvas.height,p=minimapProjection(w,h,b),scale=p.scale;

@@ -10,8 +10,9 @@ import {point,cleat,inverseMass,impulse} from './rigging.js';
 import {hullLateralForces,windForces} from './hydrodynamics.js';
 import {mooringPoint,boomInverse,boomLoad} from './marina.js';
 import {recordImpact} from './impacts.js';
+import {currentShear} from './current-shear.js';
 export function createTraffic(){return TRAFFIC.map(q=>{
- const spec={length:q.length,beam:q.beam,mass:q.mass,draft:q.type==='sail'?.65:q.type==='pwc'?.2:.38,freeboard:q.type==='sail'?1.1:q.type==='pwc'?.3:.65,mx:q.mass*1.08,my:q.mass*1.65,iz:1.55*q.mass*((q.length*.27)**2+(q.beam*.22)**2)};
+ const spec={profile:q.type==='sail'?'cruiser':q.type==='pwc'?'pwc':'runabout',windageFactor:q.type==='sail'?1:q.type==='pwc'?.3:.6,length:q.length,beam:q.beam,mass:q.mass,draft:q.type==='sail'?.65:q.type==='pwc'?.2:.38,freeboard:q.type==='sail'?1.1:q.type==='pwc'?.3:.65,mx:q.mass*1.08,my:q.mass*1.65,iz:1.55*q.mass*((q.length*.27)**2+(q.beam*.22)**2)};
  const boat={...q,spec,fenders:true,fenderContacts:{},damage:0,dockDamage:0,events:[],homeX:q.x,homeY:q.y,homeA:q.a,vx:0,vy:0,w:0,heave:0,roll:0,pitch:0,heaveVelocity:0,rollVelocity:0,pitchVelocity:0};
  boat.ropes=q.ties.map(([end,id])=>{const p=cleat(boat,end),bollard=BOLLARDS.findIndex(q=>q.id===id),target=BOLLARDS[bollard];return{end,bollard,length:Math.hypot(p.x-target.x,p.y-target.y)+.12,tension:0};});
  return boat;
@@ -42,11 +43,11 @@ export function trafficStep(b,e,dt,{integrate=true}={}){
   const rest=q.restPose,still=bodyAtRest(q)&&waterAtRest(flow,wave,ends)&&q.ropes.every(r=>r.tension===0);
   const sameTargets=still&&rest&&rest.targets?.length===q.ropes.length&&q.ropes.every((r,i)=>{const p=mooringPoint(b,r.bollard),old=rest.targets[i];return p.x===old.x&&p.y===old.y&&r.length===old.length;});
   if(!sameTargets||q.x!==rest.x||q.y!==rest.y||q.a!==rest.a){
-  const windSide=-flow.wind.x*Math.sin(q.a)+flow.wind.y*Math.cos(q.a),rollTarget=Math.atan(-wave.sx*Math.sin(q.a)+wave.sy*Math.cos(q.a))*1.3+windSide*Math.abs(windSide)*q.spec.freeboard/(m*2);
+  const windSide=-flow.wind.x*Math.sin(q.a)+flow.wind.y*Math.cos(q.a),rollTarget=Math.atan(-wave.sx*Math.sin(q.a)+wave.sy*Math.cos(q.a))*1.3-windSide*Math.abs(windSide)*q.spec.freeboard/(m*2);
   for(const [key,target,omega,damping]of [['heave',wave.eta,3.8,.34],['roll',clamp(rollTarget,-.25,.25),Math.sqrt(9.81/(q.beam*.35)),.24],['pitch',Math.atan(wave.sx*Math.cos(q.a)+wave.sy*Math.sin(q.a)),3.5,.4]]){const velocity=key+'Velocity';q[velocity]+=(omega*omega*(target-q[key])-2*damping*omega*q[velocity])*dt;q[key]+=q[velocity]*dt;}
-  const c0=Math.cos(q.a),s0=Math.sin(q.a),u=(q.vx-flow.current.x)*c0+(q.vy-flow.current.y)*s0,v=-(q.vx-flow.current.x)*s0+(q.vy-flow.current.y)*c0;
+  const c0=Math.cos(q.a),s0=Math.sin(q.a),ux=q.vx-flow.current.x-wave.vx*.65,uy=q.vy-flow.current.y-wave.vy*.65,u=ux*c0+uy*s0,v=-ux*s0+uy*c0;
   let X=0,Y=0,N=0;const force=(x,y,px=0)=>{X+=x;Y+=y;N+=px*y;};
-  hullLateralForces(q.spec,u,v,q.w,0,force);
+  hullLateralForces(q.spec,u,v,q.w,0,force,0,0,currentShear(q,e,flow.current));
   force(-.5*1000*q.beam*q.spec.draft*.20*u*Math.abs(u)-m*.035*u,0);
   const ax=flow.wind.x-q.vx,ay=flow.wind.y-q.vy;windForces(q.spec,ax*c0+ay*s0,-ax*s0+ay*c0,q.w,force);
   for(const [i,x]of [-.35*q.length,.35*q.length].entries()){const w=ends[i];const ax=w.ax+w.wake.ax*.7,ay=w.ay+w.wake.ay*.7;force(m*.08*(ax*c0+ay*s0),m*.20*(-ax*s0+ay*c0),x);}

@@ -1,5 +1,6 @@
 import {updateMass,restoreFuelCapacity} from './craft.js';
 import {migrateFuelBerth} from './fuel-migration.js';
+import {restoreBuoys} from './buoys.js';
 import {migrateSiteSave} from './site-migration.js';
 import {migrateNieporetSave} from './nieporet-migration.js';
 import {CRAFTS} from './craft.js';
@@ -46,8 +47,8 @@ export function restoreSession(value,{validateOnly=false}={}){
   if(oldSite>=3)migrateFuelBerth(data,NIEPORET.fuel,{x:NIEPORET.anchor.x+8,y:NIEPORET.anchor.y},BOLLARDS);
   f.boats=f.boats.map(saved=>{const b=createFleetCraft(saved.fleetKind??saved.spec.profile);Object.assign(b,saved);const name=TOWABLES[b.fleetKind]?.name??CRAFTS[b.spec.profile]?.name??b.spec.name;if(b.name===b.spec.name||/ · \d+$/.test(b.name??''))b.name=name+(b.name?.match(/ · \d+$/)?.[0]??'');b.spec.name=name;if(!b.spec.engineType){b.spec.engineType='petrol';if(b.spec.racing){b.spec.diesel=false;b.spec.fuelDensity=.745;updateMass(b.spec,b.fuel.litres,b.bilge?.litres??0);}}restoreFuelCapacity(b);if(b.fleetKind==='banana'||b.fleetKind==='mat')b.spec.inflatable=true;for(const r of b.ropes){r.control=0;r.rate=0;r.effortTime=0;}b.thrusters.bow=b.thrusters.stern=0;return b;});
   const trafficById=new Map(data.world.traffic.map(q=>[q.id,q]));
-  data.world.traffic=base.traffic.map(q=>trafficById.get(q.id)??q);
-  data.world.buoys=base.buoys.map((q,i)=>data.world.buoys[i]??q);
+  data.world.traffic=base.traffic.map(q=>{const saved=trafficById.get(q.id);return saved?{...q,...saved,spec:{...q.spec,...saved.spec}}:q;});
+  data.world.buoys=restoreBuoys(data.world.buoys,base.buoys,[...f.boats,...data.world.traffic]);
   Object.assign(f.boats[0],data.world);
   if(data.rig){if(!finite(data.rig.car?.x)||!finite(data.rig.car?.y)||!finite(data.rig.trailer?.x)||!finite(data.rig.trailer?.y)||!data.rig.winch)throw Error('Błędny stan SUV-a.');const r=data.rig;r.gas=r.brake=0;r.winch.control=0;f.boats.find(b=>b.id===f.rigBoatId).towRig=r;}
   for(const r of f.tows)r.control=r.rate=0;syncFleetWorld(f);
