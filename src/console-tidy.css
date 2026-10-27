@@ -1,0 +1,129 @@
+/* One stable console footprint for both driving stations. */
+.controls{height:min(390px,calc(48dvh - 2px));grid-template-rows:auto auto auto;align-content:start;flex:0 0 auto}
+.wheel-section,.throttle-section{padding:7px 10px 4px}
+.wheel-section #wheel{max-width:145px}
+.wheel-section>.hint{margin:2px 0;font-size:8px}
+.helm-handling{gap:0}
+.rudder-indicator{margin-bottom:3px}
+#thruster-panel .thruster-row{margin:1px 0}
+#thruster-panel>small{font-size:6px;line-height:1.2}
+.wheel-section>#steering-settings-open{font-size:8px;padding:2px 0}
+.throttle-section .lever-track{height:95px}
+.throttle-section .shared-lever-buttons button,.throttle-section .trim-buttons button,.throttle-section .trim-buttons output{height:34px;min-height:34px}
+.ignition-bank .engine-temperature{display:none}
+.throttle-section .marine-switch-grid{gap:4px 3px}
+.throttle-section .rocker-face{height:27px}
+.ignition-bank{margin:3px 0;min-height:48px}
+.controls .vehicle-selector,.controls .console-tools{padding:3px 8px;gap:4px 8px;min-height:25px}
+.console-tools .secondary,.vehicle-selector button{padding:3px 7px;min-height:24px}
+.car-pedals{display:grid;grid-template-columns:minmax(30px,44px) minmax(30px,44px) 36px;justify-content:center;gap:10px}
+.car-pedals>div{min-width:0}
+.car-pedals .lever-track{width:36px;height:95px;margin:0 auto 4px}
+.car-pedals label,.car-transmission>span{font-size:8px;line-height:1.2;margin-bottom:3px}
+.car-pedals button{padding:4px 2px;font-size:8px;min-height:27px;max-width:100%}
+.car-transmission{display:flex;flex-direction:column;gap:3px}
+.car-transmission button{width:36px;height:25px;min-height:25px;padding:2px}
+.car-ignition{margin:4px 0 3px!important}
+#car-controls>.hint{font-size:8px;line-height:1.3;margin:4px 0;text-align:center}
+.car-drivetrain{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;margin:5px 0}
+.car-drivetrain button{font-size:9px;padding:6px 3px;min-height:34px;line-height:1.2}
+.tow-attitude{display:flex;flex-direction:column;gap:4px}
+.tow-attitude>span{font-size:8px}
+.tow-attitude #tow-profile{width:100%;height:110px;display:block}
+.tow-depths{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px;font-size:8px;width:100%}
+.tow-depths b{display:block}
+.tow-attitude>strong{font-size:9px;line-height:1.2}
+.tow-attitude #car-incline{width:100%;padding:4px;margin:0;gap:4px;flex-wrap:wrap;font-size:8px}
+#car-incline strong{font-size:13px}
+.tow-attitude #loading-score{padding:4px;margin:0;font-size:9px;width:100%}
+#loading-score small{margin:2px 0;font-size:7px}
+#tow-tools{left:12px;top:106px;bottom:auto;transform:none;width:min(350px,calc(100% - 24px));padding:9px;z-index:8}
+#tow-tools .tow-console{margin:0;padding:6px 0;display:grid;grid-template-columns:1fr 1fr;gap:5px;align-items:start}
+#tow-tools .tow-console>span,#tow-tools .tow-console>small{grid-column:1/-1}
+#tow-tools .tow-console>span{font-size:9px;font-weight:600}
+#tow-tools button:not(.popup-close){min-height:34px;font-size:10px;padding:6px}
+#tow-tools small{font-size:9px;line-height:1.3}
+#tow-tools #tow-damage{margin:0}
+#tow-tools .winch-controls{padding-top:6px;gap:5px}
+#tow-tools .winch-controls>span,#tow-tools .winch-controls>small{font-size:9px}
+#tow-tools .winch-controls>span{font-weight:600}
+#tow-tools .winch-controls button{flex:1}
+#tow-tools #winch-connect{flex-basis:100%}
+
+/* Every cleat owns its card; text and controls cannot overlap a neighbour. */
+#mooring-picker{width:min(370px,calc(100% - 20px));padding:8px 10px;overflow:auto}
+#mooring-picker .popup-handle{position:sticky;top:-8px;background:#f8faef;z-index:2;min-height:27px}
+.mooring-gear{display:flex;justify-content:space-between;align-items:center;gap:6px;padding:5px 0;flex-wrap:wrap}
+.mooring-gear>small{font-size:9px}
+.mooring-gear label{font-size:8px;display:flex;align-items:center;gap:4px}
+.mooring-gear select{font:inherit;padding:4px;border:1px solid #b8c9ac;border-radius:4px;background:#f8faee;color:#476950}
+#map-ropes .mooring-diagram{height:auto;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 82px minmax(0,1fr);grid-template-rows:auto auto auto auto;gap:5px 7px;align-items:stretch}
+#map-ropes .mooring-hull{grid-column:2;grid-row:2/4;align-self:center;height:170px;width:100%;transform:none;position:static}
+#map-ropes .diagram-cleat{position:relative;inset:auto;width:100%;min-width:0;padding:4px;border:1px dashed #b7c6a9;border-radius:6px;background:#f9fbf1d9;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:2px}
+#map-ropes .diagram-cleat:not(.attached){border-color:transparent;background:transparent}
+#map-ropes .cleat-bow{grid-column:2;grid-row:1}
+#map-ropes .cleat-portBow{grid-column:1;grid-row:2}
+#map-ropes .cleat-starboardBow{grid-column:3;grid-row:2}
+#map-ropes .cleat-portStern{grid-column:1;grid-row:3}
+#map-ropes .cleat-starboardStern{grid-column:3;grid-row:3}
+#map-ropes .cleat-stern{grid-column:2;grid-row:4}
+#map-ropes .cleat-icon{width:100%;height:auto;min-height:28px;padding:3px;display:flex;align-items:center;justify-content:center;gap:3px}
+#map-ropes .cleat-icon svg{width:21px;height:18px;flex:0 0 21px}
+#map-ropes .cleat-icon span{font-size:8px;line-height:1.15;overflow-wrap:anywhere}
+#map-ropes .cleat-stern .cleat-icon::after,#map-ropes .cleat-towCenter .cleat-icon::after{width:9px;height:9px;margin:0;flex-shrink:0}
+#map-ropes .diagram-cleat>small{margin:0;min-height:0;font-size:8px;line-height:1.25;white-space:pre-line;overflow-wrap:anywhere;width:100%}
+#map-ropes .diagram-cleat>.rope-load{height:auto;min-height:16px;margin:0;display:flex;flex-wrap:wrap;gap:1px 3px;width:100%}
+#map-ropes .rope-load meter{width:22px;height:7px}
+#map-ropes .rope-load small{font-size:7px;line-height:1.1;margin:0;min-height:0}
+#map-ropes .rope-actions{gap:3px;width:100%}
+#map-ropes .rope-actions button{flex:1;min-width:0;width:27px;height:27px;font-size:17px}
+#map-ropes .mooring-diagram[data-midpoints=true] .mooring-hull{grid-row:2/5;height:235px}
+#map-ropes .cleat-portMid{grid-column:1;grid-row:3}
+#map-ropes .cleat-starboardMid{grid-column:3;grid-row:3}
+#map-ropes .mooring-diagram[data-midpoints=true] .cleat-portStern,#map-ropes .mooring-diagram[data-midpoints=true] .cleat-starboardStern{grid-row:4}
+#map-ropes .mooring-diagram[data-midpoints=true] .cleat-stern{grid-row:5}
+#map-ropes .cleat-towCenter{grid-column:2;grid-row:3}
+@media(max-height:740px) and (min-width:651px){.wheel-section #wheel{max-width:125px}.throttle-section .lever-track{height:85px}.throttle-section .rocker-face{height:25px}.ignition-bank{min-height:42px}.tow-attitude #tow-profile{height:80px}}
+@media(max-width:650px){
+ .controls{height:calc(48dvh - 2px);grid-template-columns:minmax(0,.95fr) minmax(0,1.7fr) minmax(0,1.55fr) minmax(0,1.05fr)}
+ .wheel-section,.throttle-section{padding:5px 3px}
+ .wheel-section #wheel{max-width:115px}
+ .wheel-section>.hint{font-size:5px}
+ .throttle-section .lever-track{height:85px}
+ .throttle-section .rocker-face{height:25px}
+ .ignition-bank{min-height:45px}
+ .car-pedals{grid-template-columns:minmax(22px,34px) minmax(22px,34px) 25px;gap:4px}
+ .car-pedals .lever-track{height:85px;width:26px}
+ .car-pedals label,.car-transmission>span{font-size:6px}
+ .car-pedals button{font-size:6px;min-height:23px}
+ .car-transmission button{width:25px;min-height:23px;height:23px}
+ .car-drivetrain button{font-size:7px;min-height:29px;padding:4px 2px}
+ #car-controls>.hint{font-size:6px}
+ .tow-attitude>span{font-size:5px}
+ .tow-attitude #tow-profile{height:65px}
+ .tow-depths{grid-template-columns:minmax(0,1fr);font-size:5.5px;gap:2px}
+ .tow-depths span{display:flex;justify-content:space-between;flex-wrap:wrap;gap:1px}
+ .tow-attitude>strong,.tow-attitude #loading-score{font-size:6px}
+ .tow-attitude #loading-score small{font-size:5px}
+ .tow-attitude #car-incline{gap:2px;padding:2px}
+ #car-incline span,#car-incline small{font-size:5px}
+ #car-incline strong{font-size:8px}
+ #tow-tools{top:105px}
+ #mooring-picker{width:min(350px,calc(100% - 20px))}
+ #map-ropes .mooring-diagram{grid-template-columns:minmax(0,1fr) 74px minmax(0,1fr);gap:4px}
+}
+.wheel-section .section-heading{margin-bottom:3px;gap:4px}.wheel-section .section-heading #center{font-size:8px;white-space:nowrap;padding:2px;min-height:18px}
+.attitude-column .boat-trailer-profile svg{height:80px}.pitch-gauge.at-trailer>span:not([id]),.pitch-gauge.at-trailer>.attitude-values{display:none}
+@media(max-height:740px) and (min-width:651px){.attitude-column .boat-trailer-profile svg{height:60px}.tow-attitude #tow-profile{height:70px}}
+@media(max-width:650px){.wheel-section .section-heading #center{font-size:0;min-height:15px;padding:0}.wheel-section .section-heading #center kbd{font-size:7px;padding:1px}.attitude-column .boat-trailer-profile svg{height:65px}}
+.car-ignition .key-knob{width:32px;height:32px}.car-ignition .key-row{gap:3px}.car-ignition .key-row>button:not(.key-knob){width:22px;padding:0}.car-ignition .key-positions,.car-ignition #car-key-state{font-size:7px;line-height:1.2}
+@media(min-width:651px){.throttle-section .marine-switch-grid{grid-template-columns:repeat(7,minmax(0,1fr));gap:3px}.throttle-section .rocker-caption{height:14px;min-height:14px;font-size:6px;line-height:1.15}.controls .vehicle-selector{padding-top:2px;padding-bottom:2px}.vehicle-selector button{min-height:20px;padding:2px 6px}.controls .console-tools{padding-top:2px;padding-bottom:2px}.console-tools .secondary{min-height:20px;padding:2px 6px}}
+.car-ignition .key-knob{min-height:32px;padding:0}.car-ignition .key-knob svg{width:32px;height:32px}.car-ignition .key-row{margin:0;height:32px;align-items:center}.car-ignition .key-row>button:not(.key-knob){min-height:22px;height:22px}.car-ignition #car-key-state{display:block;margin-top:2px}
+.car-transmission{min-width:0!important}
+@media(max-width:650px){.controls .vehicle-selector{padding-top:1px;padding-bottom:1px}.controls .console-tools{row-gap:3px}}
+@media(max-width:650px){#mooring-picker{width:min(320px,max(260px,calc(100% - 88px)))}}
+@media(max-height:740px) and (min-width:651px){.water-wrap{flex-basis:calc(50dvh + 2px);min-height:calc(50dvh + 2px)}.controls{height:calc(50dvh - 2px);max-height:calc(50dvh - 2px)}}
+#map-ropes[data-kind=barge] .mooring-diagram{height:auto}
+#map-ropes[data-kind=barge] .diagram-cleat{inset:auto;width:100%}
+#map-ropes[data-kind=barge] .mooring-hull{transform:none}
+@media(max-width:650px){#mooring-picker{width:min(280px,max(240px,calc(100% - 112px)))}}

@@ -1,6 +1,6 @@
 {
   "name": "boat-simulator",
-  "version": "32.2.0",
+  "version": "32.3.0",
   "private": true,
   "type": "module",
   "scripts": {

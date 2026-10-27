@@ -340,9 +340,11 @@ Cuma działa wyłącznie na rozciąganie. Ma długość spoczynkową, `EA/L`,
 tłumienie i ramię w konkretnej knadze. Implicit Kelvin–Voigt stabilizuje
 krótkie sztywne liny; luz nie tworzy siły przyciągającej. Pierwsze
 napięcie może lekko odbić kadłub. Wybieranie buduje siłę ręki 120–450 N,
-65 W, maks. 0,28 m/s, dzielone między jednocześnie wybierane cumy.
+110 W, maks. 0,45 m/s przy luzie, dzielone między jednocześnie wybierane cumy; wydawanie do 0,45 m/s.
 Puszczenie natychmiast zatrzymuje skracanie. Przekroczenie wytrzymałości
-rywa linę. Kolory używają tego samego obciążenia w kN i procentach:
+rywa linę. `mooring-gear.js` pozostawia dotychczasowe EA i siły zrywające profili: dobiera tylko widoczną średnicę (np. 8/10/12/14 mm dla otwartej/motorówki/kabinowej/wypornościowej). Dla długości ≥7 m dostępny jest opcjonalny mechaniczny kabestan 4:1: maksymalnie 1800 N, 0,1125 m/s przy luzie, sprawność 80%, moc na linie do 88 W. Jest to przełożenie ludzkiej pracy, bez nowego odbiornika elektrycznego i bez automatycznego założenia kabestanu w każdej dużej łodzi. Ten sam solver ogranicza faktyczne skracanie i generuje impulsy; zwolnienie lub zmiana trybu zeruje sterowanie. Wybór jest częścią istniejącego zapisu; dotyczy `solveRopes`, a odrębny model ręcznego wybierania holu zachowuje 450 N / 65 W.
+
+`mooring-view.js` buduje siatkę osobnych kart knag z krótkimi odczytami; pełny opis pozostaje w podpowiedzi. Kolory używają tego samego obciążenia w kN i procentach:
 biały <1 N, zielony <20%, brązowy 20–80%, czerwony ≥80% siły zrywającej.
 
 Trzy odbijacze na stronę mają położenia obliczone z lokalnego zwężającego
@@ -616,7 +618,7 @@ powodować zapadanie kół. Przód/tył mają różne warunki trakcji.
 
 Przyczepa powstaje z parametrów łodzi. Masa pusta:
 `220 + 65×L + 0.055×max(0,mBoat-1200)` kg, 1–3 osie według masy,
-osie przesunięte za środek, dłuższy dyszel. Łódź zabezpieczona
+osie przesunięte za środek. Położenie zaczepu względem środka przyczepy: `0.14×L + 0.59×L + 0.35 + 1.2` m, czyli 1,2 m przed wspornikiem wciągarki. Dla wypornościowej daje około 0,91 m więcej niż dawniej. Łódź zabezpieczona
 powiększa fizyczną masę zestawu. Oporów pustej przyczepy nie liczy
 się jak głęboko zanurzonego ciężkiego kadłuba. Normalny SUV wyciąga
 pustą dwuosiową przyczepę w testach; mokry stromy slip i ciężka łódź
@@ -626,7 +628,11 @@ Parking jest poziomy; dopiero slip opada. Kąt ustawiany 4–18°, domyślnie
 8°. Profil liczy oddzielne pochylenie całego SUV-a oraz przyczepy na
 podstawie kontaktów osi/haka. Nie obraca jedynie rysunku kół.
 
-Na postoju kontakt lewego/prawego koła hamowanej osi oraz podpora dyszla rozwiązują dwuwymiarowe impulsy z ograniczeniem Coulomba μ×N×dt. Budżet impulsu jest wspólny dla 20 iteracji, więc nie mnoży się z ich liczbą. Utrzymuje położenie i obrót w granicach przyczepności, ale duża zewnętrzna siła może przesunąć zestaw. Ręczny działa na tył SUV-a, P na obie osie; odpięta przyczepa ma hamulec i podporę. Nacisk podpory i osi sumuje się do ciężaru. Kolizje drogowe również korzystają z rzeczywistego obróconego obrysu pomostów.
+Na postoju kontakt lewego/prawego koła hamowanej osi oraz podpora dyszla rozwiązują dwuwymiarowe impulsy z ograniczeniem Coulomba μ×N×dt. Budżet impulsu jest wspólny dla 20 iteracji, więc nie mnoży się z ich liczbą. Utrzymuje położenie i obrót w granicach przyczepności, ale duża zewnętrzna siła może przesunąć zestaw. Ręczny działa na tył SUV-a, P na obie osie; odpięta przyczepa ma hamulec i podporę. Nacisk podpory i osi sumuje się do ciężaru. Kolizje drogowe również korzystają z rzeczywistego obróconego obrysu pomostów. Przy postoju poniżej 0,15 m/s ich bias separacji jest impulsem o sile `min(0.12×m×g, 20×m×penetracja)`, rozwiązywanym przed hamulcami. Nie przestawia bezpośrednio XY po hamowaniu. Usuwa to numeryczne zsuwanie ukośnego zestawu przy kontakcie z pomostem; normalny ruch i duży zewnętrzny uciąg pozostają możliwe.
+
+`articulation.js` sprawdza odstęp SUV-a od obu ramion dyszla, wspornika wciągarki i obrysu zabezpieczonej łodzi (SAT). Przy małych kątach i domkniętym zaczepie szeroka faza pomija dokładne wielokąty. Ostrzeżenie pojawia się przy odstępie poniżej 0,16 m lub blisko ograniczenia zaczepu; uszkodzenie dopiero przy rzeczywistym nakładaniu obrysów >5 mm albo przekroczeniu 85°, z dotychczasową kontrolą ruchu, energii i odstępu czasowego. Stały próg 70° nie nalicza już szkód przy wolnym, geometrycznie poprawnym manewrze. Stary zapis zachowuje wymiary i pozycje; jawny reset przyczepy lub zestawu na haku przechodzi na nową geometrię.
+
+Zegary SUV-a są zasilane wyłącznie w I/START/pracy silnika i korzystają z tej samej wizualnej bezwładności wskazówek co łódź. To nadal istniejąca kalibracja napięcia SUV-a 12,6/11,7/14,2 V; nie jest drugim pełnym modelem akumulatora. Łódź zachowuje pełny bilans SOC i eksploatacyjny czas 2×. `tow-tools.js` przenosi istniejące przyciski i ich obsługę do przesuwalnego okna; zamknięcie/przesiadka zeruje sterowanie wciągarki. Cztery kolumny konsoli i wysokość mapy pozostają takie same przy przesiadce.
 
 Osobny reset odpiętej przyczepy zeruje jej ruch i uszkodzenie zaczepu na stanowisku parkingowym, zachowuje samochód i zwodowaną łódź. Audio SUV-a jest przechowywane w WeakMap, poza zapisywanym stanem: nie tworzy cyklicznego odwołania blokującego JSON/autozapis.
 
@@ -921,7 +927,9 @@ kontynuację oraz unieważnianie wizualnego cache terenu.
 
 `service-alarms.test.js` sprawdza zasilanie i potwierdzanie alarmów, nowe źródła i eskalację, zapis zatrzasku, bilans akumulatora 2× przy pompie 1:1, rzeczywiste zatonięcie/naprawę/wynurzenie/rozruch, stary stan pod wodą, anulowanie i odczyt częściowej naprawy oraz klasyfikację komunikatów. `service-alarms.spec.js` mierzy mapę i cztery kolumny przy 390–1440 px, testuje lampkę, rzeczywiste próbki alarmu Web Audio, animację wskazówek, widoczny ubytek SOC, umiejscowienie informacji/awarii oraz pełną naprawę i Kontynuuj. Testy bilansu w `operations-v21.test.js` i `power-v23.test.js` wymagają teraz czasu eksploatacyjnego wyłącznie dla Ah.
 
-Mapa zajmuje minimum 52% wysokości okna; konsola ma najwyżej 48% i może przewijać się wewnętrznie na niskim ekranie. Zęza i zanurzenie tworzą wspólny blok, a kierownica, napęd, zegary i węższy stan kadłuba pozostają obok siebie. Neutralne informacje są u góry mapy; awarie i uszkodzenia w dolnym pasku (żółty/czerwony). Oba miejsca korzystają z istniejącego komunikatu, bez powielania zdarzeń.
+Mapa zajmuje minimum połowę wysokości okna (zwykle ponad 52%); konsola ma najwyżej połowę i może przewijać się wewnętrznie na niskim ekranie. Zęza i zanurzenie tworzą wspólny blok, a kierownica, napęd, zegary i węższy stan kadłuba pozostają obok siebie. Neutralne informacje są u góry mapy; awarie i uszkodzenia w dolnym pasku (żółty/czerwony). Oba miejsca korzystają z istniejącego komunikatu, bez powielania zdarzeń.
+
+`tow-console-mooring.test.js` odtwarza numeryczne zsuwanie ukośnego SUV-a/przyczepy, sprawdza skończoną siłę hamulców i wodnicę po odejściu do zacumowanej wypornościowej, rzeczywisty prześwit i uszkodzenie zaczepu, pełną wyporność środka łodzi przy suchych przednich kołach, zachowanie starej geometrii zapisu/resetu, parametry cum, rzeczywiste impulsy kabestanu pod obciążeniem oraz przeciwstawienie strumieniowych prądowi bocznemu 0,5 m/s. Plik `.spec.js` mierzy brak nakładania sterowania i stopki, stałą mapę i rozmiar kierownicy przy przesiadce (390–1440 px), zegary od stacyjki, rzeczywistą obsługę okna przyczepy i zatrzymanie wciągarki, osobne karty knag i odczyt wspomagania oraz postój po 30 s rejsu/zapisie. Starsze testy transportu otwierają teraz okno przyciskiem; próg nieprawidłowego złamania i głębokość kompletnego cyklu wodowania uwzględniają nową fizyczną geometrię.
 
 Program i style są budowane do jednego HTML. Nie ma streamingu mapy,
 zdjęć ani sampli audio podczas rejsu. Ograniczenia to CPU fizyki i

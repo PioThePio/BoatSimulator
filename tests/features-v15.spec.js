@@ -1,16 +1,17 @@
+import {openTowTools} from './helpers/tow-tools.js';
 import {test,expect} from '@playwright/test';
 
-test('transport actions sit in propulsion; one restraint button alternates and vehicle reset keeps the current trial',async({page})=>{
+test('transport actions open from propulsion; one restraint button alternates and vehicle reset keeps the current trial',async({page})=>{
  const errors=[];page.on('pageerror',e=>errors.push(e.message));await page.clock.install();await page.goto('/');await page.locator('#start-location').selectOption('trailer');await page.locator('#begin-session').click();
- await expect(page.locator('.throttle-section #trailer-straps')).toHaveCount(1);await expect(page.getByRole('button',{name:'Zwolnij zabezpieczenia',exact:true})).toHaveCount(1);
- await page.locator('#trailer-straps').click();await page.clock.runFor(300);await expect(page.locator('#trailer-straps')).toHaveText('Zabezpiecz łódź');await page.locator('#trailer-straps').click();await page.clock.runFor(300);await expect(page.locator('#trailer-straps')).toHaveText('Zwolnij zabezpieczenia');
- await page.locator('#vehicle-reset').click();await expect(page.locator('#setup-dialog')).not.toBeVisible();await expect(page.locator('#car-handbrake')).toHaveAttribute('aria-pressed','true');await expect(page.locator('#tow-live-status')).toContainText('stan łodzi zachowany');expect(errors).toEqual([]);
+ await expect(page.locator('.throttle-section #tow-tools-open')).toHaveCount(1);await openTowTools(page);await expect(page.getByRole('button',{name:'Zwolnij zabezpieczenia',exact:true})).toHaveCount(1);
+ await openTowTools(page);await page.locator('#trailer-straps').click();await page.clock.runFor(300);await expect(page.locator('#trailer-straps')).toHaveText('Zabezpiecz łódź');await openTowTools(page);await page.locator('#trailer-straps').click();await page.clock.runFor(300);await expect(page.locator('#trailer-straps')).toHaveText('Zwolnij zabezpieczenia');
+ await openTowTools(page);await page.locator('#vehicle-reset').click();await expect(page.locator('#setup-dialog')).not.toBeVisible();await expect(page.locator('#car-handbrake')).toHaveAttribute('aria-pressed','true');await expect(page.locator('#tow-live-status')).toContainText('stan łodzi zachowany');expect(errors).toEqual([]);
 });
 
 test('a detached trailer can be reattached after the SUV actually moves and stops nearby',async({page})=>{
- await page.clock.install();await page.goto('/');await page.locator('#start-location').selectOption('trailer');await page.locator('#begin-session').click();await page.locator('#trailer-hitch').click();await page.clock.runFor(200);await expect(page.locator('#hitch-guide')).toContainText('gotowy');
+ await page.clock.install();await page.goto('/');await page.locator('#start-location').selectOption('trailer');await page.locator('#begin-session').click();await openTowTools(page);await page.locator('#trailer-hitch').click();await page.clock.runFor(200);await expect(page.locator('#hitch-guide')).toContainText('gotowy');
  await page.locator('#car-key-right').click();await page.locator('#car-key-right').click();await page.clock.runFor(1000);await page.locator('[data-car-gear=D]').click();await page.keyboard.down('w');await page.clock.runFor(450);await page.keyboard.up('w');await page.keyboard.down('s');await page.clock.runFor(700);await page.keyboard.up('s');await page.locator('[data-car-gear=P]').click();await page.clock.runFor(200);
- const text=await page.locator('#hitch-guide').textContent();expect(parseFloat(text.match(/zaczep ([\d.]+)/)[1])).toBeGreaterThan(.05);await expect(page.locator('#hitch-guide')).toContainText('gotowy');await page.locator('#trailer-hitch').click();await page.clock.runFor(200);await expect(page.locator('#tow-summary')).toContainText('na haku');await expect(page.locator('#hitch-guide')).toBeHidden();
+ const text=await page.locator('#hitch-guide').textContent();expect(parseFloat(text.match(/zaczep ([\d.]+)/)[1])).toBeGreaterThan(.05);await expect(page.locator('#hitch-guide')).toContainText('gotowy');await openTowTools(page);await page.locator('#trailer-hitch').click();await page.clock.runFor(200);await expect(page.locator('#tow-summary')).toContainText('na haku');await expect(page.locator('#hitch-guide')).toBeHidden();
 });
 
 test('switching stations preserves world zoom, and the trailer mooring point has no PRZ map label',async({page})=>{

@@ -7,5 +7,6 @@ export function compactPropulsion(){
  const hint=$('.throttle-section>.hint');hint.classList.add('propulsion-shortcuts');keys.append($('#alarm-ack'),hint);bank.after(keys);
  for(const id of['bow','stern'])$('#thruster-'+id+'>span').textContent=id==='bow'?'Dziób':'Rufa';
  $('#thruster-panel>small').textContent='Q/E dziób · Z/X rufa · przytrzymaj · zasilanie ON';
+ $('.wheel-section .section-heading').append($('#center'));
  const wheelHint=$('.wheel-section>.hint'),travel=$('#wheel-travel');wheelHint.title=wheelHint.textContent;wheelHint.replaceChildren(travel);
 }

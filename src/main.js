@@ -1,3 +1,5 @@
+import {mooringGear} from './mooring-gear.js';
+import {mooringDiagram,compactLineText} from './mooring-view.js';
 import {dieselAvailable} from './combustion.js';
 import {compactPropulsion} from './helm-refinements.js';
 import {placeMapMessage} from './map-messages.js';
@@ -15,6 +17,7 @@ import './style.css';
 import './helm.css';
 import './fleet.css';
 import './screen.css';
+import './console-tidy.css';
 import {createFleet,activeBoat,rigBoat,addFleetBoat,selectFleetBoat,fleetStep,recordFleetTrails,removeFleetBoat} from './fleet.js';
 import {installFleetUI} from './fleet-ui.js';
 import {installRescueUI} from './rescue-ui.js';
@@ -187,7 +190,8 @@ function lineInfo(r){if(!r.from)return ropeInfo(r);const id=r.from===boat.id?r.t
 function ropeSignature(){return boat.id+'|'+boat.ropes.map(r=>r.end).join(',')+'|'+fleet.tows.filter(r=>!r.broken&&(r.from===boat.id||r.to===boat.id)).map(r=>r.id).join(',');}
 function attachSelected(end,target){if(typeof target==='object'&&target!==null)return connectBoatPoints(fleet,boat.id,end,target.boatId,target.end);if(towAt(end))return{ok:false,message:'Ta knaga ma już hol.'};return attachRope(boat,end,target);}
 function openMooring(target){const wasClosed=$('#mooring-picker').hidden;closeWeather();selectedTarget=target;$('#anchor-picker').hidden=true;renderMapRopes();$('#mooring-picker').hidden=false;if(wasClosed){draw();const bx=width/2+(boat.x-view.camera.x)*view.scale,by=height/2+(boat.y-view.camera.y)*view.scale,radius=(Math.abs(Math.cos(boat.a))*boat.spec.length+Math.abs(Math.sin(boat.a))*boat.spec.beam)*view.scale/2;mooringPopup.beside(bx,by,radius);}}
-function ropeInfo(r){return `${BOLLARDS[r.bollard].id} · ${r.length.toFixed(2)} m · ${(r.tension/1000).toFixed(2)} kN${r.control<0?` · ręka ${Math.round(r.manualForce??0)} N${r.blocked?' · za ciężko':' · wybieranie'}`:r.control>0?' · luzowanie':''}`;}
+function shortLineInfo(r){return compactLineText(r,r.from?targetName({boatId:r.from===boat.id?r.to:r.from,end:r.from===boat.id?r.toEnd:r.fromEnd}):BOLLARDS[r.bollard].id);}
+function ropeInfo(r){return `${BOLLARDS[r.bollard].id} · ${r.length.toFixed(2)} m · ${(r.tension/1000).toFixed(2)} kN${r.control<0?` · ${r.gearRatio>1?'kabestan':'ręka'} ${Math.round(r.manualForce??0)} N${r.blocked?' · za ciężko':' · wybieranie'}`:r.control>0?' · luzowanie':''}`;}
 function loadMarkup(end,map=false){return `<span class="rope-load" id="${map?'map-':''}load-${end}"><meter min="0" max="100" value="0" aria-label="Obciążenie cumy ${attachmentNames(boat)[end]??end}"></meter><small></small></span>`;}
 function ropeActions(end,r){return r?`<button data-rope="${end}" data-action="shorten" aria-label="Wybierz cumę ${attachmentNames(boat)[end]??end}">−</button><button data-rope="${end}" data-action="loosen" aria-label="Poluzuj cumę ${attachmentNames(boat)[end]??end}">+</button><button data-rope="${end}" data-action="detach" aria-label="Odczep cumę ${attachmentNames(boat)[end]??end}">×</button>`:`<button data-rope="${end}" data-action="attach" aria-label="Załóż cumę ${attachmentNames(boat)[end]??end}">+</button>`;}
 let renderedRopeSignature='';
@@ -196,10 +200,8 @@ const cleatIcon='<svg viewBox="0 0 32 24" aria-hidden="true"><path d="M4 8h24M10
 function renderMapRopes(){
  if(selectedTarget===null)return;
  $('#mooring-target').textContent=targetName(selectedTarget);$('#map-ropes').dataset.kind=boat.fleetKind??'boat';
- $('#map-ropes').innerHTML=`<div class="mooring-diagram"><svg class="mooring-hull" viewBox="0 0 320 250" aria-label="Łódź widziana z góry, dziób u góry"><path d="M160 23Q218 69 213 225H107Q102 69 160 23Z" fill="#dde7d2" stroke="#648165" stroke-width="2"/><path d="M127 120h66v64h-66Z" fill="#b2c8ba"/><path d="M50 85L125 93M270 85L195 93M50 187L108 211M270 187L212 211" fill="none" stroke="#b0bf9e" stroke-dasharray="3 3"/><g fill="#987e40"><circle cx="125" cy="93" r="3"/><circle cx="195" cy="93" r="3"/><circle cx="108" cy="211" r="3"/><circle cx="212" cy="211" r="3"/></g><path d="M119 105q41-22 82 0" fill="none" stroke="#86a69b" stroke-width="6"/><path d="M143 227h34v13h-34Z" fill="#577368"/></svg>${Object.entries(attachmentNames(boat)).map(([end,name])=>{
-  const r=lineAt(end);
-  return `<div data-load="${r?ropeLoadState(r,r.from?{...boat.spec,lineBreak:r.strength}:boat.spec).tone:'slack'}" class="diagram-cleat cleat-${end} ${r?'attached':''} ${r&&(r.bollard===selectedTarget||typeof selectedTarget==='object')?'selected-target':''}"><button class="cleat-icon" data-cleat="${end}" ${r?'disabled':''} title="${name}${r?' · '+lineInfo(r):' · rzuć cumę'}" aria-label="${name}${r?' · cuma założona':' · rzuć cumę'}">${cleatIcon}</button>${r?`<small id="map-rope-${end}">${lineInfo(r)}</small>${loadMarkup(end,true)}<div class="rope-actions">${ropeActions(end,r)}</div>`:''}</div>`;
- }).join('')}</div>`;
+ const gear=mooringGear(boat.spec,boat.mooringAssist);$('#mooring-haul-mode').value=gear.ratio>1?'4':'1';$('#mooring-haul-option').hidden=!gear.available;$('#mooring-gear-info').textContent=`Cuma Ø ${gear.diameter} mm · zerwanie ${(gear.strength/1000).toFixed(0)} kN${gear.ratio>1?' · kabestan 4:1':''}`;
+ $('#map-ropes').innerHTML=mooringDiagram(attachmentNames(boat),lineAt,{icon:cleatIcon,lineText:shortLineInfo,lineTitle:lineInfo,load:end=>loadMarkup(end,true),actions:ropeActions,tone:r=>ropeLoadState(r,r.from?{...boat.spec,lineBreak:r.strength}:boat.spec).tone});
 }
 function ropeAction(btn){const end=btn.dataset.rope,r=lineAt(end);switch(btn.dataset.action){case'attach':{toast(attachSelected(end,selectedTarget).message);break;}case'detach':if(r?.from)fleet.tows=fleet.tows.filter(q=>q!==r);else boat.ropes=boat.ropes.filter(q=>q.end!==end);break;case'shorten':case'loosen':return;}renderRopes();}
 const ropePointers=new Map();
@@ -215,6 +217,8 @@ for(const id of ['map-ropes']){
 }
 window.addEventListener('blur',releaseRopeControls);document.addEventListener('visibilitychange',releaseRopeControls);
 $('#map-ropes').onclick=e=>{const choice=e.target.closest('[data-cleat]'),action=e.target.closest('[data-rope]');if(choice){toast(attachSelected(choice.dataset.cleat,selectedTarget).message);renderRopes();}else if(action)ropeAction(action);};
+$('#map-ropes').insertAdjacentHTML('beforebegin','<div class="mooring-gear"><small id="mooring-gear-info"></small><label id="mooring-haul-option" title="Tryb wybierania cum do polerów, boi, drzew i przyczepy">Cumy <select id="mooring-haul-mode" aria-label="Sposób wybierania cum do punktów mapy"><option value="1">Ręcznie</option><option value="4">Kabestan 4:1</option></select></label></div>');
+$('#mooring-haul-mode').onchange=e=>{releaseRopeControls();boat.mooringAssist=e.target.value==='4';renderRopes();};
 const mooringPopup=draggablePopup($('#mooring-picker'),$('#mooring-handle'));
 draggablePopup($('#anchor-picker'),$('#anchor-handle'));
 $('#close-mooring').onclick=()=>{releaseRopeControls();$('#mooring-picker').hidden=true;};$('#close-anchor').onclick=()=>$('#anchor-picker').hidden=true;
@@ -277,8 +281,8 @@ function telemetry(){
  for(const [id,damage]of [['hull',boat.damage],['dock',boat.dockDamage]]){$('#'+id+'-value').textContent=(damage>0&&damage<1?(100-damage).toFixed(1):Math.round(100-damage))+'%';$('#'+id+'-bar').style.width=(100-damage)+'%';}
  const worstDamage=Math.max(boat.damage,...boat.engines.map(en=>en.propDamage));$('#condition-tag').textContent=boat.sunken?'ZATOPIONA':boat.swamped?'ZALANA':boat.damage>=100?'ZNISZCZONY KADŁUB':boat.grounded?'NA MIELIŹNIE':boat.damage>0?'USZKODZENIA KADŁUBA':worstDamage>0?'USZKODZENIA NAPĘDU':'BEZ USZKODZEŃ';$('#condition-tag').classList.toggle('danger',boat.swamped||boat.sunken||worstDamage>=35);$('#condition-tag').classList.toggle('warning',worstDamage<35&&(worstDamage>0||boat.grounded));
  if(renderedRopeSignature!==ropeSignature())renderRopes();
- for(const r of boat.ropes){const icon=$('.diagram-cleat.cleat-'+r.end);if(icon)icon.dataset.load=ropeLoadState(r,S).tone;const span=$('#map-rope-'+r.end);if(span)span.textContent=ropeInfo(r);const state=ropeLoadState(r,S);for(const id of ['map-load-']){const el=$('#'+id+r.end);if(el){el.dataset.load=state.tone;el.title=state.title;el.querySelector('meter').value=state.percent;el.querySelector('small').textContent=state.label+' · '+state.percent+'%';}}}
- for(const end of Object.keys(attachmentNames(boat))){const r=towAt(end);if(!r)continue;const icon=$('.diagram-cleat.cleat-'+end);if(icon)icon.dataset.load=ropeLoadState(r,{...S,lineBreak:r.strength}).tone;for(const prefix of ['map-rope-']){const el=$('#'+prefix+end);if(el)el.textContent=lineInfo(r);}for(const prefix of ['map-load-']){const el=$('#'+prefix+end);if(el){el.querySelector('meter').value=100*r.tension/r.strength;el.querySelector('small').textContent=(r.tension/1000).toFixed(2)+' / '+(r.strength/1000).toFixed(1)+' kN';}}}
+ for(const r of boat.ropes){const icon=$('.diagram-cleat.cleat-'+r.end);if(icon)icon.dataset.load=ropeLoadState(r,S).tone;const span=$('#map-rope-'+r.end);if(span){span.textContent=shortLineInfo(r);span.title=ropeInfo(r);}const state=ropeLoadState(r,S);for(const id of ['map-load-']){const el=$('#'+id+r.end);if(el){el.dataset.load=state.tone;el.title=state.title;el.querySelector('meter').value=state.percent;el.querySelector('small').textContent=state.label+' · '+state.percent+'%';}}}
+ for(const end of Object.keys(attachmentNames(boat))){const r=towAt(end);if(!r)continue;const icon=$('.diagram-cleat.cleat-'+end);if(icon)icon.dataset.load=ropeLoadState(r,{...S,lineBreak:r.strength}).tone;for(const prefix of ['map-rope-']){const el=$('#'+prefix+end);if(el){el.textContent=shortLineInfo(r);el.title=lineInfo(r);}}for(const prefix of ['map-load-']){const el=$('#'+prefix+end);if(el){el.querySelector('meter').value=100*r.tension/r.strength;el.querySelector('small').textContent=(r.tension/1000).toFixed(2)+' / '+(r.strength/1000).toFixed(1)+' kN';}}}
  if(boat.events.length&&boat.events[0]!==lastEvent){lastEvent=boat.events[0];toast(lastEvent.message);}
  $('#engine-state').textContent=boat.engines.map((en,i)=>`${boat.engines.length===2?(i?'P: ':'L: '):''}${Math.round(en.rpm)} obr/min · ${Math.round(en.thrust)} N · ${Math.round(en.temperature)}°C`).join(' / ');
  if(S.passive)$('#engine-state').textContent=S.manual?'Napęd ręczny · do 85 W średniej mocy':'Jednostka bez napędu · holowanie i cumowanie';

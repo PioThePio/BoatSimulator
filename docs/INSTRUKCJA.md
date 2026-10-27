@@ -30,7 +30,7 @@ podpowiedź pokazuje faktyczną godzinę. Odczyt punktu także zaczyna w pauzie.
 Mapa zaczyna się przy górnej krawędzi. Znak ? przy nazwie jeziora otwiera
 pomoc. Pod mapą są obok siebie: kierownica, napęd, zegary i węższy panel stanu
 z profilem zanurzenia oraz uszkodzeniami. Wybór stanowiska jest pod
-sterowaniem, a pod nim regulacja dźwięku. Mapa zajmuje przynajmniej 52% wysokości okna. Zęza i zanurzenie są razem w węższym panelu stanu. Informacje (np. rozrusznik) pojawiają się neutralnie u góry mapy, a uszkodzenia i awarie w dolnym żółtym/czerwonym pasku. Strona mieści się w wysokości
+sterowaniem, a pod nim regulacja dźwięku. Mapa zajmuje co najmniej połowę wysokości okna, zwykle ponad 52%. Wielkość mapy i układ konsoli pozostają takie same po przesiadce. Zęza i zanurzenie są razem w węższym panelu stanu. Informacje (np. rozrusznik) pojawiają się neutralnie u góry mapy, a uszkodzenia i awarie w dolnym żółtym/czerwonym pasku. Strona mieści się w wysokości
 ekranu; na bardzo niskim ekranie przewija się tylko konsola lub otwarte
 okno. Przycisk Rejs otwiera liczniki, GPS, bilans instalacji i ustawienie
 slipu w SUV-ie, pozostawiając sterowanie aktywne. Na telefonie elementy
@@ -227,7 +227,7 @@ niebieskozielony. Nie traktuj samego koloru jako odczytu głębokości.
 ## Cumowanie i odbijacze
 
 Kliknij poler, boję, dostępne drzewo lub punkt na innej jednostce.
-Przesuwalne okno pokazuje schemat własnej łodzi i jej dostępne knagi.
+Przesuwalne okno pokazuje schemat własnej łodzi i jej dostępne knagi. Każda knaga ma osobne pole: cel, długość, naprężenie i przyciski. Góra okna podaje średnicę cumy oraz siłę zrywającą.
 Wybierz knagę, aby rzucić linę. Rzut na brzeg ma zasięg 6 m od knagi
 i zostawia luz — nie przyciąga od razu łodzi. Przytrzymuj przyciski
 wybierania/luzowania przy danej linie; puszczenie zatrzymuje pracę.
@@ -246,6 +246,10 @@ aktualny albo najbliższy poler; samo otwarcie nie zakłada liny.
 zmieniają fala, wiatr, gaz oraz pozostałe liny. Człowiek ma ograniczoną
 siłę; przy zbyt dużym obciążeniu wybieranie staje, lecz knaga nadal
 utrzymuje linę. Pomaga właściwy układ cum i ostrożna praca napędem.
+
+Ręczne wybieranie ma limit 450 N i do 0,45 m/s przy luzie; pod obciążeniem ogranicza je moc pracy. Na jednostkach od 7 m możesz wybrać **Kabestan 4:1**. To umowne wspomaganie mechaniczne, nie wyposażenie obowiązkowe każdej dużej łodzi: do 1800 N na linie kosztem wolniejszego wybierania. Nie pobiera prądu. Wspomaganie dotyczy cum do polerów, boi, drzew i przyczepy; hol między jednostkami ma dotychczasowe ręczne wybieranie. Puszczenie przycisku natychmiast zatrzymuje wybieranie w obu trybach. Cumy są dobrane do profilu: przykładowo otwarta Ø8 mm / 10 kN, motorówka Ø10 mm / 18 kN, kabinowa Ø12 mm / 28 kN, wypornościowa Ø14 mm / 40 kN. Są to parametry treningowego modelu.
+
+Przy bocznym prądzie 0,5 m/s (około 1,8 km/h) wypornościowa może szybko zbliżyć się do pomostu nawet przy słabym wietrze 2 m/s. Najpierw utrzymuj odstęp strumieniowymi i odpowiednio pracującą cumą, potem oddaj ostatnią linę pod kontrolą napędu. Wychodź możliwie prosto z palców pomostowych; większy skręt wykonaj, gdy rufa je minie. Sam klasyczny ster na postoju daje małą kontrolę. Na otwartej wodzie można przyjąć kurs pod prąd, żeby utrzymać zamierzony tor. Konkretna kolejność oddawania cum zależy od kierunku prądu/wiatru i ich zaczepienia.
 
 Trzy odbijacze na każdej burcie wystają poza kadłub, kompresują się
 i pozwalają powoli przesuwać wzdłuż kei. Chronią miejsca, które faktycznie
@@ -415,7 +419,7 @@ ratowania prawdziwego człowieka.
 
 ## SUV, parking, slip i przyczepa
 
-SUV ma osobne sterowanie i stacyjkę, lecz panel zachowuje układ łodzi.
+SUV ma osobne sterowanie i stacyjkę, lecz panel zachowuje układ łodzi. Zegary, w tym BAT i TEMP, uruchamiają się w I; kluczyk 0 opuszcza wskazówki i wygasza odczyty. Zasilanie łodzi jest od nich niezależne. Przycisk **Przyczepa** pod napędem otwiera przesuwalne okno z pasami, zaczepem, resetami i wciągarką. Zamknięcie okna lub przesiadka zatrzymuje wybieranie wciągarki.
 Rozruch jest możliwy w P/N. W/↑ gaz, S/↓ hamulec, A/D skręt. Spacja
 przełącza ręczny. Q/E wybiera poprzedni/następny bieg PRND, działają też
 1–4. Gaz jest po prawej, hamulec po lewej; pedały narastają stopniowo.
@@ -424,7 +428,7 @@ Osobny **Reset przyczepy** odzyskuje również odpiętą przyczepę na stanowisk
 
 Na suchym podłożu można zaparkować i odczepić przyczepę. Aby podpiąć,
 podjedź hakiem do zaczepu, zatrzymaj się w odległości ≤0,8 m i z różnicą
-kierunków ≤34°. Przy dużym złożeniu zestawu może dojść do uszkodzenia.
+kierunków ≤34°. Nowe przyczepy mają 1,2 m miejsca między wspornikiem wciągarki a zaczepem. Ostrzeżenie o składaniu wynika z małego odstępu od nadwozia; kontakt ramy/dziobu z SUV-em lub przekroczenie mechanicznego zakresu zaczepu może uszkodzić zestaw. Maksymalny zakres zaczepu to umowne 85°; duża łódź może zetknąć się z autem wcześniej. Stary zapis zachowuje pozycje i dawny dyszel, a Nowa próba lub reset przyczepy/SUV-a na haku daje wydłużoną geometrię.
 4×4 dołącza napęd przedniej osi, pomaga na slipie; poślizg nie znika
 przy przeciążeniu lub zbyt głębokim wjeździe. Trawa i piasek zwiększają
 opór, na piasku można się zakopać. Krawężniki placu są wyczuwalne.

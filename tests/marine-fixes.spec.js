@@ -1,3 +1,4 @@
+import {openTowTools} from './helpers/tow-tools.js';
 import {test,expect} from '@playwright/test';
 import {openFuel} from './helpers/fuel.js';
 
@@ -15,7 +16,7 @@ test('setup and Fleet choose fuel litres against a fixed capacity and the gauge 
 });
 
 test('detached trailer has its own reset button which recovers it on land and preserves the SUV and boat positions',async({page})=>{
- await page.clock.install();await page.goto('/');await page.locator('#start-location').selectOption('trailer');await page.locator('#begin-session').click();await page.clock.runFor(200);await page.locator('#trailer-hitch').click();await expect(page.locator('#trailer-hitch')).toHaveText('Przyczep przyczepę');await expect(page.locator('#trailer-reset')).toBeVisible();await page.locator('#trailer-reset').click();await page.clock.runFor(800);await page.evaluate(()=>window.dispatchEvent(new Event('pagehide')));
+ await page.clock.install();await page.goto('/');await page.locator('#start-location').selectOption('trailer');await page.locator('#begin-session').click();await page.clock.runFor(200);await openTowTools(page);await page.locator('#trailer-hitch').click();await expect(page.locator('#trailer-hitch')).toHaveText('Przyczep przyczepę');await expect(page.locator('#trailer-reset')).toBeVisible();await openTowTools(page);await page.locator('#trailer-reset').click();await page.clock.runFor(800);await page.evaluate(()=>window.dispatchEvent(new Event('pagehide')));
  const s=await page.evaluate(()=>JSON.parse(localStorage.getItem('przystan-session-v1')));expect(s.rig.attached).toBe(false);expect(s.rig.trailerPark).toBe(true);expect(s.rig.trailer.x).toBeCloseTo(151,2);expect(s.rig.car.x).toBeCloseTo(124.5,2);expect(s.rig.car.y).toBeCloseTo(-32,2);expect(s.rig.trailer.w).toBeCloseTo(0,3);
 });
 

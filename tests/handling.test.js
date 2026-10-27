@@ -43,7 +43,7 @@ test('chosen bollard is respected and out-of-range selection fails without fallb
  const b=createBoat('berth');assert.equal(attachRope(b,'bow',4).ok,true);assert.equal(b.ropes[0].bollard,4);const other=createBoat('berth');assert.equal(attachRope(other,'bow',0).ok,false);assert.equal(other.ropes.length,0);
 });
 test('hauling is gradual and limited by human effort, rather than jumping length',()=>{
- for(const profile of ['tender','cruiser']){const b=createBoat('berth',{profile});attachRope(b,'bow');const r=b.ropes[0],initial=r.length;requestHaul(r,-1);step(b,calm,1/120);assert.ok(initial-r.length<=.28/120+.00001);let maximum=0;for(let i=0;i<5*120;i++){step(b,calm,1/120);maximum=Math.max(maximum,r.tension);}assert.ok(maximum<460,`${profile}: ${maximum}`);assert.ok(Math.hypot(b.vx,b.vy)<.3);}
+ for(const profile of ['tender','cruiser']){const b=createBoat('berth',{profile});attachRope(b,'bow');const r=b.ropes[0],initial=r.length;requestHaul(r,-1);step(b,calm,1/120);assert.ok(initial-r.length<=.45/120+.00001);let maximum=0;for(let i=0;i<5*120;i++){step(b,calm,1/120);maximum=Math.max(maximum,r.tension);}assert.ok(maximum<460,`${profile}: ${maximum}`);assert.ok(Math.hypot(b.vx,b.vy)<.3);}
 });
 test('stiff mooring limits extension and external load does not become unlimited manual hauling',()=>{
  const b=createBoat('berth');attachRope(b,'bow');const r=b.ropes[0],p=cleat(b,'bow'),q=BOLLARDS[r.bollard];r.length=Math.hypot(p.x-q.x,p.y-q.y)-.02;r.targetLength=r.length;step(b,calm,1/120);assert.ok(r.tension>200);const initial=r.length;requestHaul(r,-.5);step(b,calm,1/120);assert.ok(initial-r.length<.0001);

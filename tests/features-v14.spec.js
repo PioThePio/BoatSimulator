@@ -1,3 +1,4 @@
+import {openTowTools} from './helpers/tow-tools.js';
 import {test,expect} from '@playwright/test';
 
 test('SUV pedals have real-car order and progressive pressure, Space toggles parking brake, Q/E selects gears',async({page})=>{
@@ -9,8 +10,8 @@ test('SUV pedals have real-car order and progressive pressure, Space toggles par
 });
 
 test('trailer can be unhitched in the UI and SUV switches to its solo mass/profile; 4x4 has an explicit toggle',async({page})=>{
- await page.clock.install();await page.goto('/');await page.locator('#start-location').selectOption('trailer');await page.locator('#begin-session').click();await page.locator('#trailer-hitch').click();await page.clock.runFor(150);await expect(page.locator('#tow-summary')).toContainText('odczepiona');await expect(page.locator('#tow-mass')).toHaveText('2400 kg');await expect(page.locator('#tow-profile')).toContainText('SUV solo');
- await page.locator('#car-awd').click();await expect(page.locator('#car-awd')).toHaveAttribute('aria-pressed','true');await page.locator('#car-awd').click();await expect(page.locator('#car-awd')).toHaveAttribute('aria-pressed','false');await page.locator('#trailer-hitch').click();await page.clock.runFor(150);await expect(page.locator('#tow-summary')).toContainText('na haku');
+ await page.clock.install();await page.goto('/');await page.locator('#start-location').selectOption('trailer');await page.locator('#begin-session').click();await openTowTools(page);await page.locator('#trailer-hitch').click();await page.clock.runFor(150);await expect(page.locator('#tow-summary')).toContainText('odczepiona');await expect(page.locator('#tow-mass')).toHaveText('2400 kg');await expect(page.locator('#tow-profile')).toContainText('SUV solo');
+ await page.locator('#car-awd').click();await expect(page.locator('#car-awd')).toHaveAttribute('aria-pressed','true');await page.locator('#car-awd').click();await expect(page.locator('#car-awd')).toHaveAttribute('aria-pressed','false');await openTowTools(page);await page.locator('#trailer-hitch').click();await page.clock.runFor(150);await expect(page.locator('#tow-summary')).toContainText('na haku');
 });
 
 test('loaded boat begins with full tilt and a bow line, may start its engine, and has the trailer in its own side profile',async({page})=>{

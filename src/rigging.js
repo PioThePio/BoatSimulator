@@ -1,3 +1,4 @@
+import {mooringGear} from './mooring-gear.js';
 import {anchorWinch,windlassPowered} from './anchor-winch.js';
 import {mooringPoint,boomInverse,boomLoad} from './marina.js';
 import {BOLLARDS,bottomAt,clamp} from './world.js';
@@ -31,25 +32,25 @@ export function attachRope(b,end,bollard=null){
 export function requestHaul(r,direction){r.control=Math.sign(direction);r.targetLength=r.length;if(!direction){r.manualForce=0;r.effortTime=0;r.rate=0;r.blocked=false;}}
 export function solveRopes(b,dt,notify){
  b.maxTension=0;
- const hands=Math.max(1,b.ropes.filter(r=>r.control<0).length);
+ const hands=Math.max(1,b.ropes.filter(r=>r.control<0).length),gear=mooringGear(b.spec,b.mooringAssist);
  b.ropes=b.ropes.filter(r=>{
   const p=cleat(b,r.end),q=mooringPoint(b,r.bollard),dx=q.x-p.x,dy=q.y-p.y,d=Math.max(.001,Math.hypot(dx,dy));
   const n={x:dx/d,y:dy/d},arm={x:p.x-b.x,y:p.y-b.y};
   const separation=(q.vx-b.vx+b.w*arm.y)*n.x+(q.vy-b.vy-b.w*arm.x)*n.y;
   const k=b.spec.lineEA/Math.max(1,r.length),damping=2*.38*Math.sqrt(k/inverseMass(b,n,arm));
-  r.rate=0;r.blocked=false;
+  r.rate=0;r.blocked=false;r.gearRatio=gear.ratio;
   r.effortTime=r.control<0?(r.effortTime??0)+dt:0;
-  r.manualForce=r.control<0?Math.min(450,120+r.effortTime*110)/hands:0;
+  r.manualForce=r.control<0?Math.min(450,120+r.effortTime*110)*gear.ratio/hands:0;
   if(r.control<0&&r.length>.45){
    // A held pull builds effort, not an unbounded winch. The knot holds external
    // loads after release; shortening stops on the next physics step.
    const inv=inverseMass(b,n,arm)+boomInverse(b,r.bollard,n),denominator=1+(damping*dt+k*dt*dt)*inv;
    const existing=k*(d-r.length)+(damping+k*dt)*separation;
    const allowance=Math.max(0,(r.manualForce*denominator-existing)/(2*k+damping/dt));
-   const rate=Math.min(.28,65/hands/Math.max(1,r.tension));
+   const rate=Math.min(gear.speed,gear.power/hands/Math.max(1,r.tension));
    const amount=Math.min(rate*dt,r.length-.45,allowance);
    r.length-=amount;r.rate=-amount/dt;r.blocked=amount<.00001;
-  }else if(r.control>0){const amount=Math.min(.3*dt,15-r.length);r.length+=amount;r.rate=amount/dt;}
+  }else if(r.control>0){const amount=Math.min(gear.paySpeed*dt,15-r.length);r.length+=amount;r.rate=amount/dt;}
   r.targetLength=r.length;
   const extension=d-r.length;
   const closing=separation-r.rate;

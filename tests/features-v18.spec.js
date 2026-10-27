@@ -1,3 +1,4 @@
+import {openTowTools} from './helpers/tow-tools.js';
 import {attachBow,openBollard} from './helpers/mooring.js';
 import {test,expect} from '@playwright/test';
 
@@ -36,7 +37,7 @@ test('mooring icon starts white for a slack line and becomes green when held hau
 });
 
 test('trailer menus exist only in the SUV and remain accessible through the station selector below the helm',async({page})=>{
- await page.clock.install();await page.goto('/');await page.locator('#start-location').selectOption('trailer');await page.locator('#begin-session').click();await expect(page.locator('.tow-console')).toBeVisible();await expect(page.locator('.winch-controls')).toBeVisible();await page.locator('#trip-open').click();await expect(page.locator('.slip-panel')).toBeVisible();await page.locator('[data-vehicle=boat]').click();await expect(page.locator('.tow-console')).toBeHidden();await expect(page.locator('.winch-controls')).toBeHidden();await expect(page.locator('.slip-panel')).toBeHidden();await page.locator('[data-vehicle=suv]').click();await expect(page.locator('.tow-console')).toBeVisible();
+ await page.clock.install();await page.goto('/');await page.locator('#start-location').selectOption('trailer');await page.locator('#begin-session').click();await expect(page.locator('#tow-tools')).toBeHidden();await openTowTools(page);await expect(page.locator('.tow-console')).toBeVisible();await expect(page.locator('.winch-controls')).toBeVisible();await page.locator('#trip-open').click();await expect(page.locator('.slip-panel')).toBeVisible();await page.locator('[data-vehicle=boat]').click();await expect(page.locator('.tow-console')).toBeHidden();await expect(page.locator('.winch-controls')).toBeHidden();await expect(page.locator('.slip-panel')).toBeHidden();await page.locator('[data-vehicle=suv]').click();await expect(page.locator('#tow-tools-open')).toBeVisible();await openTowTools(page);await expect(page.locator('.tow-console')).toBeVisible();
 });
 
 test('rendered SUV camera shows more behind in reverse and more ahead in drive, preserving the same physical zoom',async({page})=>{

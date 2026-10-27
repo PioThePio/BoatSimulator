@@ -59,7 +59,8 @@ test('slip angle changes physical depth, and a deeply submerged SUV intake stall
  try{setSlipAngle(4);const shallow=bottomAt(124.5,18).depth;setSlipAngle(16);assert.ok(bottomAt(124.5,18).depth>shallow*3);setSlipAngle(8);const {r,b}=ready({}, {atSlip:true,slipCarY:9});shift(r,b,10);run(r,b,.1);assert.equal(r.engine.key,'ignition');assert.ok(trailerImmersion(r,b).frontDepth>.9);assert.equal(carKey(r,1).ok,false);}finally{setSlipAngle(8);}
 });
 test('complete water cycle: float off, bow-line retrieval, secure and tow back onto dry land',()=>{
- const {r,b}=ready({}, {loaded:true,atSlip:true,slipCarY:9});carKey(r,-1);shift(r,b,2);run(r,b,.1);assert.ok(trailerAction(r,b,'release').ok);run(r,b,5);assert.equal(r.boatLoaded,false);
- assert.ok(b.ropes.some(q=>q.end==='bow'&&q.bollard===trailerBollardIndex()));assert.ok(trailerAction(r,b,'secure').ok);r.awd=true;carKey(r,1);carKey(r,1);run(r,b,1);selectCarGear(r,'D');r.gas=.45;
+ // The longer drawbar reaches the same loading depth with 0.6 m less reversing.
+ const {r,b}=ready({}, {loaded:true,atSlip:true,slipCarY:9});carKey(r,-1);shift(r,b,1.4);run(r,b,.1);assert.ok(trailerAction(r,b,'release').ok);run(r,b,5);assert.equal(r.boatLoaded,false);
+ assert.ok(b.ropes.some(q=>q.end==='bow'&&q.bollard===trailerBollardIndex()));assert.equal(trailerImmersion(r,b).tooDeep,false);assert.ok(trailerAction(r,b,'secure').ok);r.awd=true;carKey(r,1);carKey(r,1);run(r,b,1);selectCarGear(r,'D');r.gas=.45;
  for(let i=0;i<2400&&r.car.y>-15;i++)run(r,b,dt);r.gas=0;r.brake=1;run(r,b,2);assert.ok(r.car.y<-10);assert.ok(bottomAt(b.x,b.y).depth<0);assert.equal(r.boatLoaded,true);assert.equal(b.damage,0);assert.equal(b.grounded,false);assert.ok(Math.abs(r.speed)<.04);
 });

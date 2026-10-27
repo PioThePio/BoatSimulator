@@ -1,3 +1,4 @@
+import {openTowTools} from './helpers/tow-tools.js';
 import {test,expect} from '@playwright/test';
 
 test('SUV cockpit keeps the wheel and gauges, starts from its key and drives/brakes by keyboard without changing boat throttle',async({page})=>{
@@ -12,7 +13,7 @@ test('SUV cockpit keeps the wheel and gauges, starts from its key and drives/bra
 test('touch pedals rise and release progressively, car arrow keys do not turn the ignition, and dry restraints do not float a boat',async({page})=>{
  await page.clock.install();await page.goto('/');await page.locator('#start-location').selectOption('trailer');await page.locator('#begin-session').click();await page.locator('#car-key-right').click();await page.locator('#car-key').focus();await page.keyboard.press('ArrowLeft');await page.keyboard.press('ArrowRight');await expect(page.locator('#car-key-state')).toHaveText('Zapłon');
  await page.clock.pauseAt(await page.evaluate(()=>Date.now()+100));const pedal=page.locator('[data-pedal=gas]'),box=await pedal.boundingBox();await page.mouse.move(box.x+box.width/2,box.y+box.height/2);await page.mouse.down();await page.clock.runFor(200);const pressure=+(await page.locator('#car-gas').inputValue());expect(pressure).toBeGreaterThan(10);expect(pressure).toBeLessThan(60);await page.clock.runFor(700);await expect(page.locator('#car-gas')).toHaveValue('100');await page.mouse.up();await page.clock.runFor(250);await expect(page.locator('#car-gas')).toHaveValue('0');
- await page.locator('[data-trailer-action=release]').click();await page.clock.runFor(1200);await expect(page.locator('#tow-live-status')).toContainText('Zabezpieczenia zwolnione');await expect(page.locator('#tow-summary')).toContainText('z łodzią');await expect(page.locator('#hull-value')).toHaveText('100%');
+ await openTowTools(page);await page.locator('[data-trailer-action=release]').click();await page.clock.runFor(1200);await expect(page.locator('#tow-live-status')).toContainText('Zabezpieczenia zwolnione');await expect(page.locator('#tow-summary')).toContainText('z łodzią');await expect(page.locator('#hull-value')).toHaveText('100%');
 });
 
 test('wind arrow shows local live speed and destination direction; a retrieval start has a submerged trailer',async({page})=>{

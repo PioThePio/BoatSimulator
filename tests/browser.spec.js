@@ -144,9 +144,9 @@ test('mooring header can be dragged by touch within the mobile map',async({brows
  try{
   const page=await context.newPage();await page.goto('http://127.0.0.1:5173');await page.locator('#begin-session').tap();await chooseStart(page,'berth');await page.locator('#lake').scrollIntoViewIfNeeded();
   const lake=await page.locator('#lake').boundingBox(),scale=Math.min(lake.width/140,lake.height/80);await page.locator('#lake').tap({position:{x:lake.width/2+(29-24.3)*scale,y:lake.height/2+(17-22)*scale}});
-  await expect(page.locator('#mooring-picker')).toBeVisible();const before=await page.locator('#mooring-picker').boundingBox(),handle=await page.locator('#mooring-handle').boundingBox(),x=handle.x+25,y=handle.y+15;
-  const session=await context.newCDPSession(page);await session.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x,y}]});await session.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:x+10,y:y-30}]});await session.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
-  const after=await page.locator('#mooring-picker').boundingBox();expect(after.y).toBeLessThan(before.y-20);expect(after.y).toBeGreaterThanOrEqual(lake.y-1);await expect(page.locator('#mooring-picker')).toBeVisible();
+  await expect(page.locator('#mooring-picker')).toBeVisible();const before=await page.locator('#mooring-picker').boundingBox(),handle=await page.locator('#mooring-handle').boundingBox(),x=handle.x+25,y=handle.y+15,dy=before.y-lake.y>40?-30:30;
+  const session=await context.newCDPSession(page);await session.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x,y}]});await session.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:x+10,y:y+dy}]});await session.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+  const after=await page.locator('#mooring-picker').boundingBox();if(dy<0)expect(after.y).toBeLessThan(before.y-20);else expect(after.y).toBeGreaterThan(before.y+20);expect(after.y).toBeGreaterThanOrEqual(lake.y-1);expect(after.y+after.height).toBeLessThanOrEqual(lake.y+lake.height+2);await expect(page.locator('#mooring-picker')).toBeVisible();
  }finally{await context.close();}
 });
 test('restart opens the setup menu with the selected vessel, weather and location retained',async({page})=>{
