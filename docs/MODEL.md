@@ -868,7 +868,7 @@ oraz działające aktualne odnośniki dokumentacji.
 w szuwarach, kontakt wlotu z dnem, zbliżanie i obrót punktu podejmowania,
 rzeczywiste N, siłę kontaktu, scoring, Logbook i kompatybilny zapis SAR.
 `sar-feedback.spec.js` sprawdza stały nacisk kg, położenie ostrzeżeń na
-telefonie/desktopie, linię celu, podjęcie z mapy, wynik i Kontynuuj.
+telefonie/desktopie, linię celu, podjęcie z mapy, wynik i Kontynuuj. Test ponownego wyniku SAR po Nowej próbie używa kontrolowanego zegara i 0,4 s rzeczywistego hamowania wyrzuconego koła przed podjęciem; nie zakłada sukcesu przy początkowym ruchu 1,5 m/s ani opóźnieniach renderowania.
 Dawne testy dolnego panelu cumowania używają teraz prawdziwego klikania
 polerów i knag na mapie, z zachowaniem testów wybierania/luzowania,
 serwisu i tankowania.
