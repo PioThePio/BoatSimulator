@@ -4,7 +4,7 @@ const $=s=>document.querySelector(s);
 export function installScreenLayout({boat,save}){
  const wrap=$('.water-wrap'),help=$('#help');wrap.append(help);help.classList.add('map-help');$('header')?.remove();const credit=document.createElement('a');credit.className='map-attribution';credit.href='https://www.openstreetmap.org/copyright';credit.target='_blank';credit.rel='noopener noreferrer';credit.textContent='Euzebia / ujście kanału · © OpenStreetMap';wrap.append(credit);
  const instructions=$('#instructions');$('#info').append(instructions);$('footer')?.remove();
- const alerts=document.createElement('div');alerts.className='map-alert-stack';alerts.append($('#engine-warning'),$('#toast'));wrap.append(alerts);
+ const alerts=document.createElement('div');alerts.className='map-alert-stack';alerts.append($('#engine-warning'));wrap.append(alerts);const notices=document.createElement('div');notices.className='map-notice-stack';notices.append($('#toast'));wrap.append(notices);
  $('.controls').append($('.vehicle-selector'),$('.console-tools'));
  const trip=document.createElement('dialog');trip.id='trip-dialog';trip.innerHTML='<div class="setup-heading"><h2>Rejs i instalacja</h2><button class="round" aria-label="Zamknij rejs">×</button></div>';trip.append($('.operations-panel'),$('.bottom-note'));wrap.append(trip);
  const tripButton=document.createElement('button');tripButton.id='trip-open';tripButton.textContent='Rejs';$('.map-toolbar>div').append(tripButton);tripButton.onclick=()=>trip.open?trip.close():trip.show();trip.querySelector('button').onclick=()=>trip.close();

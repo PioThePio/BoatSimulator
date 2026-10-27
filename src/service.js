@@ -1,6 +1,12 @@
 import {SERVICE_BAYS,DOCKS,clamp} from './world.js';
 import {cleat} from './rigging.js';
 import {mooringPoint} from './marina.js';
+import {updateMass} from './craft.js';
+import {floodingStep} from './flooding.js';
+import {immersionReadings} from './flood-systems.js';
+import {resetAlarms} from './alarms.js';
+export const SERVICE_PUMP_LPM=600; // External shore pump; physical litres/minute.
+const remainingWork=b=>b.damage+b.engines.reduce((sum,en)=>sum+en.propDamage+(en.floodRepair??0),0)+(b.service.systemWork??0)+(b.bilge?.litres??0)*3/(SERVICE_PUMP_LPM/60)+(b.bilge?.driveLeak??0)*20;
 
 export function serviceStatus(b){
  const rig=b.towRig;
@@ -27,26 +33,33 @@ export function nearService(b){
 }
 export function requestRepair(b){
  const service=b.service;
- if(service.active){service.active=false;service.status='Naprawa zatrzymana';return{ok:true,message:service.status};}
+ if(service.active){service.active=false;service.pumpOutflow=0;service.status='Naprawa zatrzymana';return{ok:true,message:service.status};}
  const allowed=serviceStatus(b);if(!allowed.ok)return allowed;
- const damage=b.damage+b.engines.reduce((sum,en)=>sum+en.propDamage+(en.flooded?20:0),0)+(b.disabledEngine?20:0);
+ for(const en of b.engines)en.floodRepair=en.flooded?20:0;
+ service.systemWork=b.disabledEngine||b.electrics.floodFault?20:0;
+ const damage=remainingWork(b);
  if(damage<=0)return{ok:false,message:'Łódź i napęd nie wymagają naprawy.'};
  service.active=true;service.initial=damage;service.progress=0;service.status='Naprawa przy slipie';b.throttle=b.throttle2=0;
- for(const en of b.engines)en.floodRepair=en.flooded?20:0;
+ service.pumpOutflow=0;
  return{ok:true,message:allowed.land?'Naprawa na przyczepie · pozostań na stanowisku.':'Naprawa rozpoczęta. Pozostań przycumowany z wyłączonym zapłonem.'};
 }
 export function serviceStep(b,dt){
- const service=b.service;if(!service.active)return;
+ const service=b.service;service.pumpOutflow=0;if(!service.active)return;
  const allowed=serviceStatus(b);if(!allowed.ok){service.active=false;service.status='Naprawa przerwana · '+allowed.message;return;}
  const before=b.damage;b.damage=Math.max(0,b.damage-3*dt);const fraction=before>0?b.damage/before:0;
  for(const map of [b.sectionDamage,b.bottomDamage])for(const id of Object.keys(map??{}))map[id]*=fraction;
- for(const en of b.engines){en.propDamage=Math.max(0,en.propDamage-4*dt);en.floodRepair=Math.max(0,(en.floodRepair??0)-4*dt);if(en.flooded&&en.floodRepair===0){en.flooded=false;en.floodTime=0;}}
- const remaining=b.damage+b.engines.reduce((sum,en)=>sum+en.propDamage+en.floodRepair,0);service.progress=clamp(1-remaining/service.initial,0,1);
- if(remaining<1e-8){
+ for(const en of b.engines){en.propDamage=Math.max(0,en.propDamage-4*dt);en.floodRepair=Math.max(0,(en.floodRepair??0)-4*dt);}
+ service.systemWork=Math.max(0,(service.systemWork??0)-3*dt);
+ if(b.bilge){const q=b.bilge,water=Math.min(q.litres,SERVICE_PUMP_LPM/60*dt);q.litres-=water;q.level=q.litres/q.capacity;q.alarm=q.level>=.5;q.driveLeak=Math.max(0,q.driveLeak-.08*dt);service.pumpOutflow=dt>0?water/dt:0;updateMass(b.spec,b.fuel.litres,q.litres);}
+ const remaining=remainingWork(b),surface=b.encounter?.eta??0,up=!immersionReadings(b,surface).deckWet;
+ service.progress=clamp(1-remaining/service.initial,0,up?1:.99);
+ service.status=b.bilge.litres>1?'Naprawa i osuszanie · '+Math.ceil(b.bilge.litres)+' l':!up?'Przywracanie wyporności':'Naprawa przy slipie';
+ if(remaining<1e-8&&up){
   b.damage=0;b.disabledEngine=false;b.sectionDamage={};b.bottomDamage={};b.impacts=[];b.impactTimes={};b.lastImpact=null;
   for(const en of b.engines){en.propDamage=0;en.thermalTrip=false;en.flooded=false;en.floodTime=0;}
-  if(b.bilge)b.bilge.driveLeak=0;
+  if(b.bilge)Object.assign(b.bilge,{litres:0,level:0,alarm:false,inflow:0,leakInflow:0,deckInflow:0,outflow:0,running:false,autoRunning:false,driveLeak:0});
+  floodingStep(b,0,surface);updateMass(b.spec,b.fuel.litres,0);
   if(b.electrics.floodFault){b.electrics.floodFault=false;b.electrics.master=false;b.battery.soc=.6;b.battery.voltage=12.3;}
-  service.active=false;service.progress=1;service.status='Naprawa zakończona · kadłub i napęd sprawne';
+  resetAlarms(b);service.pumpOutflow=0;service.active=false;service.progress=1;service.status='Naprawa zakończona · kadłub i napęd sprawne · łódź osuszona';
  }
 }

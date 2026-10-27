@@ -2,9 +2,10 @@ import {nearbyEngines} from './spatial-audio.js';
 import {windSound} from './wind-response.js';
 import {turboParameters} from './racing.js';
 import {clamp,waveHeight,environment} from './world.js';
+import {alarmStatus} from './alarms.js';
 export function soundParameters(b,e={}){
  const speed=Math.hypot(b.telemetry.surge??0,b.telemetry.sway??0),air=environment(b.time,e,b.x,b.y).wind,weather={windSpeed:Math.hypot(air.x,air.y)};
- const plane=clamp((b.planing-.2)/.6,0,1),skimming=plane*plane*(3-2*plane),car=b.spec.profile==='suv';
+ const plane=clamp((b.planing-.2)/.6,0,1),skimming=plane*plane*(3-2*plane),car=b.spec.profile==='suv',alarms=alarmStatus(b);
  return{wind:windSound(weather.windSpeed,e.windSound!==false),engines:b.engines.map(en=>{
    const running=en.key==='running',starting=en.key==='starting',v8=!b.spec.jet&&en.hp>=150;
    const load=running?clamp(en.load,0,1):0,working=running&&en.gear!==0;
@@ -26,9 +27,8 @@ export function soundParameters(b,e={}){
   wash:clamp(speed/22,0,1)*(.012+.07*b.planing)+clamp(Math.abs(b.telemetry.thrust??0)/7000,0,1)*.018,
   waterCutoff:500+clamp(speed/8,0,1)*650,
   skimming,spray:skimming*clamp(speed/16,0,1)*.14,sprayCutoff:1400+clamp(speed/22,0,1)*1300,
-  tyres:car?clamp(b.tyreSlip??0,0,1)*.10:0,fan:b.spec.air&&b.engines[0].key==='running'?.015+.075*b.engines[0].n:0,winch:Math.abs(b.towRig?.winch?.rate??0)>.001?.028:0,commandClick:!car,bilgePump:!car&&b.bilge?.running?.035:0,bilgeSlosh:!car?clamp(b.bilge?.level??0,0,1)*clamp(Math.abs(b.rollVelocity)+Math.abs(b.pitchVelocity)+speed*.02,0,.8)*.08:0,bilgeAlarm:!car&&!!b.bilge?.alarm,
-  ignitionAlarm:b.electrics?.master!==false&&!b.suppressIgnitionAlarm&&b.engines.some(en=>en.key==='ignition'),
-  temperatureAlarm:b.electrics?.master!==false&&!car&&b.battery.soc>.001&&b.engines.some(en=>en.key!=='off'&&(en.temperature>=105||en.thermalTrip)),
+  tyres:car?clamp(b.tyreSlip??0,0,1)*.10:0,fan:b.spec.air&&b.engines[0].key==='running'?.015+.075*b.engines[0].n:0,winch:Math.abs(b.towRig?.winch?.rate??0)>.001?.028:0,commandClick:!car,bilgePump:!car&&b.bilge?.running?.035:0,bilgeSlosh:!car?clamp(b.bilge?.level??0,0,1)*clamp(Math.abs(b.rollVelocity)+Math.abs(b.pitchVelocity)+speed*.02,0,.8)*.08:0,bilgeAlarm:alarms.bilgeAlarm,
+  ignitionAlarm:alarms.ignitionAlarm,temperatureAlarm:alarms.temperatureAlarm,
   trimPump:b.spec.jet||b.spec.air||b.spec.propulsion==='inboard'?0:clamp(Math.max(...b.engines.map(en=>Math.abs(en.trimRate??0)))/.1,0,1),
   thrusters:['bow','stern'].map(end=>Math.abs(b.thrusters[end+'Actual']??0)*.085),pump:b.fuel.refueling?.025:0};
 }
@@ -125,7 +125,7 @@ export function createSoundscape({context=null}={}){
    const values=soundParameters(b,e);target(graph.wind.gain.gain,values.wind.level,.12);target(graph.wind.filter.frequency,values.wind.cutoff,.18);target(graph.tyres.gain.gain,values.tyres);target(graph.tyres.flutter.frequency,9+Math.abs(b.engines[0].rpm/800));target(graph.fan.gain.gain,values.fan);target(graph.fan.filter.frequency,600+1200*b.engines[0].n);target(graph.winch.gain.gain,values.winch);
    const starter=values.engines.find(en=>en.carStarter),compression=.55+.45*Math.sin(b.time*2*Math.PI*13)**2;
    target(graph.starter.gain.gain,starter?.024*compression:0,.012);target(graph.starter.source.frequency,(starter?.starterFrequency??180)*(1+.035*Math.sin(b.time*2*Math.PI*13)),.012);target(graph.starter.noise.gain.gain,starter?.065:0,.015);target(graph.starter.noise.flutter.frequency,13);
-   target(graph.bilge.pump.gain.gain,values.bilgePump);target(graph.bilge.slosh.gain.gain,values.bilgeSlosh);target(graph.bilge.gain.gain,values.bilgeAlarm?.035*(Math.sin(b.time*8)>0?1:.25):0);
+   target(graph.bilge.pump.gain.gain,values.bilgePump);target(graph.bilge.slosh.gain.gain,values.bilgeSlosh);target(graph.bilge.gain.gain,values.bilgeAlarm&&b.time%1<.55?.035:0);
    values.engines.forEach((en,i)=>{
     const v=graph.engines[i];target(v.turbo.gain.gain,en.turbo?.level??0,.12);target(v.turbo.source.frequency,en.turbo?.frequency??850,.15);target(v.turbo.air.gain.gain,en.turbo?.airLevel??0,.12);target(v.clatter.gain.gain,en.clatter);target(v.clatter.pulse.frequency,Math.max(5,en.firingRate));
     if(v.timbre!==en.timbre){if(en.timbre==='v8')v.source.setPeriodicWave(graph.v8Wave);else v.source.type='triangle';v.timbre=en.timbre;}
@@ -137,7 +137,7 @@ export function createSoundscape({context=null}={}){
    for(let i=values.engines.length;i<graph.engines.length;i++){const v=graph.engines[i];target(v.turbo.gain.gain,0);target(v.turbo.air.gain.gain,0);target(v.clatter.gain.gain,0);target(v.gain.gain,0);target(v.exhaust.gain.gain,0);target(v.churn.gain.gain,0);}
    target(graph.waves.gain.gain,values.waves*(.75+.25*Math.sin(b.time*1.3)));target(graph.wash.gain.gain,values.wash*(1-.72*values.skimming));target(graph.wash.filter.frequency,values.waterCutoff);
    target(graph.spray.gain.gain,values.spray*.65);target(graph.spray.filter.frequency,values.sprayCutoff);target(graph.sprayRight.gain.gain,values.spray*.55);target(graph.sprayRight.filter.frequency,values.sprayCutoff*1.2);
-   values.thrusters.forEach((v,i)=>{target(graph.thrusters[i].gain.gain,v);target(graph.thrusters[i].filter.frequency,420+v*2200);});target(graph.pump.gain.gain,values.pump);target(graph.alarm.gain.gain,(values.ignitionAlarm||values.temperatureAlarm)?.045:0,.025);
+   values.thrusters.forEach((v,i)=>{target(graph.thrusters[i].gain.gain,v);target(graph.thrusters[i].filter.frequency,420+v*2200);});target(graph.pump.gain.gain,values.pump);target(graph.alarm.gain.gain,values.temperatureAlarm?(b.time%1<.55?.045:0):values.ignitionAlarm?.045:0,.025);
    target(graph.trim.gain.gain,values.trimPump*.022);target(graph.trim.noise.gain.gain,values.trimPump*.055);target(graph.trim.source.frequency,175+values.trimPump*28);
    if(boatRef!==b){boatRef=b;previous=null;}
    if(previous&&active){

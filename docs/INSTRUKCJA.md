@@ -30,7 +30,7 @@ podpowiedź pokazuje faktyczną godzinę. Odczyt punktu także zaczyna w pauzie.
 Mapa zaczyna się przy górnej krawędzi. Znak ? przy nazwie jeziora otwiera
 pomoc. Pod mapą są obok siebie: kierownica, napęd, zegary i węższy panel stanu
 z profilem zanurzenia oraz uszkodzeniami. Wybór stanowiska jest pod
-sterowaniem, a pod nim regulacja dźwięku. Strona mieści się w wysokości
+sterowaniem, a pod nim regulacja dźwięku. Mapa zajmuje przynajmniej 52% wysokości okna. Zęza i zanurzenie są razem w węższym panelu stanu. Informacje (np. rozrusznik) pojawiają się neutralnie u góry mapy, a uszkodzenia i awarie w dolnym żółtym/czerwonym pasku. Strona mieści się w wysokości
 ekranu; na bardzo niskim ekranie przewija się tylko konsola lub otwarte
 okno. Przycisk Rejs otwiera liczniki, GPS, bilans instalacji i ustawienie
 slipu w SUV-ie, pozostawiając sterowanie aktywne. Na telefonie elementy
@@ -136,7 +136,7 @@ Po rozruchu wraca do I. Obrót w lewo wyłącza silnik i zapłon do 0.
 Kluczyk można przekręcać także bez głównego zasilania: pozycja I pozostaje, a START sprężynuje do I, lecz rozrusznik nie kręci i nie pobiera prądu.
 Strzałki sterowania nie obracają stacyjki. Włączony zapłon bez pracującego
 silnika daje ciągły sygnał; wyłączenie zapłonu go ucisza. SUV nie ma tego
-alarmu. Po zimnym rozruchu obroty lekko falują.
+alarmu. Po zimnym rozruchu obroty lekko falują. Obok stacyjek jest lampka alarmu: świeci stale przy zapłonie, miga przy wodzie w zęzie lub przegrzaniu. Kliknij ją, aby uciszyć bieżący dźwięk bez ukrywania ostrzeżenia. Nowy alarm, jego nawrót lub wyłączenie/włączenie głównego zasilania ponownie uzbraja dźwięk. Główne OFF wycisza wszystkie pokładowe alarmy.
 
 Pod napędem są przełączniki głównego zasilania, instrumentów, pompy,
 strumieniowych, GPS, echosondy i świateł nawigacyjnych. Główne OFF
@@ -148,14 +148,14 @@ Strumieniowe wymagają także zamontowania ich podczas konfiguracji.
 Odbiorniki naprawdę zużywają akumulator. Duże obciążenie obniża napięcie,
 silnik ładuje przez alternator, słaby akumulator wolniej kręci lub nie
 uruchomi silnika. Wskaźnik pokazuje V i pozostały procent. Wyłączenie
-samego odbiornika zachowuje jego ustawienie przy następnym zasileniu.
+samego odbiornika zachowuje jego ustawienie przy następnym zasileniu. Ładowanie i rozładowanie są liczone 2×, jak czas rejsu; pompy, rozrusznik i pozostała fizyka działają w czasie 1:1. Stopka pokazuje dokładny SOC, V i prąd netto: minus oznacza pobór, plus ładowanie. Przy małym poborze procent zmienia się powoli, dlatego ma dwa miejsca po przecinku.
 
 Zegary pokazują RPM (osobne dla dwóch silników), prędkość, paliwo, trym,
 temperaturę i napięcie. RPM L/P, TRIM, KM/H, PALIWO, BAT i TEMP mają jednakową czcionkę na tarczach. Spalanie L/h leży drobniej między E/F, a SOC między 8/16. Pod tarczami są wartości: km/h, litry, V i °C.
 Spalanie w L/h również jest na tarczy paliwa. Wartości są pod tarczami:
 prędkość z km/h, ilość paliwa w litrach i temperatura z °C.
 Wyłączenie instrumentów opuszcza wskazówki poza BAT; wyłączenie głównego
-zasilania opuszcza również BAT. Wyłączone odczyty cyfrowe pokazują kreskę. Profil obok pokazuje
+zasilania opuszcza również BAT. Wskazówki płynnie opadają i wstają przez około 1,2 s. Wyłączone odczyty cyfrowe pokazują kreskę. Profil obok pokazuje
 uniesienie dziobu, położenie napędu, zanurzenie śruby i dno na płytkiej
 wodzie. Panel stanu pokazuje zanurzenie kadłuba i wodę w zęzie.
 
@@ -329,7 +329,7 @@ pokazuje warunki i poziom paliwa. Jego Tankuj uruchamia/przerywa napełnianie.
 Serwis jest przy slipie portu głównego. Przycumuj do jego pomostu,
 zatrzymaj łódź, wyłącz silniki i zapłon. Przycisk Napraw pojawia się
 przy miejscu serwisu na mapie. Naprawa postępuje z czasem i przerywa się
-po utracie warunków. Zatrzymuje przeciek; pozostałą wodę wypompuj.
+po utracie warunków. Zatrzymuje przeciek i odpompowuje wodę zewnętrzną pompą serwisową 600 l/min, działającą także po zwarciu. Poczekaj na osuszenie i odzyskanie wyporności. Naprawiona łódź wynurza się, a zalana instalacja zostaje odtworzona z 60% SOC i głównym OFF; potem ręcznie włącz zasilanie i uruchom silnik.
 Na parkingu są też dwa stanowiska SERWIS dla zabezpieczonej łodzi na
 przyczepie: cały zestaw w obrysie, P lub ręczny, silniki łodzi wyłączone.
 

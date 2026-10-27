@@ -8,9 +8,12 @@ import {requestRefuel} from './systems.js';
 import {thermalStage,coolingWarning} from './thermal.js';
 import {requestRepair} from './service.js';
 import {conditionMarkup,updateContactInstrument} from './contact-instrument.js';
+import {setGaugeNeedle} from './gauge-motion.js';
+import {alarmStatus,acknowledgeAlarms} from './alarms.js';
 const $=s=>document.querySelector(s);
 function updateIgnitionView(b,index){const e=b.engines[index];$('#key-state-'+index).textContent=({off:'Wyłączony',ignition:'Zapłon',starting:'Rozrusznik…',running:'Pracuje'})[e.key];$('#key-'+index+' .key-pointer').style.transform=`rotate(${e.key==='off'?-48:e.key==='starting'||e.keyStartUntil>b.time?48:0}deg)`;$('#key-'+index).classList.toggle('running',e.key==='running');}
 export function installCockpit(api){
+ const lamp=document.createElement('button');lamp.type='button';lamp.id='alarm-ack';lamp.className='alarm-lamp';lamp.innerHTML='<i aria-hidden="true"></i>';lamp.setAttribute('aria-label','Potwierdź alarm dźwiękowy');lamp.title='Lampka alarmu · naciśnij, aby uciszyć bieżący alarm';$('.throttle-section>.hint').before(lamp);lamp.onclick=()=>{acknowledgeAlarms(api.boat());updateAlarmLamp(api.boat());};
  $('#instruments').innerHTML=gauge('rpm','OBROTOMIERZ',0,6500,'obr/min')+gauge('rpm2','OBROTY · PRAWY',0,6500,'obr/min')+gauge('speed','PRĘDKOŚĆ',0,120,'km/h')+gauge('fuel','PALIWO',0,100,'L/h')+gauge('trim','TRYM',0,100,'%')+gauge('volt','BAT',8,16,'V')+gauge('temp','Temp',20,140,'°C')+attitudeMarkup();
  $('.pitch-gauge').insertAdjacentHTML('beforeend',conditionMarkup());$('#instruments').insertAdjacentHTML('beforeend','<div class="bilge-panel"><div><span>WODA W ZĘZIE</span><strong id="bilge-level">0%</strong><span id="bilge-inflow">↘ 0,0 l/min</span><span id="bilge-litres">0 l</span><span id="bilge-outflow">↗ 0,0 l/min</span></div><meter id="bilge-meter" min="0" max="100" high="50" optimum="0" value="0" aria-label="Poziom wody w zęzie"></meter><button id="bilge-pump" title="Ręczne włączenie pompy; AUTO działa niezależnie" aria-pressed="false">POMPA OFF</button><label hidden><input id="bilge-auto" type="checkbox" checked> AUTO</label></div>');$('#bilge-pump').onclick=()=>{const q=api.boat().bilge;setPumpMode(q,({off:'auto',auto:'on',on:'off'})[pumpMode(q)]);updateBilgePanel(api.boat());};$('#bilge-auto').onchange=e=>api.boat().bilge.auto=e.target.checked;
  for(let i=0;i<2;i++){
@@ -39,9 +42,9 @@ export function installCockpit(api){
   $('#first-engine h3').textContent=en.length===2?'Lewy':'Solo';$('#gauge-rpm2').hidden=en.length!==2;$('#instruments').classList.toggle('twins',en.length===2);$('#gauge-rpm .gauge-name').textContent=en.length===2?'RPM L':'RPM';$('#gauge-rpm .gauge-face-title').textContent=en.length===2?'RPM L':'RPM';
   const values={rpm:en[0].rpm,rpm2:en[1]?.rpm??0,speed:Math.hypot(b.vx,b.vy)*3.6,fuel:b.fuel.capacity?100*b.fuel.litres/b.fuel.capacity:0,trim:100*trim,volt:b.battery.voltage,temp:temperature};
   const car=api.vehicle?.()==='suv',masterLive=car||b.electrics.master!==false,instrumentsLive=car||b.electrics.powered.instruments;
-  for(const [id,value]of Object.entries(values)){const el=$('#gauge-'+id),live=id==='volt'?masterLive:instrumentsLive,fraction=live?Math.max(0,Math.min(1,(value-+el.dataset.min)/(+el.dataset.max-+el.dataset.min))):0;el.dataset.powered=String(!!live);el.querySelector('.needle').style.transform=`rotate(${fraction*180}deg)`;el.querySelector('strong').textContent=live?value.toFixed(['rpm','rpm2','fuel','trim','temp'].includes(id)?0:1):'—';}
+  for(const [id,value]of Object.entries(values)){const el=$('#gauge-'+id),live=id==='volt'?masterLive:instrumentsLive,fraction=live?Math.max(0,Math.min(1,(value-+el.dataset.min)/(+el.dataset.max-+el.dataset.min))):0;setGaugeNeedle(el,fraction,!!live);el.querySelector('strong').textContent=live?value.toFixed(['rpm','rpm2','fuel','trim','temp'].includes(id)?0:1):'—';}
   for(const id of ['rpm','rpm2'])$('#gauge-'+id+' small').textContent='';
-  $('#gauge-fuel strong').textContent=instrumentsLive?b.fuel.litres.toFixed(1)+' l':'—';$('#gauge-fuel small').textContent='';$('#fuel-flow-dial').textContent=instrumentsLive?b.fuel.flow.toFixed(1)+' L/h':'— L/h';$('#fuel-flow-dial').setAttribute('aria-label','Spalanie w litrach na godzinę');$('#battery-soc-face').textContent=masterLive?'SOC '+Math.round(b.battery.soc*100)+'%':'SOC —';
+  $('#gauge-fuel strong').textContent=instrumentsLive?b.fuel.litres.toFixed(1)+' l':'—';$('#gauge-fuel small').textContent='';$('#fuel-flow-dial').textContent=instrumentsLive?b.fuel.flow.toFixed(1)+' L/h':'— L/h';$('#fuel-flow-dial').setAttribute('aria-label','Spalanie w litrach na godzinę');$('#battery-soc-face').textContent=masterLive?'SOC '+(b.battery.soc*100).toFixed(1)+'%':'SOC —';
   $('#gauge-temp').dataset.temperatureStage=thermalStage(temperature);$('#gauge-temp').classList.toggle('danger',temperature>=105);$('#gauge-trim').classList.toggle('disabled',!!noTrim);$('#trim-value').textContent=Math.round((b.enginesRaised?1:en[0].trimTarget)*100)+'%';$('#trim-value').title=(en[0].trimTarget<=.4?'Roboczy trym':'Podnoszenie napędu')+' · pozycja zadana';$('#gauge-trim small').textContent=S.air?'ŚMIGŁO POWIETRZNE':S.propulsion==='inboard'?'STAŁY WAŁ':S.jet?'NAPĘD STRUGOWY':'%';
   updateAttitude(b,api.env);
   updateContactInstrument(b);
@@ -51,7 +54,7 @@ export function installCockpit(api){
   $('#fuel-status').textContent=`${b.fuel.litres.toFixed(1)} / ${b.fuel.capacity} l · ${b.fuel.flow.toFixed(1)} L/h${b.fuel.refueling?' · TANKOWANIE':b.fuel.status?' · '+b.fuel.status:''}`;
   $('#refuel').textContent=b.fuel.refueling?'■ Stop tankowania':'⛽ Tankuj';
   $('#repair').textContent=b.service.active?'■ Przerwij naprawę':b.towRig?.boatLoaded?'🔧 Napraw na stanowisku':'🔧 Napraw przy slipie';$('#repair-status').textContent=b.service.status+(b.service.active?' · '+Math.round(b.service.progress*100)+'%':'');
-  const q=b.bilge;updateBilgePanel(b);const warnings=[];if(b.electrics.floodFault)warnings.push('ZWARCIE · instalacja zalana · brak zasilania');if(b.sunken)warnings.push('ŁÓDŹ ZATOPIONA');else if(b.swamped)warnings.push('Zalany pokład · pompuj i wracaj do serwisu');if(q.alarm)warnings.push('UWAGA — WODA W ZĘZIE');
+  const q=b.bilge;updateBilgePanel(b);updateAlarmLamp(b);const warnings=[];if(b.electrics.floodFault)warnings.push('ZWARCIE · instalacja zalana · brak zasilania');if(b.sunken)warnings.push('ŁÓDŹ ZATOPIONA');else if(b.swamped)warnings.push('Zalany pokład · pompuj i wracaj do serwisu');if(q.alarm)warnings.push('UWAGA — WODA W ZĘZIE');
   const stage=thermalStage(temperature);
   if(stage!=='normal'||en.some(e=>e.thermalTrip))warnings.push(({high:'HIGH TEMP',alarm:'ALARM TEMPERATURY',overheat:'OVERHEAT'})[stage]+' · zmniejsz gaz i sprawdź chłodzenie'+(en.some(e=>e.thermalTrip)?' · silnik zatrzymany':''));
   else{const cooling=coolingWarning(b);if(cooling)warnings.push(cooling);}
@@ -70,7 +73,7 @@ export function updateBilgePanel(b){
  $('#bilge-level').textContent=Math.round(q.level*100)+'%';$('#bilge-meter').value=q.level*100;
  $('#bilge-litres').textContent=Math.round(q.litres)+' l';
  $('#bilge-inflow').textContent='↘ '+(q.inflow*60).toFixed(1)+' l/min';$('#bilge-inflow').title='Napływ wody';
- $('#bilge-outflow').textContent='↗ '+(q.outflow*60).toFixed(1)+' l/min';$('#bilge-outflow').title='Wypompowywanie · pompa '+q.pumpRate+' l/min przy 12 V';
+ $('#bilge-outflow').textContent='↗ '+((q.outflow+(b.service?.pumpOutflow??0))*60).toFixed(1)+' l/min';$('#bilge-outflow').title='Wypompowywanie · pompa '+q.pumpRate+' l/min przy 12 V'+(b.service?.pumpOutflow?' + pompa serwisowa':'');
  const live=b.electrics?.master!==false,mode=pumpMode(q),on=live&&q.running;
  if($('#bilge-pump').dataset.mode!==mode)$('#bilge-pump').innerHTML='<span class="rocker-face pump-face" aria-hidden="true"><i class="pump-auto-led"></i><i class="pump-on-led"></i></span><span class="rocker-caption">POMPA '+mode.toUpperCase()+'</span>';
  $('#bilge-pump .pump-auto-led').classList.toggle('lit',live&&mode==='auto');$('#bilge-pump .pump-on-led').classList.toggle('lit',!!on);
@@ -78,4 +81,8 @@ export function updateBilgePanel(b){
  $('#bilge-pump').dataset.mode=mode;$('#bilge-auto').checked=q.auto;
  $('#bilge-pump').title=`OFF → AUTO → ON. Pływak: ${q.autoOnLitres.toFixed(0)} / ${q.autoOffLitres.toFixed(0)} l. Diody: AUTO i rzeczywista praca pompy.`;
  $('.bilge-panel').classList.toggle('danger',q.alarm);
+}
+function updateAlarmLamp(b){
+ const lamp=$('#alarm-ack'),s=alarmStatus(b);lamp.dataset.state=!s.lit?'off':s.critical?'critical':'ignition';lamp.dataset.muted=String(s.muted);lamp.setAttribute('aria-pressed',String(s.muted));
+ const message=!s.lit?'Brak aktywnego alarmu':s.critical?'Alarm awarii / wody w zęzie':'Zapłon · silnik nie pracuje';lamp.setAttribute('aria-label',message+(s.muted?' · dźwięk potwierdzony':' · naciśnij, aby uciszyć'));lamp.title=message+(s.muted?' · dźwięk uciszony do następnego alarmu lub cyklu zasilania':' · kliknij, aby uciszyć dźwięk');
 }

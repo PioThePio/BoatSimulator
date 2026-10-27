@@ -1,5 +1,7 @@
 import {applyFloodShort} from './flood-systems.js';
 import {clamp} from './world.js';
+import {operationalSeconds} from './operations.js';
+import {resetAlarms,alarmStatus} from './alarms.js';
 
 export const ELECTRICAL_LOADS={starter:110,ignition:1.2,navigationLights:.65,gps:.35,sonar:.70,instruments:.55};
 export const STARTER_LIMITS={minimumSOC:.08,minimumVoltage:10,minimumRPM:185,timeout:3};
@@ -18,9 +20,9 @@ export function enforceMainPower(b){
  for(const end of ['bow','stern'])b.thrusters[end+'Actual']=b.thrusters[end+'Force']=0;
  b.bilge.running=false;b.bilge.outflow=0;
 }
-export function setMainPower(b,on){b.electrics.master=!!on;enforceMainPower(b);electricalStep(b,0);}
+export function setMainPower(b,on){if(b.electrics.master!==!!on)resetAlarms(b);b.electrics.master=!!on;enforceMainPower(b);electricalStep(b,0);}
 export function electricalStep(b,dt,thrusterAmps=0){
- if(b.electrics.floodFault){applyFloodShort(b);return;}
+ if(b.electrics.floodFault){applyFloodShort(b);alarmStatus(b);return;}
  const battery=b.battery,devices=b.electrics,master=devices.master!==false;
  enforceMainPower(b);
  const availableAlternator=master?b.engines.reduce((sum,en)=>sum+alternatorCurrent(en),0):0;
@@ -33,6 +35,9 @@ export function electricalStep(b,dt,thrusterAmps=0){
  // The regulator supplies consumers, then tapers charging at the very top of SOC.
  const supply=Math.min(availableAlternator,demand+availableAlternator*clamp((1-battery.soc)/.01,0,1)),draw=demand-supply;
  battery.loads=loads;battery.loadCurrent=demand;battery.alternatorCurrent=supply;battery.current=draw;
- battery.soc=clamp(battery.soc-draw/3600/battery.capacity*dt,0,1);
+ // Ah accounting follows voyage time; instantaneous amps/IR sag and starter,
+ // thruster or pump dynamics still use unscaled physical seconds.
+ battery.soc=clamp(battery.soc-draw/3600/battery.capacity*operationalSeconds(dt),0,1);
  battery.voltage=availableAlternator>=demand&&availableAlternator>0?clamp(13.5-draw*.006,13.5,14.4):loadedBatteryVoltage(battery,draw);
+ alarmStatus(b);
 }

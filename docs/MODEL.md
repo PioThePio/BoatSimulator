@@ -48,11 +48,11 @@ pomostów, SUV-a, przyczep, budynków, drzew, polerów ani boi.
 
 Oddzielny `operationalTimeScale = 1/worldScale = 2` dotyczy wyłącznie
 czasu podróży, motogodzin, paliwa od czasu pracy, przebiegu, statystyk
-i ETA. `logicalDistance = physicalDistance/0.50`: 500 m mapy daje 1000 m
+i ETA oraz bilansu Ah akumulatora (ładowania i rozładowania). `logicalDistance = physicalDistance/0.50`: 500 m mapy daje 1000 m
 licznika. Motogodziny naliczane są osobno tylko pracującym silnikom.
 Paliwo zużyte w kroku: `L/h × dt × 2 / 3600`.
 
-Fizyka kadłuba, obroty, chłodzenie, akumulator, przecieki, pompa, cumy,
+Fizyka kadłuba, obroty, chłodzenie, chwilowe prądy i spadki napięcia, przecieki, pompa, cumy,
 kotwica, fale, wake, hol, MOB, SUV i przyczepa nadal używają rzeczywistego
 `dt`, bez mnożnika 2. Podstawowy krok to 1/120 s. Pauza, otwarte menu
 konfiguracji/pomocy oraz ukryta karta nie integrują świata. Zegar nie
@@ -253,7 +253,7 @@ temperatura używają fizycznych sekund, nie czasu eksploatacyjnego. Alarm wynur
 ## Instalacja elektryczna i paliwo
 
 Jeden akumulator zasila cały bilans: `I = odbiorniki - alternator`.
-`SOC -= I × dt / (3600 × Ah)`. Pojemność: skuter 35 Ah; inne 80 Ah
+`SOC -= I × operationalSeconds(dt) / (3600 × Ah)`, czyli bilans Ah działa 2× tak jak czas rejsu. Sam prąd w A, obciążone V, rozruch i przepompowane litry nadal wynikają z fizycznego czasu 1:1. Pojemność: skuter 35 Ah; inne 80 Ah
 +80 Ah na każdy zainstalowany strumieniowy. Rozrusznik 110 A na silnik,
 zapłon 1,2 A łącznie, światła LED 0,65 A, GPS 0,35 A, sonar 0,70 A,
 instrumenty 0,55 A. Pompa: `4.5 × sqrt(wydajność/32)` A. Strumieniowe
@@ -279,7 +279,9 @@ akumulatora: moc / (0,7 × napięcie), z małym poborem przy wydawaniu.
 Przycisk pompy zmienia tylko OFF→AUTO→ON; odświeżenie telemetryczne nie
 podmienia jego dzieci bez zmiany trybu, więc nie gubi kliknięcia.
 Wyłączone instrumenty mają wskazówki na minimum (BAT pozostaje czynny),
-a master OFF wyłącza także BAT. Odczyty cyfrowe wtedy pokazują kreskę.
+a master OFF wyłącza także BAT. Odczyty cyfrowe wtedy pokazują kreskę. Wskazówki mają wyłącznie wizualną bezwładność: 1,2 s przy zmianie zasilania, 0,18 s przy zwykłej zmianie odczytu. Stopka przełączników pokazuje SOC do 0,01%, napięcie do 0,01 V i prąd netto (− pobór, + ładowanie).
+
+Wspólny moduł `alarms.js` zasila lampkę i audio. Zapłon I bez pracy silnika daje ciągły sygnał i stałą lampkę. Woda w zęzie od 50% oraz temperatura ≥105°C dają migającą lampkę i pulsujący dźwięk. Alarmy wymagają dostępnego napięcia >9,5 V i energii z akumulatora lub alternatora; master OFF lub zwarcie je wycisza, zachowując wizualne ostrzeżenia o stanie kadłuba. Kliknięcie lampki potwierdza obecne źródła, nie usuwa awarii. Nowe źródło, nawrót po ustąpieniu, eskalacja do OVERHEAT ≥120°C lub rzeczywisty cykl master OFF/ON ponownie włącza dźwięk. Potwierdzenie jest częścią tego samego autozapisu.
 
 Zużycie standardowego silnika benzynowego [l/h] jest empiryczne:
 `0.45 + 0.003×KM + 0.29×KM×n^3×(0.55+0.45×load)`.
@@ -330,7 +332,7 @@ bez prądu, silniki OFF, pompa i strumieniowe stoją, rozruch jest blokowany.
 Przełącznik nie omija awarii. Taki stan przechodzi przez dotychczasowy
 snapshot i odczyt. Po osuszeniu serwis może odtworzyć instalację i
 akumulator z SOC 60%, pozostawiając główne zasilanie OFF do ręcznego
-włączenia. Zdrowy akumulator i odwracalna termika zachowują stare zasady.
+włączenia. Serwis obejmuje zewnętrzną pompę 600 l/min niezależną od pokładowego zasilania, liczoną w czasie fizycznym. Naprawia poszycie i uszczelnienie, usuwa rzeczywiste litry, przelicza masę i czeka na wynurzenie pokładu przez istniejącą wyporność. Nie przestawia XY ani heave. Dopiero po osuszeniu i wynurzeniu czyści zalanie, zatrzask zwarcia i alarm; zachowuje cumy, paliwo i liczniki. Można odzyskać także stary zapis z naprawionym, ale nadal zatopionym kadłubem. Przerwanie zachowuje wykonany postęp. Zdrowy akumulator i odwracalna termika zachowują stare zasady.
 
 ## Cumy, odbijacze, kotwica i szkody
 
@@ -916,6 +918,10 @@ wyścigówki. `performance-regression.test.js` sprawdza cache boi,
 wybudzanie cum, konserwatywne pomijanie kontaktów i zmianę kąta slipu.
 `engine-cockpit.spec.js` sprawdza tarcze, sąsiedztwo manetek, wybór diesla,
 kontynuację oraz unieważnianie wizualnego cache terenu.
+
+`service-alarms.test.js` sprawdza zasilanie i potwierdzanie alarmów, nowe źródła i eskalację, zapis zatrzasku, bilans akumulatora 2× przy pompie 1:1, rzeczywiste zatonięcie/naprawę/wynurzenie/rozruch, stary stan pod wodą, anulowanie i odczyt częściowej naprawy oraz klasyfikację komunikatów. `service-alarms.spec.js` mierzy mapę i cztery kolumny przy 390–1440 px, testuje lampkę, rzeczywiste próbki alarmu Web Audio, animację wskazówek, widoczny ubytek SOC, umiejscowienie informacji/awarii oraz pełną naprawę i Kontynuuj. Testy bilansu w `operations-v21.test.js` i `power-v23.test.js` wymagają teraz czasu eksploatacyjnego wyłącznie dla Ah.
+
+Mapa zajmuje minimum 52% wysokości okna; konsola ma najwyżej 48% i może przewijać się wewnętrznie na niskim ekranie. Zęza i zanurzenie tworzą wspólny blok, a kierownica, napęd, zegary i węższy stan kadłuba pozostają obok siebie. Neutralne informacje są u góry mapy; awarie i uszkodzenia w dolnym pasku (żółty/czerwony). Oba miejsca korzystają z istniejącego komunikatu, bez powielania zdarzeń.
 
 Program i style są budowane do jednego HTML. Nie ma streamingu mapy,
 zdjęć ani sampli audio podczas rejsu. Ograniczenia to CPU fizyki i

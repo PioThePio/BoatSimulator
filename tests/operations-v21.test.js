@@ -44,18 +44,18 @@ test('carried boat has engine hours but no sailing distance; vehicle reset adds 
  const b=createBoat('lake'),r=createTowRig(b,{loaded:true});b.engines[0].key='running';b.engines[0].fuelFlow=1;systemsStep(b,1);assert.ok(b.engines[0].operatingHours>0);assert.equal(b.operations.distance,0);assert.equal(b.operations.seconds,0);
  r.engine.key='running';towStep(r,b,dt);assert.ok(r.engine.operatingHours>0);assert.ok(r.operations.fuelUsed>0);const distance=r.operations.distance;r.car.x+=10;resetTowVehicle(r,b);towStep(r,b,dt);close(r.operations.distance,distance,.001);assert.equal(r.operations.physicalDistance,0);
 });
-test('pump output, leaking and electrical energy use physical seconds, independent of the operational multiplier',()=>{
+test('pump output and leaks use physical seconds; battery energy follows operational seconds',()=>{
  const b=createBoat('lake',{coldStart:true});b.bilge.manual=true;b.bilge.auto=false;b.bilge.litres=100;b.battery.voltage=12;bilgeStep(b,1);close(b.bilge.outflow,50/60);close(b.bilge.litres,100-50/60);
  const q=createBoat('lake',{coldStart:true});q.damage=40;q.bilge.auto=false;bilgeStep(q,1);close(q.bilge.litres,q.bilge.inflow);
- const soc=b.battery.soc;electricalStep(b,1);close(soc-b.battery.soc,b.battery.current/3600/b.battery.capacity);
+ const soc=b.battery.soc;electricalStep(b,1);close(soc-b.battery.soc,b.battery.current*operationalTimeScale/3600/b.battery.capacity);
 });
 test('each switched accessory has real current draw and can flatten a stopped boat battery',()=>{
  const b=createBoat('lake',{coldStart:true});for(const name of ['navigationLights','gps','sonar','instruments'])b.electrics[name]=false;electricalStep(b,1);assert.equal(b.battery.current,0);
- for(const name of ['navigationLights','gps','sonar','instruments']){b.electrics[name]=true;const soc=b.battery.soc;electricalStep(b,60);close(b.battery.current,ELECTRICAL_LOADS[name]);close(soc-b.battery.soc,ELECTRICAL_LOADS[name]/60/b.battery.capacity);assert.equal(b.electrics.powered[name],true);b.electrics[name]=false;}
+ for(const name of ['navigationLights','gps','sonar','instruments']){b.electrics[name]=true;const soc=b.battery.soc;electricalStep(b,60);close(b.battery.current,ELECTRICAL_LOADS[name]);close(soc-b.battery.soc,ELECTRICAL_LOADS[name]*operationalTimeScale/60/b.battery.capacity);assert.equal(b.electrics.powered[name],true);b.electrics[name]=false;}
  b.battery.soc=0;b.electrics.gps=b.electrics.sonar=true;electricalStep(b,1);assert.equal(b.electrics.powered.gps,false);assert.equal(b.electrics.powered.sonar,false);
 });
-test('starter draws 110 A and causes real voltage sag, not an operationally accelerated battery discharge',()=>{
- const b=createBoat('lake',{coldStart:true});electricalStep(b,dt);const rest=b.battery.voltage;engineKey(b,0,'ignition');assert.ok(engineKey(b,0,'start').ok);const before=b.battery.soc;electricalStep(b,.5);assert.equal(b.battery.loads.starter,110);assert.ok(b.battery.voltage<rest-.25);close(before-b.battery.soc,b.battery.current*.5/3600/b.battery.capacity);
+test('starter draws 110 A and causes physical voltage sag while Ah accounting follows voyage time',()=>{
+ const b=createBoat('lake',{coldStart:true});electricalStep(b,dt);const rest=b.battery.voltage;engineKey(b,0,'ignition');assert.ok(engineKey(b,0,'start').ok);const before=b.battery.soc;electricalStep(b,.5);assert.equal(b.battery.loads.starter,110);assert.ok(b.battery.voltage<rest-.25);close(before-b.battery.soc,b.battery.current*.5*operationalTimeScale/3600/b.battery.capacity);
 });
 test('alternator output follows real RPM, feeds consumers, charges the same battery and sums both engines',()=>{
  const b=createBoat('lake',{engineCount:2});b.engines[1].key='off';const en=b.engines[0];en.rpm=750;const idle=alternatorCurrent(en);en.rpm=3000;const cruise=alternatorCurrent(en);en.rpm=5500;const high=alternatorCurrent(en);assert.equal(idle,12);assert.ok(cruise>idle&&high>cruise);assert.equal(high,34);

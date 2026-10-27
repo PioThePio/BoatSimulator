@@ -21,7 +21,7 @@ export function installPowerPanel(api){
  function sync(){
   const b=api.boat(),live=b.electrics.master!==false;
   for(const [name]of switches){if(name==='pump')continue;if(name==='navigationLights'){const button=$('#power-navigationLights');button.setAttribute('aria-pressed',String(b.electrics.navigationLights));button.dataset.powered=String(!!b.electrics.powered.navigationLights);continue;}const input=$('#'+(name==='sonar'?'sonar-toggle':'power-'+name));input.checked=!!b.electrics[name];input.disabled=name==='thrusters'&&!b.spec.bowThruster&&!b.spec.sternThruster;input.closest('label').dataset.powered=String(name==='master'?live:name==='thrusters'?live&&input.checked&&!input.disabled:b.electrics.powered[name]);}
-  host.dataset.master=String(live);$('#power-battery').textContent=Math.round(b.battery.soc*100)+'% · '+b.battery.voltage.toFixed(1)+' V';
+  host.dataset.master=String(live);const amps=b.battery.current??0;$('#power-battery').textContent=(b.battery.soc*100).toFixed(2)+'% · '+b.battery.voltage.toFixed(2)+' V · '+(amps>0?'−':amps<0?'+':'')+Math.abs(amps).toFixed(1)+' A';$('#power-battery').title='SOC · napięcie · bilans prądu (+ ładowanie, − pobór). Energia akumulatora: czas rejsu 2×.';
   $('#power-battery').classList.toggle('danger',b.battery.soc<.2||b.battery.voltage<11.5);$('#instruments').classList.toggle('master-power-off',!live);
   pump.title='OFF / AUTO / ON · dwie diody: AUTO i praca pompy. Wymaga głównego zasilania.';
  }

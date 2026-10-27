@@ -1,5 +1,6 @@
 import {dieselAvailable} from './combustion.js';
 import {compactPropulsion} from './helm-refinements.js';
+import {placeMapMessage} from './map-messages.js';
 import {installScreenLayout} from './screen-layout.js';
 import {installRestoreHistory} from './restore-history.js';
 import {installMapAlerts} from './map-alerts.js';
@@ -63,7 +64,7 @@ let trail=boat.trail,view=null,sonarHistory=[],sonarTime=0,lastEvent=null,last=p
 const env={windSpeed:0,windDirection:90,currentSpeed:0,currentDirection:90,gusts:false,waveHeight:0,waveDirection:90,autoWaves:true,spatialEffects:true,traffic:true};
 const keys=new Set(),keyTimes=new Map(),blockedGas=new Set();
 let toastTimer;
-function toast(t){$('#toast').textContent=t;$('#toast').classList.add('visible');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('#toast').classList.remove('visible'),3600);}
+function toast(t){placeMapMessage($('#toast'),t);$('#toast').textContent=t;$('#toast').classList.add('visible');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('#toast').classList.remove('visible'),3600);}
 const wheelRatio=()=>{const s=vehicle==='suv'?SUV:boat.spec;return s.wheelTurns*Math.PI/s.maxSteer;};
 function gearLabel(v){return Math.abs(v)<.035?'N · LUZ':Math.abs(v)<=CREEP+.005?`${v>0?'F':'R'} · PEŁZAJĄCY`:`${v>0?'F · NAPRZÓD':'R · WSTECZ'} ${Math.abs(Math.round(v*100))}%`;}
 function syncControls(){
@@ -88,7 +89,7 @@ const cockpitApi={boat:()=>boat,selected:()=>selectedEngine,setThrottle,neutral:
 const updateCockpit=installCockpit(cockpitApi);
 const towApi={boat:()=>boat,rig:()=>towRig,vehicle:()=>vehicle,setVehicle,toast,afterReset:()=>{keys.clear();blockedGas.clear();releaseRopeControls();centerBoat();renderRopes();syncControls();telemetry();}};
 const updateTowCockpit=installTowCockpit(towApi);
-const attitudeColumn=document.createElement('div');attitudeColumn.className='attitude-column';$('#instruments').after(attitudeColumn);attitudeColumn.append($('.pitch-gauge'),$('.tow-attitude'),$('.bilge-panel'));
+const attitudeColumn=document.createElement('div');attitudeColumn.className='attitude-column';$('#instruments').after(attitudeColumn);const hydroReadings=document.createElement('div');hydroReadings.className='hydro-readings';$('.draft-readings').before(hydroReadings);hydroReadings.append($('.draft-readings'),$('.bilge-panel'));attitudeColumn.append($('.pitch-gauge'),$('.tow-attitude'));
 const pumpControls=document.createElement('div');pumpControls.className='bilge-controls';pumpControls.append($('#bilge-pump'),$('#bilge-auto').closest('label'));$('.throttle-section').append(pumpControls);
 const serviceMap=document.createElement('div');serviceMap.id='service-map';serviceMap.hidden=true;serviceMap.append($('#repair'),$('#repair-status'));$('.water-wrap').append(serviceMap);
 const updateOperations=installOperationsUI({boat:()=>boat,rig:()=>towRig,vehicle:()=>vehicle});

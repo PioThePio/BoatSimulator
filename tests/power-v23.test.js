@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createBoat,step} from '../src/physics.js';
+import {operationalTimeScale} from '../src/operations.js';
 import {systemsStep} from '../src/systems.js';
 import {engineKey} from '../src/craft.js';
 import {electricalStep,setMainPower,batteryOpenVoltage,batteryResistance} from '../src/electrical.js';
@@ -19,9 +20,9 @@ test('each accessorized branch takes its exact current independently of ignition
  for(const [key,current]of [['gps',.35],['sonar',.7],['instruments',.55]]){b.electrics[key]=true;systemsStep(b,dt);assert.equal(b.battery.loads[key],current);assert.equal(b.electrics.powered[key],true);b.electrics[key]=false;}
  b.bilge.manual=true;systemsStep(b,dt);assert.equal(b.bilge.running,true);assert.equal(b.bilge.outflow,0);assert.equal(b.battery.loads.bilge,b.bilge.pumpAmps);
 });
-test('sustained load discharges physical Ah and lowers resting voltage; neither battery time nor charge is operationally accelerated',()=>{
+test('sustained load uses voyage-time Ah and lowers resting voltage with unchanged current and sag',()=>{
  const b=createBoat('lake',{coldStart:true}),q=b.battery;systemsStep(b,dt);const soc=q.soc,voltage=q.voltage,demand=q.loadCurrent;for(let i=0;i<60;i++)electricalStep(b,60);
- assert.ok(Math.abs(q.soc-(soc-demand/q.capacity))<1e-10);assert.ok(q.voltage<voltage);const loaded=q.voltage;setMainPower(b,false);assert.ok(q.voltage>loaded);assert.ok(q.voltage<batteryOpenVoltage(soc));
+ assert.ok(Math.abs(q.soc-(soc-demand*operationalTimeScale/q.capacity))<1e-10);assert.ok(q.voltage<voltage);const loaded=q.voltage;setMainPower(b,false);assert.ok(q.voltage>loaded);assert.ok(q.voltage<batteryOpenVoltage(soc));
 });
 test('low SOC increases internal resistance and load sag, not just an isolated percentage warning',()=>{
  const full=createBoat('lake',{coldStart:true}),low=createBoat('lake',{coldStart:true});low.battery.soc=.16;assert.ok(batteryResistance(low.battery)>batteryResistance(full.battery)*3);for(const b of [full,low]){b.engines[0].key='starting';electricalStep(b,dt);}assert.ok(low.battery.voltage<full.battery.voltage-1);assert.ok(low.battery.voltage<11);
