@@ -12,7 +12,7 @@ import {mooringPoint,boomInverse,boomLoad} from './marina.js';
 import {recordImpact} from './impacts.js';
 import {currentShear} from './current-shear.js';
 export function createTraffic(){return TRAFFIC.map(q=>{
- const spec={profile:q.type==='sail'?'cruiser':q.type==='pwc'?'pwc':'runabout',windageFactor:q.type==='sail'?1:q.type==='pwc'?.3:.6,length:q.length,beam:q.beam,mass:q.mass,draft:q.type==='sail'?.65:q.type==='pwc'?.2:.38,freeboard:q.type==='sail'?1.1:q.type==='pwc'?.3:.65,mx:q.mass*1.08,my:q.mass*1.65,iz:1.55*q.mass*((q.length*.27)**2+(q.beam*.22)**2)};
+ const spec={profile:q.type==='sail'?'cruiser':q.type==='pwc'?'pwc':'runabout',windageFactor:q.type==='sail'?1:q.type==='pwc'?.3:.6,length:q.length,beam:q.beam,mass:q.mass,draft:['kayak','rowboat'].includes(q.type)?.14:q.type==='sail'?.65:q.type==='pwc'?.2:.38,freeboard:q.type==='sail'?1.1:q.type==='pwc'?.3:.65,mx:q.mass*1.08,my:q.mass*1.65,iz:1.55*q.mass*((q.length*.27)**2+(q.beam*.22)**2)};
  const boat={...q,spec,fenders:true,fenderContacts:{},damage:0,dockDamage:0,events:[],homeX:q.x,homeY:q.y,homeA:q.a,vx:0,vy:0,w:0,heave:0,roll:0,pitch:0,heaveVelocity:0,rollVelocity:0,pitchVelocity:0};
  boat.ropes=q.ties.map(([end,id])=>{const p=cleat(boat,end),bollard=BOLLARDS.findIndex(q=>q.id===id),target=BOLLARDS[bollard];return{end,bollard,length:Math.hypot(p.x-target.x,p.y-target.y)+.12,tension:0};});
  return boat;

@@ -3,6 +3,7 @@
 // physical boat, pier, slip and tree dimensions / SI speed and time stay unchanged.
 // Independent checks: GeoNames Serock/Nieporęt and the BDOT10k/OSM geoportal.
 // See docs/MODEL.md#mapa-i-wiarygodność-geografii for provenance, scale checks and bathymetry limitations.
+import {refineMainShore} from './port-yard.js';
 import {NIEPORET_REFERENCE} from './nieporet-reference.js';
 import {surveyProjection,reconstructedShore} from './nieporet-geography.js';
 export const WORLD_DISTANCE_SCALE=.50;
@@ -40,7 +41,8 @@ export const ZEGRZE_BOUNDS={left:lo.x,top:lo.y,right:hi.x,bottom:hi.y};
 const northEast=fromAtlas(753,888),southWest=fromAtlas(507,872),index=p=>atlasShore.findIndex(q=>Math.hypot(q.x-p.x,q.y-p.y)<.001);
 // Replace the old southern outline, including its fictional narrow canal.
 // Transition segments lie outside the detailed reference area.
-export const ZEGRZE_SHORE=[...atlasShore.slice(0,index(northEast)+1),...reconstructedShore(projectNieporet,hi.y),...atlasShore.slice(index(southWest))];
+export const ZEGRZE_LEGACY_SHORE=[...atlasShore.slice(0,index(northEast)+1),...reconstructedShore(projectNieporet,hi.y),...atlasShore.slice(index(southWest))];
+export const ZEGRZE_SHORE=refineMainShore(ZEGRZE_LEGACY_SHORE);
 export const ZEGRZE_ISLANDS=[{...fromAtlas(1020,246),rx:100*WORLD_DISTANCE_SCALE,ry:36*WORLD_DISTANCE_SCALE},{...fromAtlas(1098,230),rx:130*WORLD_DISTANCE_SCALE,ry:44*WORLD_DISTANCE_SCALE},{...fromAtlas(1170,233),rx:80*WORLD_DISTANCE_SCALE,ry:30*WORLD_DISTANCE_SCALE}];
 export const MAP_LABELS=[['Zegrze Północne',607,722],['Zegrze Południowe',532,783],['Nieporęt',646,978],['Białobrzegi',761,864],['Rynia',860,715],['Serock',808,293],['Jachranka',270,500],['Skubianka',393,607],['Dębe',86,443],['Wierzbica',824,80],['Narew',884,128],['Bug',1110,218],['Rządza',1060,544],['Kanał Żerański',664,1020]].map(([name,x,y])=>({name,...fromAtlas(x,y)}));
 export const REMOTE_HARBORS=[

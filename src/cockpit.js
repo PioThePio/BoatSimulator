@@ -53,7 +53,7 @@ export function installCockpit(api){
   $('#gauge-volt').classList.toggle('danger',lowVolt||highVolt);$('#gauge-volt small').textContent='V';$('#gauge-volt').title=(lowVolt?'NISKIE':highVolt?'WYSOKIE':b.battery.current<0?'ŁADOWANIE':b.battery.loadCurrent>.1?'POBÓR':'SPOCZYNEK');
   $('#fuel-status').textContent=`${b.fuel.litres.toFixed(1)} / ${b.fuel.capacity} l · ${b.fuel.flow.toFixed(1)} L/h${b.fuel.refueling?' · TANKOWANIE':b.fuel.status?' · '+b.fuel.status:''}`;
   $('#refuel').textContent=b.fuel.refueling?'■ Stop tankowania':'⛽ Tankuj';
-  $('#repair').textContent=b.service.active?'■ Przerwij naprawę':b.towRig?.boatLoaded?'🔧 Napraw na stanowisku':'🔧 Napraw przy slipie';$('#repair-status').textContent=b.service.status+(b.service.active?' · '+Math.round(b.service.progress*100)+'%':'');
+  $('#repair').textContent=b.service.active?'■ Przerwij naprawę':b.towRig?.boatLoaded?'🔧 Napraw na stanowisku':'🔧 Napraw w serwisie';$('#repair-status').textContent=b.service.status+(b.service.active?' · '+Math.round(b.service.progress*100)+'%':'');
   const q=b.bilge;updateBilgePanel(b);updateAlarmLamp(b);const warnings=[];if(b.electrics.floodFault)warnings.push('ZWARCIE · instalacja zalana · brak zasilania');if(b.sunken)warnings.push('ŁÓDŹ ZATOPIONA');else if(b.swamped)warnings.push('Zalany pokład · pompuj i wracaj do serwisu');if(q.alarm)warnings.push('UWAGA — WODA W ZĘZIE');
   const stage=thermalStage(temperature);
   if(stage!=='normal'||en.some(e=>e.thermalTrip))warnings.push(({high:'HIGH TEMP',alarm:'ALARM TEMPERATURY',overheat:'OVERHEAT'})[stage]+' · zmniejsz gaz i sprawdź chłodzenie'+(en.some(e=>e.thermalTrip)?' · silnik zatrzymany':''));

@@ -12,21 +12,21 @@ export function serviceStatus(b){
  const rig=b.towRig;
  if(rig?.boatLoaded){
   const fits=(q,L,B,rect)=>{const x=(Math.abs(Math.cos(q.a))*L+Math.abs(Math.sin(q.a))*B)/2,y=(Math.abs(Math.sin(q.a))*L+Math.abs(Math.cos(q.a))*B)/2;return q.x-x>=rect.x&&q.x+x<=rect.x+rect.w&&q.y-y>=rect.y&&q.y+y<=rect.y+rect.h;};
-  const bay=SERVICE_BAYS.find(q=>fits(b,b.spec.length,b.spec.beam,q)&&(!rig.attached||fits(rig.car,4.9,2,q)));
-  if(!bay)return{ok:false,message:'Wjedź całym zestawem w jedno z dwóch stanowisk SERWIS na parkingu.'};
+  const bay=SERVICE_BAYS.find(q=>fits(b,b.spec.length,b.spec.beam,q)&&Math.cos(b.a-q.heading)>.94);
+  if(!bay)return{ok:false,message:'Cofnij łodzią na przyczepie pod budynek, w białe linie stanowiska SERWIS. Dziób skieruj od budynku.'};
   if(!rig.secured)return{ok:false,message:'Zabezpiecz łódź na przyczepie przed naprawą.'};
   if(Math.hypot(rig.car.vx,rig.car.vy)>.12||Math.hypot(b.vx,b.vy)>.12||!(rig.gear==='P'||rig.handbrake||rig.trailerPark))return{ok:false,message:'Zatrzymaj zestaw i włącz P lub hamulec ręczny.'};
   if(b.engines.some(en=>en.key!=='off'))return{ok:false,message:'Wyłącz silniki łodzi i zapłon przed naprawą.'};
   return{ok:true,land:true,message:`Stanowisko serwisowe ${bay.id} · gotowy do naprawy`};
  }
- if(!nearService(b))return{ok:false,message:'Dopłyń do pomostów serwisu obok slipu.'};
- if(Math.hypot(b.vx,b.vy)>.30||Math.abs(b.w)>.08)return{ok:false,message:'Zatrzymaj łódź przy pomoście serwisowym obok slipu.'};
+ if(!nearService(b))return{ok:false,message:'Dopłyń do pomostów serwisu technicznego.'};
+ if(Math.hypot(b.vx,b.vy)>.30||Math.abs(b.w)>.08)return{ok:false,message:'Zatrzymaj łódź przy pomoście technicznym.'};
  if(b.engines.some(en=>en.key!=='off'))return{ok:false,message:'Wyłącz silniki i zapłon przed naprawą.'};
  const tied=b.ropes.some(r=>{const p=cleat(b,r.end),point=mooringPoint(b,r.bollard);return isServicePoint(point)&&Math.hypot(p.x-point.x,p.y-point.y)<=r.length+.3&&Math.hypot(p.x-point.x,p.y-point.y)<8;});
  if(!tied)return{ok:false,message:'Przycumuj przynajmniej jedną liną do pomostu serwisowego.'};
- return{ok:true,message:'Gotowy do naprawy przy slipie.'};
+ return{ok:true,message:'Gotowy do naprawy przy pomoście technicznym.'};
 }
-export function isServicePoint(p){return p?.kind==='bollard'&&!p.trailer&&(p.service||DOCKS.some(d=>d.service&&p.x>=d.x-.2&&p.x<=d.x+d.w+.2&&p.y>=d.y-.2&&p.y<=d.y+d.h+.2));}
+export function isServicePoint(p){return ['bollard','buoy'].includes(p?.kind)&&!p.trailer&&(p.service||DOCKS.some(d=>d.service&&p.x>=d.x-.2&&p.x<=d.x+d.w+.2&&p.y>=d.y-.2&&p.y<=d.y+d.h+.2));}
 export function nearService(b){
  if(b.towRig?.boatLoaded)return SERVICE_BAYS.some(q=>Math.hypot(b.x-clamp(b.x,q.x,q.x+q.w),b.y-clamp(b.y,q.y,q.y+q.h))<5);
  return DOCKS.some(q=>q.service&&Math.hypot(b.x-clamp(b.x,q.x,q.x+q.w),b.y-clamp(b.y,q.y,q.y+q.h))<Math.min(12,b.spec.length*.5+6));
@@ -39,7 +39,7 @@ export function requestRepair(b){
  service.systemWork=b.disabledEngine||b.electrics.floodFault?20:0;
  const damage=remainingWork(b);
  if(damage<=0)return{ok:false,message:'Łódź i napęd nie wymagają naprawy.'};
- service.active=true;service.initial=damage;service.progress=0;service.status='Naprawa przy slipie';b.throttle=b.throttle2=0;
+ service.active=true;service.initial=damage;service.progress=0;service.status='Naprawa przy pomoście technicznym';b.throttle=b.throttle2=0;
  service.pumpOutflow=0;
  return{ok:true,message:allowed.land?'Naprawa na przyczepie · pozostań na stanowisku.':'Naprawa rozpoczęta. Pozostań przycumowany z wyłączonym zapłonem.'};
 }
@@ -53,7 +53,7 @@ export function serviceStep(b,dt){
  if(b.bilge){const q=b.bilge,water=Math.min(q.litres,SERVICE_PUMP_LPM/60*dt);q.litres-=water;q.level=q.litres/q.capacity;q.alarm=q.level>=.5;q.driveLeak=Math.max(0,q.driveLeak-.08*dt);service.pumpOutflow=dt>0?water/dt:0;updateMass(b.spec,b.fuel.litres,q.litres);}
  const remaining=remainingWork(b),surface=b.encounter?.eta??0,up=!immersionReadings(b,surface).deckWet;
  service.progress=clamp(1-remaining/service.initial,0,up?1:.99);
- service.status=b.bilge.litres>1?'Naprawa i osuszanie · '+Math.ceil(b.bilge.litres)+' l':!up?'Przywracanie wyporności':'Naprawa przy slipie';
+ service.status=b.bilge.litres>1?'Naprawa i osuszanie · '+Math.ceil(b.bilge.litres)+' l':!up?'Przywracanie wyporności':'Naprawa przy pomoście technicznym';
  if(remaining<1e-8&&up){
   b.damage=0;b.disabledEngine=false;b.sectionDamage={};b.bottomDamage={};b.impacts=[];b.impactTimes={};b.lastImpact=null;
   for(const en of b.engines){en.propDamage=0;en.thermalTrip=false;en.flooded=false;en.floodTime=0;}

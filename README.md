@@ -1,12 +1,12 @@
 # Przystań — symulator manewrów na Zegrzu
 
-**[Uruchom w przeglądarce](https://piothepio.github.io/BoatSimulator/?v=32.3.0)** · komputer, telefon lub tablet, bez konta i instalowania gry.
+**[Uruchom w przeglądarce](https://piothepio.github.io/BoatSimulator/?v=33.0.0)** · komputer, telefon lub tablet, bez konta i instalowania gry.
 
 Symulator z widokiem z góry do ćwiczenia manewrów, cumowania, kotwiczenia,
 holowania i wodowania z przyczepy. Ma dziewięć profili łodzi, pięć rodzajów
 napędu, niezależne silniki, instalację elektryczną, paliwo, uszkodzenia,
 zęzę i pompę. Wiatr, prąd, fale, kilwater, cumy i odbijacze fizycznie
-oddziałują na jednostki. SUV z przyczepą pozwala przećwiczyć slipowanie.
+oddziałują na jednostki. SUV z trzybiegowym automatem pozwala przećwiczyć slipowanie i transport drogą przez most. Port główny ma osobny serwis techniczny, powiększony parking, hangar do zdawania łodzi i kąpielisko. Nową łódź można dodać na wolną przyczepę bez resetowania rejsu. [Podgląd portu](docs/images/main-port.png).
 
 Można tworzyć flotę do ośmiu jednostek, w tym barkę, banan, materac,
 wiosłówkę i kajak, oraz rzucać koło ratunkowe i treningowy manekin MOB.

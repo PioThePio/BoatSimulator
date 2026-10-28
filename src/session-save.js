@@ -1,3 +1,4 @@
+import {migrateMainPort} from './port-save-migration.js';
 import {updateMass,restoreFuelCapacity} from './craft.js';
 import {migrateFuelBerth} from './fuel-migration.js';
 import {restoreBuoys} from './buoys.js';
@@ -15,7 +16,7 @@ const omitted=new Set(['booms','buoys','traffic','towRig','worldRig','wakeSource
 function boatData(b){return Object.fromEntries(Object.entries(b).filter(([key])=>!omitted.has(key)));}
 export function snapshotSession(session,now=Date.now()){
  const {fleet,env,start,boatOptions,vehicle,ui={},weather={}}=session,world=fleet.boats[0],rig=session.towRig??fleet.boats.find(b=>b.id===fleet.rigBoatId)?.towRig;
- return{version:SAVE_VERSION,siteGeometryVersion:3,fuelBerthVersion:1,worldScale:WORLD_DISTANCE_SCALE,savedAt:now,
+ return{version:SAVE_VERSION,siteGeometryVersion:3,mainPortVersion:1,fuelBerthVersion:1,worldScale:WORLD_DISTANCE_SCALE,savedAt:now,
   fleet:{...fleet,boats:fleet.boats.map(boatData),tows:fleet.tows.map(r=>({...r,control:0,rate:0}))},
   world:{booms:world.booms,buoys:world.buoys,traffic:world.traffic},rig:rig?Object.fromEntries(Object.entries(rig).filter(([key])=>key!=='audioBoat')):null,
   env,start,boatOptions,vehicle,ui,weather};
@@ -40,16 +41,17 @@ export function restoreSession(value,{validateOnly=false}={}){
   }
   if(!ids.has(f.activeId)||!ids.has(f.rigBoatId)||!finite(f.nextId,2,1e6)||!finite(f.nextTowId,1,1e6)||!finite(f.time,0))throw Error('Błędna sesja.');
   if(f.tows.some(r=>!ids.has(r.from)||!ids.has(r.to)||r.from===r.to||!finite(r.length,.6,60)||!finite(r.strength,1000,40000)||!finite(r.EA,1000,1e7)||!['bow','stern','portBow','starboardBow','portStern','starboardStern','portMid','starboardMid','towCenter'].includes(r.fromEnd)||!['bow','stern','portBow','starboardBow','portStern','starboardStern','portMid','starboardMid','towCenter'].includes(r.toEnd)))throw Error('Błędny hol.');
-  expectedBoomCount??=createFleetCraft('runabout').booms.length;if(!Array.isArray(data.world?.booms)||data.world.booms.length!==expectedBoomCount||!data.world.buoys||!Array.isArray(data.world.traffic))throw Error('Błędny stan akwenu.');
+  expectedBoomCount??=createFleetCraft('runabout').booms.length;if(!Array.isArray(data.world?.booms)||data.world.booms.length>expectedBoomCount||data.world.booms.length<6||!data.world.buoys||!Array.isArray(data.world.traffic))throw Error('Błędny stan akwenu.');
   if(data.rig&&(!finite(data.rig.car?.x)||!finite(data.rig.car?.y)||!finite(data.rig.trailer?.x)||!finite(data.rig.trailer?.y)||!data.rig.winch))throw Error('Błędny stan SUV-a.');
   if(validateOnly)return{ok:true};
+  migrateMainPort(data,BOLLARDS);
   const oldSite=data.siteGeometryVersion??1,base=createFleetCraft('runabout'),context={points:BOLLARDS,starts:MAP_STARTS,shoreAt,bottomAt,solids:SOLIDS,world:base};const skip=migrateSiteSave(data,context);migrateNieporetSave(data,{...context,skip});
   if(oldSite>=3)migrateFuelBerth(data,NIEPORET.fuel,{x:NIEPORET.anchor.x+8,y:NIEPORET.anchor.y},BOLLARDS);
   f.boats=f.boats.map(saved=>{const b=createFleetCraft(saved.fleetKind??saved.spec.profile);Object.assign(b,saved);const name=TOWABLES[b.fleetKind]?.name??CRAFTS[b.spec.profile]?.name??b.spec.name;if(b.name===b.spec.name||/ · \d+$/.test(b.name??''))b.name=name+(b.name?.match(/ · \d+$/)?.[0]??'');b.spec.name=name;if(!b.spec.engineType){b.spec.engineType='petrol';if(b.spec.racing){b.spec.diesel=false;b.spec.fuelDensity=.745;updateMass(b.spec,b.fuel.litres,b.bilge?.litres??0);}}restoreFuelCapacity(b);if(b.fleetKind==='banana'||b.fleetKind==='mat')b.spec.inflatable=true;for(const r of b.ropes){r.control=0;r.rate=0;r.effortTime=0;}b.thrusters.bow=b.thrusters.stern=0;return b;});
   const trafficById=new Map(data.world.traffic.map(q=>[q.id,q]));
   data.world.traffic=base.traffic.map(q=>{const saved=trafficById.get(q.id);return saved?{...q,...saved,spec:{...q.spec,...saved.spec}}:q;});
   data.world.buoys=restoreBuoys(data.world.buoys,base.buoys,[...f.boats,...data.world.traffic]);
-  Object.assign(f.boats[0],data.world);
+  data.world.booms=base.booms.map((q,i)=>data.world.booms[i]??q);Object.assign(f.boats[0],data.world);
   if(data.rig){if(!finite(data.rig.car?.x)||!finite(data.rig.car?.y)||!finite(data.rig.trailer?.x)||!finite(data.rig.trailer?.y)||!data.rig.winch)throw Error('Błędny stan SUV-a.');const r=data.rig;r.gas=r.brake=0;r.winch.control=0;f.boats.find(b=>b.id===f.rigBoatId).towRig=r;}
   for(const r of f.tows)r.control=r.rate=0;syncFleetWorld(f);
   return{ok:true,session:{...data,towRig:data.rig,fleet:f}};

@@ -46,7 +46,7 @@ export function createBoat(scenario='approach',options={}){
 function event(b,message){if(!/^(Łagodny kontakt|Uszkodzenie ·|Silna kolizja)/.test(message))voyageEvent(b,{type:'incident',message});b.events.unshift({time:b.time,message});b.events=b.events.slice(0,12);}
 function oscillator(state,vel,target,omega,zeta,dt,forcing=0){const acc=omega*omega*(target-state)-2*zeta*omega*vel+forcing;vel+=acc*dt;return[state+vel*dt,vel];}
 export function step(b,e,dt,{sharedStep=true}={}){
- b.time+=dt;enforceMainPower(b);beginFenderStep(b);const S=b.spec,c=Math.cos(b.a),s=Math.sin(b.a);
+ if(b.stored){b.time+=dt;return;}b.time+=dt;enforceMainPower(b);beginFenderStep(b);const S=b.spec,c=Math.cos(b.a),s=Math.sin(b.a);
  if(b.towRig?.boatLoaded&&b.towRig.secured){
   placeTrailerBoat(b.towRig,b);
   const rate=S.jet?1.6:.80;b.actualSteer+=clamp(b.steer-b.actualSteer,-rate*dt,rate*dt);

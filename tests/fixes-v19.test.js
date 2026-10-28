@@ -17,15 +17,14 @@ const dt=1/120;
 function swim(b,t,e={}){for(let i=0;i<t*120;i++)step(b,e,dt);return b;}
 function tow(r,b,t,e={}){for(let i=0;i<t*120;i++){towStep(r,b,dt);step(b,e,dt);trailerContact(r,b,dt);}}
 
-test('a real bow line on either slip-side pier permits the entire repair without a hidden berth rectangle',()=>{
- for(const [x,id]of [[121,'R2L'],[129.25,'R2P'],[134,'SER22']]){
-  const b=createBoat('service',{coldStart:true});Object.assign(b,{x,y:22});assert.ok(attachRope(b,'bow',BOLLARDS.findIndex(q=>q.id===id)).ok,id);assert.ok(serviceStatus(b).ok,id);b.damage=25;b.engines[0].propDamage=18;assert.ok(requestRepair(b).ok);swim(b,12);assert.equal(b.damage,0,id);assert.equal(b.engines[0].propDamage,0);assert.equal(b.service.progress,1);
- }
- for(const point of BOLLARDS.filter(p=>/^R[123][LP]$/.test(p.id)))assert.ok(isServicePoint(point),point.id);
+test('repair moved from both slip piers to the dedicated technical quay and buoys',()=>{
+ for(const [x,id]of [[121,'R2L'],[129.25,'R2P']]){const b=createBoat('service',{coldStart:true});Object.assign(b,{x,y:22});attachRope(b,'bow',BOLLARDS.findIndex(q=>q.id===id));assert.equal(serviceStatus(b).ok,false);}
+ const b=createBoat('service',{coldStart:true});assert.ok(attachRope(b,'bow',BOLLARDS.findIndex(q=>q.id==='SER22')).ok);assert.ok(serviceStatus(b).ok);b.damage=25;b.engines[0].propDamage=18;assert.ok(requestRepair(b).ok);swim(b,12);assert.equal(b.damage,0);assert.equal(b.engines[0].propDamage,0);
+ for(const p of BOLLARDS.filter(p=>/^R[123][LP]$/.test(p.id)))assert.equal(isServicePoint(p),false);
 });
-test('service still rejects an unrelated line, an engine on ignition, excessive motion and leaving the actual piers',()=>{
+test('technical service rejects unrelated lines, running ignition, motion and leaving the berth',()=>{
  const b=createBoat('berth',{coldStart:true});attachRope(b,'bow');assert.equal(serviceStatus(b).ok,false);
- Object.assign(b,{x:121,y:22});b.ropes=[];attachRope(b,'bow',BOLLARDS.findIndex(p=>p.id==='R2L'));b.engines[0].key='ignition';assert.match(serviceStatus(b).message,/zapłon/);b.engines[0].key='off';b.vx=.6;assert.equal(serviceStatus(b).ok,false);b.vx=0;b.x=160;assert.equal(serviceStatus(b).ok,false);
+ Object.assign(b,{...createBoat('service',{coldStart:true}),ropes:[]});attachRope(b,'bow',BOLLARDS.findIndex(q=>q.id==='SER22'));b.engines[0].key='ignition';assert.match(serviceStatus(b).message,/zapłon/);b.engines[0].key='off';b.vx=.6;assert.equal(serviceStatus(b).ok,false);b.vx=0;b.x=240;assert.equal(serviceStatus(b).ok,false);
 });
 test('continuous low-energy pressure cannot charge the same contact repeatedly or disable propulsion',()=>{
  const b=createBoat('lake');const hit={arm:{x:0,y:1},speed:.6,effective:b.spec.mass*.5,target:'narrow-berth'};

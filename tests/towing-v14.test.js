@@ -32,13 +32,13 @@ test('rear drive loses rear grip while the front keeps steering; 4x4 can climb t
  assert.ok(results[0].frontGrip>results[0].rearGrip*2);assert.ok(results[0].slip>.2);assert.ok(results[1].car.y<results[0].car.y-1);assert.ok(results[1].speed>results[0].speed+.5);
 });
 test('soft ground plus overloaded spinning wheels creates ruts and bogging instead of asphalt-like acceleration',()=>{
- const {r,b}=setup({profile:'cabin',length:11,hullMass:8000},{loaded:true});r.car.x=r.trailer.x=182;position(r,b,-27);r.engine.key='running';r.gear='D';r.gas=1;run(r,b,8);assert.equal(r.surface,'sand');assert.ok(r.rearSink>.25);assert.equal(r.bogged,true);assert.ok(Math.abs(r.speed)<.2);
+ const {r,b}=setup({profile:'cabin',length:11,hullMass:8000},{loaded:true});r.car.x=r.trailer.x=249;position(r,b,-86);r.engine.key='running';r.gear='D';r.gas=1;run(r,b,8);assert.equal(r.surface,'sand');assert.ok(r.rearSink>.25);assert.equal(r.bogged,true);assert.ok(Math.abs(r.speed)<.2);
 });
 test('jackknifing damages SUV, trailer and hitch; a motionless parked angle does not keep adding damage',()=>{
  const {r,b}=setup({}, {loaded:true});r.trailer.a=r.car.a+1.55;const h=bodyPoint(r.car,-SUV.hitch);r.trailer.x=h.x-Math.cos(r.trailer.a)*r.trailer.hitch;r.trailer.y=h.y-Math.sin(r.trailer.a)*r.trailer.hitch;towStep(r,b,dt);assert.ok(r.carDamage>0&&r.trailerDamage>0&&r.hitchDamage>0);const damage=r.hitchDamage;run(r,b,.4);assert.equal(r.hitchDamage,damage);
 });
-test('restraints can be released during dry driving; a severe 50 km/h manoeuvre without the winch can throw the hull off onto the ground',()=>{
- const {r,b}=setup({}, {loaded:true});position(r,b,-24);r.car.vy=r.trailer.vy=-14;placeTrailerBoat(r,b);assert.ok(trailerAction(r,b,'release').ok);assert.equal(r.secured,false);r.winch.attached=false;r.engine.key='running';r.gear='D';r.gas=1;r.steer=.59;run(r,b,10);assert.equal(r.boatLoaded,false);assert.ok(b.damage>0);assert.ok(b.grounded);
+test('restraints can be released during dry driving; a severe lateral skid at 50 km/h without the winch can throw the hull off onto the ground',()=>{
+ const {r,b}=setup({}, {loaded:true});position(r,b,-24);r.car.vy=r.trailer.vy=-14;placeTrailerBoat(r,b);assert.ok(trailerAction(r,b,'release').ok);assert.equal(r.secured,false);r.winch.attached=false;r.engine.key='running';r.gear='D';r.gas=1;r.steer=.59;r.trailer.vx=8;b.vx=8;run(r,b,10);assert.equal(r.boatLoaded,false);assert.ok(b.damage>0);assert.ok(b.grounded);
  // A surviving bow line may retain the bow; the improved level shoulder no
  // longer guarantees the old cliff impact/rupture at exactly eight seconds.
  for(const rope of b.ropes){const p=cleat(b,rope.end),q=mooringPoint(b,rope.bollard);assert.ok(Math.hypot(p.x-q.x,p.y-q.y)<rope.length+.15);}

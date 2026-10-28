@@ -330,12 +330,12 @@ Wymagana jest przynajmniej jedna cuma do **tego** stanowiska, postój oraz
 wyłączone silniki i zapłon. Kliknij dystrybutor na mapie: małe okno
 pokazuje warunki i poziom paliwa. Jego Tankuj uruchamia/przerywa napełnianie.
 
-Serwis jest przy slipie portu głównego. Przycumuj do jego pomostu,
+Serwis jest przy pomoście technicznym na wschód od slipu portu głównego. Przycumuj do tego pomostu lub jego boi,
 zatrzymaj łódź, wyłącz silniki i zapłon. Przycisk Napraw pojawia się
 przy miejscu serwisu na mapie. Naprawa postępuje z czasem i przerywa się
 po utracie warunków. Zatrzymuje przeciek i odpompowuje wodę zewnętrzną pompą serwisową 600 l/min, działającą także po zwarciu. Poczekaj na osuszenie i odzyskanie wyporności. Naprawiona łódź wynurza się, a zalana instalacja zostaje odtworzona z 60% SOC i głównym OFF; potem ręcznie włącz zasilanie i uruchom silnik.
 Na parkingu są też dwa stanowiska SERWIS dla zabezpieczonej łodzi na
-przyczepie: cały zestaw w obrysie, P lub ręczny, silniki łodzi wyłączone.
+przyczepie: cofnij pod budynek, kadłub w białych liniach i dziób od budynku, P lub ręczny, silniki łodzi wyłączone.
 
 ## Flota i holowanie
 
@@ -512,3 +512,15 @@ odśwież stronę i upewnij się, że JavaScript oraz dane witryny są dozwolone
 Produkcja ma kod i style osadzone w jednym HTML, co ogranicza problemy
 ze ścieżkami plików na GitHub Pages. Gdy problem pozostaje, przydatne są
 model urządzenia, przeglądarka i zrzut ekranu lub komunikat konsoli.
+
+### Port główny, droga i wymiana łodzi na przyczepie
+
+**Flota → Lokalizacja → Parking · nowa łódź na przyczepie** dodaje wybrany kadłub bez rozpoczynania nowej próby. Przyczepa musi być pusta, sucha i zatrzymana na parkingu, z P/ręcznym. Odepnij linę dziobową i wciągarkę po zwodowaniu poprzedniej łodzi. Przyczepa dopasuje się do nowego kadłuba; nowa łódź ma zapięte pasy, linę dziobową i maksymalnie podniesiony napęd, jeśli jego konstrukcja pozwala. Poprzednia łódź pozostaje tam, gdzie ją zostawiono, ze swoim paliwem, akumulatorem i motogodzinami.
+
+Slip służy wyłącznie do wodowania i załadunku. Serwis wodny jest na osobnym **pomoście technicznym na wschód od slipu**. Można stanąć wzdłuż niego, wpłynąć między prowadzące pomosty lub przyholować łódź do oznaczonego pola. Załóż przynajmniej jedną cumę do punktu serwisowego/pławy, zatrzymaj łódź i wyłącz zapłon. Naprawa jest dostępna przy łodzi na planszy. Dwa białe stanowiska SERWIS na lądzie wymagają cofnięcia przyczepy w stronę budynku; dziób ma być skierowany od budynku.
+
+Na powiększonym placu są osobne miejsca dla aut i długich zestawów oraz niskie, fizyczne krawężniki. Nieregularny plac piaskowy leży poza parkingiem, w całości na lądzie. Trzy zaparkowane puste przyczepy można podpiąć: odczep dotychczasową pustą przyczepę, podjedź hakiem do zaczepu nowej na ≤80 cm, zatrzymaj auto i wybierz **Przyczepa → Przyczep przyczepę**. Aktualnie zaparkowane przyczepy mają rozmiar dobrany do jednostki rozpoczynającej sesję; utworzenie kolejnej łodzi na aktywnej przyczepie ponownie dopasowuje jej rozmiar.
+
+Przed hangarem po lewej stronie placu cofnij zabezpieczoną łódź w białe stanowisko, zatrzymaj zestaw i odczep przyczepę. **Przyczepa → Zdaj łódź do hangaru** oddaje kadłub i zwalnia przyczepę. Oddana łódź przestaje uczestniczyć w symulacji; przy utworzeniu następnej na przyczepie znika z aktywnej floty. Dotychczasowe liczniki dziennika rejsów pozostają zapisane. Nie jest to magazyn z funkcją odbioru tej samej jednostki.
+
+Wyjazd prowadzi w lewo przez most w Zegrzu i dalej do południowej części jeziora. To umowna droga treningowa, nie odwzorowanie rzeczywistej sieci drogowej. W D działa automat 1–3; przy spokojnym skręcie punkt chwilowego obrotu leży blisko tylnej osi. Przy dużej prędkości wychylenie kół jest ograniczane, żeby nie wymuszać natychmiastowego poślizgu przedniej osi. Wskaźniki SUV-a zależą od jego stacyjki, niezależnie od zasilania łodzi.

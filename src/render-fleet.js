@@ -19,7 +19,7 @@ export function drawUnpowered(ctx,b){
 export function drawFleet(ctx,fleet,active,drawBoat,visible,scale,overview){
  if(!fleet)return;
  for(const r of fleet.tows){if(r.broken)continue;const a=fleet.boats.find(b=>b.id===r.from),b=fleet.boats.find(b=>b.id===r.to),p=cleat(a,r.fromEnd),q=cleat(b,r.toEnd),d=Math.hypot(p.x-q.x,p.y-q.y),slack=Math.min(1.8,Math.max(0,r.length-d)*.4),load=clamp(r.tension/r.strength,0,1);ctx.strokeStyle=load>.85?'#c85b3e':load>.45?'#ab7942':'#dfc386';ctx.lineWidth=Math.max(.08,1.3/scale);ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.quadraticCurveTo((p.x+q.x)/2+slack,(p.y+q.y)/2+slack,q.x,q.y);ctx.stroke();if(!overview&&scale>3){ctx.font=`${10/scale}px system-ui`;ctx.fillStyle='#456658';ctx.fillText((r.tension/1000).toFixed(1)+' kN',(p.x+q.x)/2,(p.y+q.y)/2-.3);}}
- for(const b of fleet.boats){if(b===active||!visible(b.x,b.y,b.spec.length))continue;
+ for(const b of fleet.boats){if(b.stored||b===active||!visible(b.x,b.y,b.spec.length))continue;
   for(const r of b.ropes){const p=cleat(b,r.end),q=mooringPoint(b,r.bollard);if(!q)continue;ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(q.x,q.y);ctx.strokeStyle=r.tension>b.spec.lineBreak*.85?'#b66340':'#b9955b';ctx.lineWidth=.1;ctx.stroke();}
   const a=b.anchor;if(a.mode!=='stowed'&&!a.broken){const p=cleat(b,'bow');ctx.strokeStyle='#7d8e7f';ctx.setLineDash([.2,.18]);ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(a.x,a.y);ctx.stroke();ctx.setLineDash([]);}
   drawBoat(ctx,b);if(overview){ctx.fillStyle='#a46d33';ctx.beginPath();ctx.arc(b.x,b.y,3.2/scale,0,Math.PI*2);ctx.fill();}

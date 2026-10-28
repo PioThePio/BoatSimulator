@@ -1,10 +1,12 @@
+import {PARKING,SERVICE_BAYS,PARKING_SPACES,SAND_PRACTICE,HANGAR,MAIN_BEACH} from './port-yard.js';
+export {PARKING,SERVICE_BAYS,PARKING_SPACES,SAND_PRACTICE} from './port-yard.js';
 import {nearbySolids} from './solid-index.js';
 import {closestSolidPoint,orientedFaces,pierSegment,solidPoint} from './solid-geometry.js';
 import {NIEPORET_REFERENCE} from './nieporet-reference.js';
 import {projectNieporet} from './zegrze.js';
 import {makeNavigationMarks,hazardBottom} from './navigation-marks.js';
 import {euzebiaBeachWeight,euzebiaSlope} from './island-approach.js';
-import {ZEGRZE_BOUNDS,ZEGRZE_SHORE,ZEGRZE_ISLANDS,BRIDGES,REMOTE_HARBORS,FUEL_LOCATION,MAP_LABELS,fromAtlas,WORLD_DISTANCE_SCALE} from './zegrze.js';
+import {ZEGRZE_BOUNDS,ZEGRZE_SHORE,ZEGRZE_LEGACY_SHORE,ZEGRZE_ISLANDS,BRIDGES,REMOTE_HARBORS,FUEL_LOCATION,MAP_LABELS,fromAtlas,WORLD_DISTANCE_SCALE} from './zegrze.js';
 import {createShoreQuery} from './shore-geometry.js';
 import {weatherAt} from './weather.js';
 import {windSea,waveCurrent} from './wave-current.js';
@@ -17,7 +19,7 @@ export const WORLD=ZEGRZE_BOUNDS,LAKE=ZEGRZE_SHORE,ISLAND=ZEGRZE_ISLANDS[0],ISLA
 export const COAST_PATCHES=[];
 const coastQueries=COAST_PATCHES.map(q=>({...q,query:createShoreQuery(q.outline)}));
 const islandQueries=new Map();
-const lakeQuery=createShoreQuery(LAKE);
+const lakeQuery=createShoreQuery(LAKE),legacyQuery=createShoreQuery(ZEGRZE_LEGACY_SHORE);
 export function islandRadius(a,q=ISLAND){return(1+.075*Math.sin(3*a)+.035*Math.cos(5*a))/Math.hypot(Math.cos(a)/q.rx,Math.sin(a)/q.ry);}
 export function islandOutline(padding=0,q=ISLAND){if(q.outline)return q.outline.map(p=>{const dx=p.x-q.x,dy=p.y-q.y,d=Math.hypot(dx,dy);return{x:p.x+padding*dx/d,y:p.y+padding*dy/d};});return Array.from({length:80},(_,i)=>{const a=i*Math.PI/40,r=islandRadius(a,q)+padding;return{x:q.x+Math.cos(a)*r,y:q.y+Math.sin(a)*r};});}
 const rz=fromAtlas(951,576);
@@ -26,7 +28,7 @@ export function canalAt(x){return{y:rz.y-(x-rz.x)*.08,slope:-.08,halfWidth:28*WO
 export const DOCKS=[{x:6,y:10,w:23,h:2.8},{x:17,y:12.8,w:2.8,h:17},{x:29,y:10,w:2.8,h:16},
  {x:31.8,y:10,w:78.2,h:2.8},{x:49,y:12.8,w:2.8,h:20},{x:70,y:12.8,w:2.8,h:24},
  {x:4,y:190,w:14,h:1.5},{x:17,y:185,w:1.4,h:13},{x:328,y:260,w:1.6,h:25},{x:328,y:283.5,w:15,h:1.6},
- {x:110,y:10,w:9.5,h:2.8,service:true},{x:118,y:12.8,w:1.5,h:18.2,service:true},{x:130.5,y:7,w:1.5,h:33,service:true}];
+ {x:110,y:10,w:9.5,h:2.8},{x:118,y:12.8,w:1.5,h:18.2},{x:130.5,y:7,w:1.5,h:33}];
 // These four legacy piers belonged to the old fictional lake. Anchor their
 // rigid assemblies to the actual beach/island, never scale their dimensions.
 const beachPierBank=lakeQuery(...Object.values(fromAtlas(525,881)));
@@ -35,14 +37,10 @@ Object.assign(DOCKS[7],{x:beachPierBank.qx-1,y:beachPierBank.qy-12,site:'beach'}
 const islandPierBank={x:ISLAND.x,y:ISLAND.y+islandRadius(Math.PI/2)};
 Object.assign(DOCKS[8],{x:islandPierBank.x-.8,y:islandPierBank.y-1,name:'Pomost przy wyspie',site:'island'});
 Object.assign(DOCKS[9],{x:islandPierBank.x-.8,y:islandPierBank.y+22.5,site:'island'});
-export const SERVICE_STATION={x:132,y:14,w:14,h:25,slip:{x:121,y:-8,w:7,h:44,waterY:7.5,angle:8},start:{x:134,y:24,a:-Math.PI/2}};
-export const PARKING={x:101,y:-48,w:64,h:40};
-export const SERVICE_BAYS=[{id:1,x:141,y:-44,w:8,h:30},{id:2,x:152,y:-44,w:8,h:30}];
-export const PARKING_SPACES=[104,110,116,131,136].map(x=>({x,y:-45,w:4.7,h:15}));
-export const SAND_PRACTICE={x:174,y:-43,w:16,h:29};
+export const SERVICE_STATION={x:146,y:8,w:73,h:22,slip:{x:121,y:-8,w:7,h:44,waterY:7.5,angle:8},start:{x:202,y:13,a:0}};
 export function setSlipAngle(value){SERVICE_STATION.slip.angle=clamp(Number(value)||8,4,18);}
 export function slipDepth(x,y){const r=SERVICE_STATION.slip;return(y-r.waterY)*Math.tan(r.angle*Math.PI/180);}
-export const BUILDINGS=[{x:12,y:-5,w:8,h:6,roof:'#b28365'},{x:35,y:-4,w:7,h:6,roof:'#a18c72'},{x:53,y:-5,w:8,h:7,roof:'#b38c6c'},{x:76,y:-5,w:9,h:6,roof:'#8e9d8a'},{x:142,y:-3,w:13,h:7,roof:'#839a92',service:true}];
+export const BUILDINGS=[{x:12,y:-5,w:8,h:6,roof:'#b28365'},{x:35,y:-4,w:7,h:6,roof:'#a18c72'},{x:53,y:-5,w:8,h:7,roof:'#b38c6c'},{x:76,y:-5,w:9,h:6,roof:'#8e9d8a'},{x:174,y:-42,w:24,h:11,roof:'#839a92',service:true},HANGAR];
 // Keep each building fully on land after geographic compression.
 for(const house of BUILDINGS)for(let i=0;i<8;i++){const points=[[0,0],[house.w,0],[0,house.h],[house.w,house.h]].map(([dx,dy])=>lakeQuery(house.x+dx,house.y+dy)),worst=points.reduce((a,b)=>a.distance>b.distance?a:b);if(worst.distance<-.5)break;house.x-=worst.nx*(worst.distance+.6);house.y-=worst.ny*(worst.distance+.6);}
 // Floating fingers: 25 cm beam, triangular brace only at the hinge, 5 m spacing.
@@ -53,30 +51,30 @@ const harborDocks=REMOTE_HARBORS.map(q=>q.direction==='east'?{x:q.x-2,y:q.y,w:q.
 DOCKS.push(...harborDocks);
 const fuelPier={x:FUEL_LOCATION.x-48,y:FUEL_LOCATION.y-8,w:2.8,h:30};DOCKS.push(fuelPier,{x:fuelPier.x+fuelPier.w,y:fuelPier.y,w:48,h:1.6});
 // Physical access paths for the main quay and separate east service finger.
-DOCKS.push({x:80,y:3.5,w:1.8,h:7,access:true},{x:130.5,y:3.5,w:1.5,h:4,service:true,access:true});
+DOCKS.push({x:80,y:3.5,w:1.8,h:7,access:true},{x:130.5,y:3.5,w:1.5,h:4,access:true});
 export const FUEL_STATION={x:fuelPier.x+fuelPier.w,y:fuelPier.y+16,pumpX:fuelPier.x+1.4,pumpY:fuelPier.y+14,alongMin:fuelPier.y+4,alongMax:fuelPier.y+28,maxGap:1.4};
 export const FUEL_FENDERS=Array.from({length:5},(_,id)=>({x:FUEL_STATION.x,y:FUEL_STATION.alongMin+1+id*4.5,w:.22,h:.7,fender:true,id:'fuel-fender-'+id}));
 for(const q of BRIDGES.filter(q=>q.site==='nieporet')){const length=Math.hypot(q.b.x-q.a.x,q.b.y-q.a.y),dx=(q.b.x-q.a.x)/length,dy=(q.b.y-q.a.y)/length;q.abutments=[q.a,q.b].map((p,i)=>{const side=i?1:-1;return pierSegment({x:p.x+side*dx*.5,y:p.y+side*dy*.5},{x:p.x+side*dx*4,y:p.y+side*dy*4},q.width+1,{id:q.id+'-abutment-'+i,bridge:true});});}
 export const BRIDGE_SOLIDS=BRIDGES.flatMap(q=>q.dam?[{id:q.id,x:Math.min(q.a.x,q.b.x)-q.width/2,y:Math.min(q.a.y,q.b.y),w:Math.max(q.width,Math.abs(q.b.x-q.a.x)),h:Math.max(q.width,Math.abs(q.b.y-q.a.y))}]:[...(q.abutments??[]),...q.piers.map((t,i)=>({id:q.id+'-pier-'+i,x:q.a.x+(q.b.x-q.a.x)*t-2.2,y:q.a.y+(q.b.y-q.a.y)*t-3.5,w:4.4,h:7}))]);
 export const SOLIDS=[...DOCKS,...FUEL_FENDERS,...BUILDINGS,...BRIDGE_SOLIDS,
  {x:WORLD.left-24,y:WORLD.top-24,w:WORLD.right-WORLD.left+48,h:12},{x:WORLD.left-24,y:WORLD.top-12,w:12,h:WORLD.bottom-WORLD.top+48},{x:WORLD.left-12,y:WORLD.bottom+12,w:WORLD.right-WORLD.left+36,h:12},{x:WORLD.right+12,y:WORLD.top-12,w:12,h:WORLD.bottom-WORLD.top+48}];
-export const BEACHES=[{...fromAtlas(525,881),r:145*WORLD_DISTANCE_SCALE,name:'Dzika Plaża · Nieporęt'},{...fromAtlas(345,609),r:180*WORLD_DISTANCE_SCALE,name:'Plaża Wieliszew'},{...fromAtlas(764,858),r:120*WORLD_DISTANCE_SCALE,name:'Białobrzegi'}];
+export const BEACHES=[{...fromAtlas(525,881),r:145*WORLD_DISTANCE_SCALE,name:'Dzika Plaża · Nieporęt'},{...fromAtlas(345,609),r:180*WORLD_DISTANCE_SCALE,name:'Plaża Wieliszew'},{...fromAtlas(764,858),r:120*WORLD_DISTANCE_SCALE,name:'Białobrzegi'},MAIN_BEACH];
 // Rejoin the western atlas outside the surveyed headland; keep the existing
 // beach exercise attached to the resulting shoreline.
 {const q=BEACHES[0],s=lakeQuery(q.x,q.y);q.x=s.qx;q.y=s.qy;}
 export const REEDS=[{x:fromAtlas(954,371).x-20,y:fromAtlas(954,371).y-10,r:85},{...fromAtlas(991,568),r:40},{...fromAtlas(650,1005),r:20},{...fromAtlas(1080,250),r:40}];
 export const SHOALS=[{...fromAtlas(1005,225),rx:95*WORLD_DISTANCE_SCALE,ry:55*WORLD_DISTANCE_SCALE,drop:4.5},{...fromAtlas(894,577),rx:55*WORLD_DISTANCE_SCALE,ry:26*WORLD_DISTANCE_SCALE,drop:4.6},{...fromAtlas(1160,245),rx:120*WORLD_DISTANCE_SCALE,ry:38*WORLD_DISTANCE_SCALE,drop:4.4}];
 const islandTree=a=>{const r=islandRadius(a)-1.2;return{x:ISLAND.x+Math.cos(a)*r,y:ISLAND.y+Math.sin(a)*r};};
-const docksPoints=DOCKS.filter((d,i)=>i>=3&&!d.service).flatMap((d,i)=>d.w>d.h?Array.from({length:Math.max(2,Math.floor(d.w/6))},(_,j)=>({x:d.x+1+j*(d.w-2)/Math.max(1,Math.floor(d.w/6)-1),y:d.y+d.h})):Array.from({length:Math.max(2,Math.floor(d.h/6))},(_,j)=>({x:d.x+d.w,y:d.y+1+j*(d.h-2)/Math.max(1,Math.floor(d.h/6)-1)})));
+const docksPoints=DOCKS.filter((d,i)=>i>=3&&![10,11,12,24].includes(i)&&!d.service).flatMap((d,i)=>d.w>d.h?Array.from({length:Math.max(2,Math.floor(d.w/6))},(_,j)=>({x:d.x+1+j*(d.w-2)/Math.max(1,Math.floor(d.w/6)-1),y:d.y+d.h})):Array.from({length:Math.max(2,Math.floor(d.h/6))},(_,j)=>({x:d.x+d.w,y:d.y+1+j*(d.h-2)/Math.max(1,Math.floor(d.h/6)-1)})));
 export const BOLLARDS=[...[[12,12.8],[17,18],[17,25],[19.8,28],[29,17],[29,23],[25,12.8]].map(([x,y],i)=>({x,y,kind:'bollard',id:`P${i+1}`,label:`Poler ${i+1}`})),
  ...[{x:BEACHES[0].x-.3,y:BEACHES[0].y+.5},{x:BEACHES[0].x+29.7,y:BEACHES[0].y+.5},{x:132,y:1},{x:165,y:1},islandTree(1.0),islandTree(1.65),{x:BEACHES[2].x+4,y:BEACHES[2].y},{x:BEACHES[1].x,y:BEACHES[1].y+4}].map((p,i)=>({...p,kind:'tree',id:`D${i+1}`,label:`Drzewo ${i+1}`})),
  ...docksPoints.map((p,i)=>({...p,kind:'bollard',id:`P${i+8}`,label:`Poler ${i+8}`})),
- ...[16,22,28].flatMap((y,i)=>[119.5,130.5].map((x,j)=>({x,y,kind:'bollard',id:`R${i+1}${j?'P':'L'}`,label:`Serwis · poler ${i+1} ${j?'P':'L'}`}))),
+ ...[16,22,28].flatMap((y,i)=>[119.5,130.5].map((x,j)=>({x,y,kind:'bollard',id:`R${i+1}${j?'P':'L'}`,label:`Slip · poler ${i+1} ${j?'P':'L'}`}))),
  ...BUOY_SLIPS.flatMap((q,i)=>[-1,1].map(side=>({x:q.x+side*1.2,y:12.8,kind:'bollard',id:`S${i+1}${side<0?'L':'P'}`,label:`Stanowisko ${i+1} · ${side<0?'lewa':'prawa'} knaga`}))),
  ...YBOOMS.flatMap((q,i)=>[.22,.92].map(fraction=>({x:q.x1,y:q.y1+q.length*fraction,boom:i,fraction,kind:'bollard',id:`Y${i+1}${fraction<.5?'A':'B'}`,label:`Y-bom ${i+1} · ${fraction<.5?'nasada':'koniec'}`}))),
  ...[...BUOY_SLIPS,{x:64,y:38,id:'B4'}].map(q=>({...q,kind:'buoy',label:`Boja ${q.id.slice(1)}`})),
  {x:124.5,y:-19,kind:'bollard',id:'PRZ',trailer:true,label:'Przyczepa · poler dziobowy'}];
-for(const tree of BOLLARDS.filter(q=>q.kind==='tree')){for(let i=0;i<4;i++){const s=shoreAt(tree.x,tree.y);if(s.distance< -1.4)break;tree.x-=s.nx*(s.distance+1.45);tree.y-=s.ny*(s.distance+1.45);}}
+for(const tree of BOLLARDS.filter(q=>q.kind==='tree')){for(let i=0;i<4;i++){const s=tree.id==='D4'?legacyQuery(tree.x,tree.y):shoreAt(tree.x,tree.y);if(s.distance< -1.4)break;tree.x-=s.nx*(s.distance+1.45);tree.y-=s.ny*(s.distance+1.45);}}
 export const TRAFFIC=[{id:0,type:'motor',x:35.5,y:18.8,a:Math.PI/2,length:5.2,beam:2.1,mass:1100,ties:[['portStern','S1P'],['starboardStern','S1L'],['bow','B1']]},
  {id:1,type:'sail',x:88.5,y:18.3,a:Math.PI/2,length:7.8,beam:2.3,mass:2600,ties:[['portStern','Y4A'],['starboardStern','Y3A'],['portBow','Y4B'],['starboardBow','Y3B']]},
  {id:2,type:'pwc',x:98.5,y:16.7,a:Math.PI/2,length:3.2,beam:1.2,mass:380,ties:[['portStern','Y6A'],['starboardStern','Y5A'],['portBow','Y6B'],['starboardBow','Y5B']]}];
@@ -100,11 +98,11 @@ for(const [index,d]of DOCKS.entries()){
  const horizontal=d.w>d.h,count=Math.max(2,Math.floor((horizontal?d.w:d.h)/6));
  for(let j=0;j<count;j++)for(const side of [0,1]){
   const t=(j+.5)/count,x=horizontal?d.x+d.w*t:d.x+d.w*side,y=horizontal?d.y+d.h*side:d.y+d.h*t;
-  if(index!==13&&polygonShore(x,y).distance<.2)continue;
-  BOLLARDS.push({x,y,kind:'bollard',id:`M${index+1}${side?'P':'L'}-${j+1}`,label:`${d.service?'Serwis':REMOTE_HARBORS[index-13]?.name??'Pomost'} · poler ${j+1}`,service:d.service&&Math.abs(x-132)<.1});
+  if(index!==13&&legacyQuery(x,y).distance<.2)continue;
+  BOLLARDS.push({x,y,kind:'bollard',id:`M${index+1}${side?'P':'L'}-${j+1}`,label:`${d.service?'Serwis':REMOTE_HARBORS[index-13]?.name??'Pomost'} · poler ${j+1}`,service:!!d.service});
  }
 }
-for(const y of [16,22,28,34,38])BOLLARDS.push({x:132,y,kind:'bollard',id:'SER'+y,label:'Serwis przy slipie · '+y,service:true});
+for(const [i,y]of [16,22,28,34,38].entries())BOLLARDS.push({x:[197,205,212,153,158][i],y:8,kind:'bollard',id:'SER'+y,label:'Serwis techniczny · '+(i+1),service:true});
 const beachTree=BOLLARDS.find(q=>q.id==='D1'),beachNormal=shoreAt(beachTree.x,beachTree.y);
 export const MAP_STARTS={retrieve:{x:125,y:22,a:-Math.PI/2},beach:{x:beachTree.x+beachNormal.nx*7.45,y:beachTree.y+beachNormal.ny*7.45,a:Math.atan2(-beachNormal.ny,-beachNormal.nx)},island:{x:ISLAND.x,y:ISLAND.y+ISLAND.ry+30,a:Math.PI},canal:{x:rz.x,y:rz.y,a:0},fuel:{x:FUEL_STATION.x+2,y:FUEL_STATION.y,a:Math.PI/2}};
 // Append-only additions: never shift legacy bollard indices stored in sessions.
@@ -132,6 +130,20 @@ for(const q of BOLLARDS)if(['D1','D2'].includes(q.id)||[DOCKS[6],DOCKS[7]].some(
 Object.assign(REMOTE_HARBORS[0],solidPoint(oldNie,-oldNie.pose.length/2,0),{name:'Wodnik · ujście kanału',length:oldNie.pose.length});
 for(const id of ['178815906','178815911','310824661','1185783075','1185783076']){const q=NIEPORET_REFERENCE.features[id],d=pierSegment(projectNieporet(q[0]),projectNieporet(q[1]),1.3,{id:'wodnik-'+id,site:'wodnik',sourceWay:id});DOCKS.push(d);SOLIDS.push(d);for(let j=0;j<Math.ceil(d.pose.length/7);j++)BOLLARDS.push({...solidPoint(d,-d.pose.length/2+(j+.5)*d.pose.length/Math.ceil(d.pose.length/7),.65),kind:'bollard',site:'wodnik',id:'WOD-'+id+'-'+j,label:'Wodnik · poler'});}
 MAP_STARTS.pilawa=PILAWA.start;MAP_STARTS.nieporet=NIEPORET.start;MAP_STARTS.zeranski={...projectNieporet([21.03427,52.43295]),a:Math.PI/2};MAP_STARTS.euzebia={x:EUZEBIA.x-EUZEBIA.rx-35,y:EUZEBIA.y,a:Math.PI/2};
+// Append-only identities preserve saved ropes and Y-boom references.
+const technical=[{x:146,y:6,w:73,h:2,service:true,site:'technical'},... [162,173,184].map(x=>({x,y:8,w:1.1,h:16,service:true,site:'technical'})),{x:146,y:2,w:1.5,h:4,service:true,access:true},{x:198,y:1,w:1.5,h:5,service:true,access:true}];
+DOCKS.push(...technical);SOLIDS.push(...technical);
+for(const [i,d]of technical.entries())for(let j=0;j<Math.ceil(Math.max(d.w,d.h)/5);j++)for(const side of[0,1])BOLLARDS.push({x:d.w>d.h?d.x+(j+.5)*d.w/Math.ceil(d.w/5):d.x+side*d.w,y:d.w>d.h?d.y+side*d.h:d.y+(j+.5)*d.h/Math.ceil(d.h/5),id:'TECH-'+i+'-'+j+'-'+side,kind:'bollard',service:true,label:'Serwis · poler techniczny'});
+for(const [i,x]of[151,195,210].entries())BOLLARDS.push({x,y:22,id:'TECH-B'+i,kind:'buoy',service:true,label:'Serwis · boja postojowa'});
+export const SERVICE_TOW_ZONE={x:188,y:10,w:28,h:17};
+const elbow=[{x:70,y:36.8,w:2.8,h:13.2},{x:72.8,y:47.2,w:23,h:2.8}];DOCKS.push(...elbow);SOLIDS.push(...elbow);
+for(const x of[78,84,90]){const id=YBOOMS.length;YBOOMS.push({id,x1:x,y1:47.2,x2:x,y2:38.2,width:.25,length:9,a:-Math.PI/2});for(const fraction of[.22,.92])BOLLARDS.push({x,y:47.2-9*fraction,id:'EXT-Y'+id+'-'+fraction,boom:id,fraction,kind:'bollard',label:'Y-bom · zewnętrzny pomost'});BOLLARDS.push({x,y:50,id:'EXT-P'+x,kind:'bollard',label:'Zewnętrzny pomost'});}
+for(const y of[40,44])for(const x of[70,72.8])BOLLARDS.push({x,y,id:'EXT-S'+x+'-'+y,kind:'bollard',label:'Pomost zewnętrzny · poler'});
+for(const x of[81,87,104])BOLLARDS.push({x,y:34,id:'EXT-B'+x,kind:'buoy',label:'Boja · zewnętrzny pomost'});
+TRAFFIC.push({id:'main-kayak',type:'kayak',x:-17,y:7,a:.1,length:3.6,beam:.7,mass:100,ties:[['bow','BEACH-T-25']]},{id:'main-rowboat',type:'rowboat',x:-6,y:7,a:0,length:3.8,beam:1.5,mass:140,ties:[['bow','MAIN-ROW-T']]});
+export const SWIM_BUOYS=Array.from({length:19},(_,i)=>{const a=Math.PI*(.1+.8*i/18);return{x:MAIN_BEACH.x+Math.cos(a)*27,y:MAIN_BEACH.y+Math.sin(a)*18+3,kind:'swim',id:'SWIM-'+i,label:'Granica kąpieliska'};});
+for(const x of[-63,-49,-25]){const q=shoreAt(x,-15);BOLLARDS.push({x:q.qx-q.nx*1.5,y:q.qy-q.ny*1.5,kind:'tree',id:'BEACH-T'+x,label:'Plaża · drzewo'});}
+BOLLARDS.push({x:-3,y:-1.5,kind:'tree',id:'MAIN-ROW-T',label:'Brzeg · wiosłówka'});
 const surveyDredgeY=projectNieporet([21.038,52.4355]).y;
 export const NIEPORET_SURVEY_BOUNDS={left:projectNieporet([21.029,52.44]).x,right:projectNieporet([21.0447,52.44]).x,top:projectNieporet([21.038,52.4402]).y,bottom:WORLD.bottom};
 let depthCache=new Map(),depthAngle;
@@ -152,11 +164,11 @@ function computeBottomAt(x,y){
  const smooth=v=>{v=clamp(v,0,1);return v*v*(3-2*v);};
  // A maintained harbour has a dredged basin. The smooth apron lies outside
  // the ramp and never changes the dry yard or the axle/ramp transition.
- if(dist>0&&x>0&&x<150&&y>7&&y<70){const basin=smooth((x-0)/4)*smooth((150-x)/5)*smooth((y-7)/3)*(1-smooth((y-45)/25))*smooth((dist-1)/4);depth+=Math.max(0,2.7+.18*Math.sin(x*.07)-depth)*basin;}
+ if(dist>0&&x>0&&x<224&&y>7&&y<70){const basin=smooth((x-0)/4)*smooth((224-x)/5)*smooth((y-7)/3)*(1-smooth((y-45)/25))*smooth((dist-1)/4);depth+=Math.max(0,2.7+.18*Math.sin(x*.07)-depth)*basin;}
  const yardDepth=(ramp.y-ramp.waterY)*Math.tan(ramp.angle*Math.PI/180);
  // The entire parking apron is flat. Outside it, shoulders blend into the
  // shore; at the ramp entrance even its edges meet the SAME elevation.
- const yard=smooth((x-93)/3)*smooth((197-x)/3)*smooth((y+57)/3)*(1-smooth((y-ramp.y)/12));
+ const yard=smooth((x-64)/3)*smooth((268-x)/3)*smooth((y+127)/3)*(1-smooth((y-ramp.y)/12));
  depth=yard===1?yardDepth:depth+(yardDepth-depth)*yard;
  if(x>ramp.x-3&&x<ramp.x+ramp.w+3&&y>=ramp.y&&y<ramp.y+ramp.h){
   const across=smooth((x-ramp.x+3)/3)*smooth((ramp.x+ramp.w+3-x)/3);
@@ -257,7 +269,7 @@ export function waveAt(x,y,t,e){
 export const MAP_POIS=[
  {id:'port',name:'Port główny',x:80,y:20,priority:5},
  {id:'slip',name:'Slip',x:124.5,y:24,priority:4},
- {id:'service',name:'Serwis',x:140,y:25,priority:4},
+ {id:'service',name:'Serwis techniczny',x:202,y:13,priority:4},
  {id:'fuel',name:'⛽ Paliwo',x:FUEL_STATION.x,y:FUEL_STATION.y,priority:5},
  ...DOCKS.filter(d=>d.name).map((d,i)=>({id:'pier-'+i,name:d.name,x:d.x+d.w/2,y:d.y+d.h/2,priority:3})),
  ...REMOTE_HARBORS.map(q=>({id:'harbor-'+q.id,name:'Port · '+q.name,x:q.x,y:q.y,priority:3})),

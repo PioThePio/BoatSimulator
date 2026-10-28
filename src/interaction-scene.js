@@ -15,6 +15,7 @@ export function vesselInteractions(fleet,e,dt){
  for(const b of fleet.boats)b.passingForce=0;
  if(e.hydroInteractions!==true)return;
  const apply=(a,b)=>{
+  if(a.stored||b.stored)return;
   if(Math.hypot(a.x-b.x,a.y-b.y)>(a.spec.length+b.spec.length)*1.5)return;
   if(a.towRig?.secured&&a.towRig.boatLoaded||b.towRig?.secured&&b.towRig.boatLoaded)return;
   const f=passingInteraction(a,b,environment(fleet.time,e,a.x,a.y).current,environment(fleet.time,e,b.x,b.y).current);if(!f)return;

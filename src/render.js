@@ -13,7 +13,7 @@ import {drawNavigation} from './render-navigation.js';
 import {drawEuzebiaShallows,drawNieporetDepths} from './render-shallows.js';
 import {euzebiaBeachWeight} from './island-approach.js';
 import {attachmentNames} from './attachment-points.js';
-import {LAKE,COAST_PATCHES,REEDS,FUEL_STATION,FUEL_STATIONS,ALL_FUEL_FENDERS,SERVICE_STATION,BUILDINGS,WORLD,ISLAND,ISLANDS,BRIDGES,REMOTE_HARBORS,MAP_POIS,DOCKS,BOLLARDS,BEACHES,islandOutline,islandRadius,shoreAt,bottomAt,environment,weatherAt,waveHeight,reflectionFacesNear,clamp} from './world.js';
+import {LAKE,COAST_PATCHES,REEDS,SWIM_BUOYS,SERVICE_TOW_ZONE,FUEL_STATION,FUEL_STATIONS,ALL_FUEL_FENDERS,SERVICE_STATION,BUILDINGS,WORLD,ISLAND,ISLANDS,BRIDGES,REMOTE_HARBORS,MAP_POIS,DOCKS,BOLLARDS,BEACHES,islandOutline,islandRadius,shoreAt,bottomAt,environment,weatherAt,waveHeight,reflectionFacesNear,clamp} from './world.js';
 import {waterMotionSamples} from './boat-effects.js';
 import {drawParking,drawTowRig} from './render-towing.js';
 import {wakeHistories} from './wave-field.js';
@@ -37,7 +37,7 @@ function shapePath(points){let p=terrainPaths.get(points);if(!p){p=new Path2D();
 let waterMask;
 function drawTerrain(ctx,bounds=null,detailed=true){
  ctx.fillStyle='#aec59b';ctx.fillRect(WORLD.left,WORLD.top,WORLD.right-WORLD.left,WORLD.bottom-WORLD.top);
- for(const q of BEACHES){ctx.beginPath();ctx.ellipse(q.x,q.y,q.r,q.r*.75,0,0,Math.PI*2);ctx.fillStyle='#e0ce9f';ctx.fill();}
+ for(const q of BEACHES){ctx.fillStyle='#e0ce9f';if(q.outline)ctx.fill(shapePath(q.outline));else{ctx.beginPath();ctx.ellipse(q.x,q.y,q.r,q.r*.75,0,0,Math.PI*2);ctx.fill();}}
  const lake=shapePath(LAKE);ctx.fillStyle='#8bb5c0';ctx.fill(lake);ctx.save();ctx.clip(lake);
  for(const [width,color]of [[180,'#92bdc5'],[70,'#a0c8cb'],[22,'#afd0ce'],[4,'#bfd9d1']]){ctx.lineJoin='round';ctx.lineWidth=width;ctx.strokeStyle=color;ctx.stroke(lake);}
  if(detailed)drawNieporetDepths(ctx,bounds);
@@ -169,6 +169,7 @@ export function renderWorld(ctx,state){
   ctx.fillStyle=house.roof;ctx.fillRect(house.x,house.y,house.w,house.h);ctx.strokeStyle='#65796a';ctx.lineWidth=.12;ctx.strokeRect(house.x,house.y,house.w,house.h);
   ctx.strokeStyle='#edf0db88';ctx.beginPath();ctx.moveTo(house.x+.5,house.y+house.h/2);ctx.lineTo(house.x+house.w-.5,house.y+house.h/2);ctx.stroke();
   ctx.fillStyle='#dfe8d3';for(let i=1;i<4;i++)ctx.fillRect(house.x+house.w*i/5,house.y+house.h-.9,.7,.5);
+  if(house.hangar){ctx.fillStyle='#e8ecda';ctx.fillRect(house.x+4,house.y+house.h-1,house.w-8,1);ctx.font='bold 1.4px system-ui';ctx.fillText('HANGAR',house.x+4,house.y+house.h/2);}
   if(house.service){ctx.font='bold 1.35px system-ui';ctx.fillStyle='#edf3de';ctx.fillText('SERWIS',house.x+2,house.y+house.h*.65);}
  }
  const slip=SERVICE_STATION.slip;
@@ -176,7 +177,7 @@ export function renderWorld(ctx,state){
   const concrete=ctx.createLinearGradient(0,slip.waterY,0,slip.y+slip.h);concrete.addColorStop(0,'#aeb8a5');concrete.addColorStop(1,'#a5c3b9');ctx.fillStyle=concrete;ctx.fillRect(slip.x,slip.y,slip.w,slip.h);ctx.strokeStyle='#849889';ctx.lineWidth=.12;
   for(let y=slip.y+.6;y<slip.y+slip.h;y+=.8){ctx.beginPath();ctx.moveTo(slip.x,y);ctx.lineTo(slip.x+slip.w,y);ctx.stroke();}
   ctx.strokeStyle='#74887e';ctx.lineWidth=.18;for(const x of [slip.x+1.8,slip.x+slip.w-1.8]){ctx.beginPath();ctx.moveTo(x,slip.y);ctx.lineTo(x,slip.y+slip.h);ctx.stroke();}
-  ctx.font='bold 1.3px system-ui';ctx.fillStyle='#486c60';ctx.fillText('SLIP',121,34);ctx.fillText('SERWIS · CUMUJ',133,42);
+  ctx.font='bold 1.3px system-ui';ctx.fillStyle='#486c60';ctx.fillText('SLIP',121,34);
  }
  // Clip water effects once; thousands of visual ripples need no physical shore queries.
  if(!waterMask){waterMask=new Path2D();waterMask.addPath(shapePath(LAKE));for(const q of ISLANDS)waterMask.addPath(shapePath(outline(q)));for(const q of COAST_PATCHES)waterMask.addPath(shapePath(q.outline));}
@@ -242,8 +243,10 @@ export function renderWorld(ctx,state){
   ctx.strokeStyle='#968262';ctx.lineWidth=.08;
   for(const r of q.ropes){const p=cleat(q,r.end),end=mooringPoint(b,r.bollard),d=Math.hypot(p.x-end.x,p.y-end.y),slack=Math.min(.4,Math.max(0,r.length-d));ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.quadraticCurveTo((p.x+end.x)/2+slack,(p.y+end.y)/2+slack,end.x,end.y);ctx.stroke();}
   const bob=1+clamp(q.heave*.18,-.04,.04);
-  ctx.save();ctx.translate(q.x,q.y);ctx.scale(bob,bob);ctx.rotate(q.a);ctx.scale(1,Math.cos(q.roll));ctx.fillStyle=q.type==='pwc'?'#ddae62':'#e8e9dc';ctx.strokeStyle='#597d75';ctx.lineWidth=.09;path(ctx,hullOutline(q.spec));ctx.fill();ctx.stroke();ctx.fillStyle='#729697';ctx.fillRect(-q.length*.2,-q.beam*.3,q.length*.35,q.beam*.6);if(q.type==='sail'){ctx.strokeStyle='#635f4e';ctx.beginPath();ctx.moveTo(-q.length*.4,0);ctx.lineTo(q.length*.55,0);ctx.stroke();ctx.fillStyle='#f8f3df';ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(-q.length*.35,q.beam*.3);ctx.lineTo(-q.length*.35,-q.beam*.3);ctx.fill();}ctx.fillStyle='#d5a64f';for(const end of Object.keys(attachmentNames(q))){const p=cleatLocal(q.spec,end);ctx.beginPath();ctx.arc(p.x,p.y,.09,0,Math.PI*2);ctx.fill();}drawFenders(ctx,q);ctx.restore();
+  ctx.save();ctx.translate(q.x,q.y);ctx.scale(bob,bob);ctx.rotate(q.a);ctx.scale(1,Math.cos(q.roll));ctx.fillStyle=q.type==='kayak'?'#d4a25d':q.type==='rowboat'?'#c2ad88':q.type==='pwc'?'#ddae62':'#e8e9dc';ctx.strokeStyle='#597d75';ctx.lineWidth=.09;path(ctx,hullOutline(q.spec));ctx.fill();ctx.stroke();ctx.fillStyle='#729697';ctx.fillRect(-q.length*.2,-q.beam*.3,q.length*.35,q.beam*.6);if(q.type==='sail'){ctx.strokeStyle='#635f4e';ctx.beginPath();ctx.moveTo(-q.length*.4,0);ctx.lineTo(q.length*.55,0);ctx.stroke();ctx.fillStyle='#f8f3df';ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(-q.length*.35,q.beam*.3);ctx.lineTo(-q.length*.35,-q.beam*.3);ctx.fill();}ctx.fillStyle='#d5a64f';for(const end of Object.keys(attachmentNames(q))){const p=cleatLocal(q.spec,end);ctx.beginPath();ctx.arc(p.x,p.y,.09,0,Math.PI*2);ctx.fill();}drawFenders(ctx,q);ctx.restore();
  }
+ ctx.save();ctx.strokeStyle='#d8e8c7';ctx.lineWidth=.10;ctx.setLineDash([.5,.7]);ctx.strokeRect(SERVICE_TOW_ZONE.x,SERVICE_TOW_ZONE.y,SERVICE_TOW_ZONE.w,SERVICE_TOW_ZONE.h);ctx.setLineDash([]);ctx.fillStyle='#4e7765';ctx.font='1px system-ui';ctx.fillText('HOLOWANIE · SERWIS',SERVICE_TOW_ZONE.x+1,SERVICE_TOW_ZONE.y+SERVICE_TOW_ZONE.h-1);
+ ctx.strokeStyle='#dfddaa';ctx.lineWidth=.05;ctx.beginPath();SWIM_BUOYS.forEach((q,i)=>i?ctx.lineTo(q.x,q.y):ctx.moveTo(q.x,q.y));ctx.stroke();for(const q of SWIM_BUOYS){const bob=.12*Math.sin(b.time*2+q.x*.2);ctx.fillStyle='#f2d765';ctx.beginPath();ctx.ellipse(q.x+bob*.25,q.y+bob,.22,.17,0,0,Math.PI*2);ctx.fill();}ctx.restore();
  drawNavigation(ctx,b,env,visible,scale);drawRescue(ctx,state.fleet,scale,overview,state.vehicle==='suv'?null:b);drawTowRig(ctx,state.towRig,state.rigBoat??b);drawFleet(ctx,state.fleet,b,drawBoat,visible,scale,overview);drawBoat(ctx,b);
  drawBridges(ctx,scale);
  const bow=cleat(b,'bow');ctx.fillStyle='#cfb56d';ctx.beginPath();ctx.arc(bow.x,bow.y,.22,0,Math.PI*2);ctx.fill();
@@ -251,7 +254,7 @@ export function renderWorld(ctx,state){
  if(!state.hideScale){const metres=overview?1000:scale<1?100:5;ctx.strokeStyle='#4f756d';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(22,height-52);ctx.lineTo(22+metres*scale,height-52);ctx.moveTo(22,height-56);ctx.lineTo(22,height-49);ctx.moveTo(22+metres*scale,height-56);ctx.lineTo(22+metres*scale,height-49);ctx.stroke();ctx.fillStyle='#4f756d';ctx.font='10px system-ui';ctx.fillText(metres+' m',24,height-60);}
  const result={scale,camera,bounds};result.labels=drawMapNames(ctx,state,result);if(overview)drawPositionMarker(ctx,b,result,width,height);return result;
 }
-function drawBoat(ctx,b){
+function drawBoat(ctx,b){if(b.stored)return;
  if(b.spec.passive){drawUnpowered(ctx,b);return;}
  drawDriveWater(ctx,b);
  ctx.save();ctx.translate(b.x,b.y);ctx.rotate(b.a);ctx.scale(b.spec.length/5.5,b.spec.beam/2.1*Math.cos(b.roll));ctx.globalAlpha*=1-.7*(b.submersion??0);

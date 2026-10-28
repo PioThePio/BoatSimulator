@@ -1,20 +1,24 @@
+import {YARD_ISLANDS,RETURN_BAY,HANGAR,SPARE_TRAILER_BAYS} from './port-yard.js';
+import {PORT_ROADS} from './port-roads.js';
 import {PARKING,PARKING_SPACES,SERVICE_BAYS,SERVICE_STATION,bottomAt,clamp} from './world.js';
 import {bowEye,winchPost} from './trailer-winch.js';
 import {SUV,bodyPoint,trailerPost,hitchStatus} from './towing.js';
 import {SAND_PRACTICE,CURB} from './vehicle-terrain.js';
 export function drawParking(c){
- const p=PARKING;c.fillStyle='#a6b1a0';c.fillRect(p.x,p.y,p.w,p.h);c.strokeStyle='#879b87';c.lineWidth=.18;c.strokeRect(p.x,p.y,p.w,p.h);
- c.strokeStyle='#d4d6c2';c.lineWidth=CURB.width;c.beginPath();c.moveTo(CURB.gapMin,p.y+p.h);c.lineTo(p.x,p.y+p.h);c.lineTo(p.x,p.y);c.lineTo(p.x+p.w,p.y);c.lineTo(p.x+p.w,p.y+p.h);c.lineTo(CURB.gapMax,p.y+p.h);c.stroke();
- c.fillStyle='#acb5a3';c.fillRect(119.5,-8,11,16);c.strokeStyle='#e6e9cf';c.lineWidth=.15;
- for(const q of PARKING_SPACES){c.beginPath();c.moveTo(q.x,q.y+q.h);c.lineTo(q.x,q.y);c.lineTo(q.x+q.w,q.y);c.lineTo(q.x+q.w,q.y+q.h);c.stroke();}
- for(const q of SERVICE_BAYS){c.fillStyle='#9eaf8c';c.fillRect(q.x,q.y,q.w,q.h);c.strokeStyle='#f3edbb';c.strokeRect(q.x,q.y,q.w,q.h);c.save();c.translate(q.x+q.w*.55,q.y+q.h-2);c.rotate(-Math.PI/2);c.font='bold 1px system-ui';c.fillStyle='#f4efcf';c.fillText('SERWIS '+q.id,0,0);c.restore();}
- c.setLineDash([1,.7]);c.beginPath();c.moveTo(103,-11);c.lineTo(161,-11);c.stroke();c.setLineDash([]);
- c.fillStyle='#637e68';c.font='bold 1.2px system-ui';c.fillText('P  ZESTAWY Z PRZYCZEPĄ',103,-47);c.font='1px system-ui';c.fillText('SLIP ↓',122,-10);
- c.strokeStyle='#edf0d9';c.lineWidth=.17;c.beginPath();c.moveTo(124.5,-17);c.lineTo(124.5,-10);c.moveTo(123.5,-11);c.lineTo(124.5,-10);c.lineTo(125.5,-11);c.stroke();
- const sand=SAND_PRACTICE;c.fillStyle='#d7c598';c.fillRect(sand.x,sand.y,sand.w,sand.h);c.fillStyle='#baa779';for(let i=0;i<90;i++)c.fillRect(sand.x+(i*7.13%sand.w),sand.y+(i*4.73%sand.h),.1,.1);c.font='bold 1px system-ui';c.fillStyle='#8f825c';c.fillText('PIACH · PRÓBA TRAKCJI',sand.x+.6,sand.y+2);
+ c.save();c.lineJoin='round';c.lineCap='round';
+ for(const road of PORT_ROADS){c.strokeStyle='#989f94';c.lineWidth=road.width;c.beginPath();road.points.forEach((p,i)=>i?c.lineTo(p.x,p.y):c.moveTo(p.x,p.y));c.stroke();c.strokeStyle='#eeecd5';c.lineWidth=.13;c.setLineDash([3,3]);c.stroke();c.setLineDash([]);}
+ const p=PARKING;c.fillStyle='#a6aea1';c.fillRect(p.x,p.y,p.w,p.h);c.strokeStyle='#d8d9c9';c.lineWidth=.3;c.beginPath();for(const y of[p.y,p.y+p.h]){c.moveTo(p.x,y);c.lineTo(CURB.gapMin,y);c.moveTo(CURB.gapMax,y);c.lineTo(p.x+p.w,y);}c.moveTo(p.x+p.w,p.y);c.lineTo(p.x+p.w,p.y+p.h);c.moveTo(p.x,p.y);c.lineTo(p.x,-79);c.moveTo(p.x,-50);c.lineTo(p.x,p.y+p.h);c.stroke();
+ c.fillRect(73,-74,23,25);c.fillStyle='#a6aea1';c.fillRect(120,-114,9,10);c.fillRect(119.5,-9,11,17);
+ c.strokeStyle='#eeefdf';c.lineWidth=.12;
+ for(const q of[...PARKING_SPACES,...SERVICE_BAYS,RETURN_BAY,...SPARE_TRAILER_BAYS.map(q=>({x:q.x-2.25,y:q.y-7,w:4.5,h:16}))]){c.beginPath();c.moveTo(q.x,q.y+q.h);c.lineTo(q.x,q.y);c.lineTo(q.x+q.w,q.y);c.lineTo(q.x+q.w,q.y+q.h);c.stroke();}
+ for(const q of YARD_ISLANDS){c.fillStyle='#9eb58e';c.fillRect(q.x,q.y,q.w,q.h);c.strokeStyle='#dbddcb';c.lineWidth=.3;c.strokeRect(q.x,q.y,q.w,q.h);}
+ c.fillStyle='#f9faef';c.font='bold 1.1px system-ui';for(const q of SERVICE_BAYS){c.save();c.translate(q.x+q.w*.6,q.y+q.h-2);c.rotate(-Math.PI/2);c.fillText('SERWIS',0,0);c.restore();}
+ c.font='1px system-ui';c.fillStyle='#5c7161';c.fillText('AUTA',97,-109);c.fillText('ZESTAWY / PRZYCZEPY',142,-108);c.fillText('HANGAR · ZDAWANIE ŁODZI',69,-51);c.fillText('WOLNE PRZYCZEPY',198,-81);c.fillText('SLIP ↓',121,-12);
+ c.strokeStyle='#f4f3e4';c.lineWidth=.2;for(const q of[...SERVICE_BAYS,RETURN_BAY]){const x=q.x+q.w/2,y=q.y+q.h-3;c.beginPath();c.moveTo(x,y+1);c.lineTo(x,y-2);c.lineTo(x-.6,y-1.3);c.moveTo(x,y-2);c.lineTo(x+.6,y-1.3);c.stroke();}
+ const sand=SAND_PRACTICE;c.fillStyle='#d7c598';c.beginPath();sand.outline.forEach((p,i)=>i?c.lineTo(p.x,p.y):c.moveTo(p.x,p.y));c.closePath();c.fill();c.save();c.clip();c.fillStyle='#baa779';for(let i=0;i<120;i++)c.fillRect(sand.x+(i*7.13%sand.w),sand.y+(i*4.73%sand.h),.12,.12);c.restore();c.font='bold 1px system-ui';c.fillStyle='#8f825c';c.fillText('PIACH · TRAKCJA',sand.x+2,sand.y+9);c.restore();
 }
 export function drawTowRig(c,r,b){
- if(!r)return;const t=r.trailer,p=trailerPost(r),rear=t.offset-b.spec.length*.51,front=t.offset+b.spec.length*.45;
+ if(!r)return;for(const q of r.parkedTrailers??[])drawTowRig(c,{...r,parkedTrailers:[],parkedOnly:true,trailer:q.trailer,boatLength:q.boatLength,attached:false},{spec:q.spec});const t=r.trailer,p=trailerPost(r),rear=t.offset-b.spec.length*.51,front=t.offset+b.spec.length*.45;
  c.save();c.translate(t.x,t.y);c.rotate(t.a);
  const wet=bottomAt(t.x,t.y).depth>0;c.globalAlpha=wet?.75:1;c.strokeStyle='#697f79';c.lineWidth=.12;
  for(const side of [-1,1]){c.beginPath();c.moveTo(t.hitch,0);c.lineTo(front-.4,side*t.beam*.46);c.lineTo(rear,side*t.beam*.46);c.stroke();}
@@ -24,10 +28,10 @@ export function drawTowRig(c,r,b){
  // Carpeted V cradle and flared entry rollers, drawn at their physical arms.
  c.strokeStyle='#b29f67';c.lineWidth=.16;for(const side of [-1,1]){c.beginPath();c.moveTo(rear-.25,side*t.beam*.57);c.lineTo(rear+.65,side*b.spec.beam*.27);c.lineTo(front-.3,side*b.spec.beam*.27);c.stroke();}if(!r.postBroken){const stop=t.offset+b.spec.length*.50+.08;c.strokeStyle='#4b6b67';c.lineWidth=.16;c.beginPath();c.moveTo(stop-.15,-b.spec.beam*.28);c.lineTo(stop,0);c.lineTo(stop-.15,b.spec.beam*.28);c.stroke();}
  if(!r.postBroken){c.fillStyle='#c58758';c.fillRect(t.offset+b.spec.length*.59+.25,-.12,.2,.24);}if(!r.attached){c.fillStyle='#7d8f78';c.fillRect(t.hitch-.5,-.3,.12,.6);}c.fillStyle='#e1b764';c.fillRect(rear-.10,-t.beam*.46,.14,.32);c.fillStyle='#be7159';c.fillRect(rear-.10,t.beam*.46-.32,.14,.32);
- c.globalAlpha=1;c.restore();
+ c.globalAlpha=1;c.restore();if(r.parkedOnly)return;
  const q=r.car;c.save();c.translate(q.x,q.y);c.rotate(q.a);
  c.fillStyle='#66877933';c.fillRect(-2.5+.15,-1+.2,4.9,2);c.strokeStyle='#6a7e77';c.lineWidth=.13;c.beginPath();c.moveTo(-SUV.length/2,0);c.lineTo(-SUV.hitch,0);c.stroke();
- for(const x of [-SUV.wb/2,SUV.wb/2])for(const side of [-1,1]){c.save();c.translate(x,side*1);if(x>0)c.rotate(r.actualSteer);c.fillStyle='#344c47';c.fillRect(-.38,-.15,.76,.30);c.restore();}
+ for(const x of [-SUV.wb/2,SUV.wb/2])for(const side of [-1,1]){c.save();c.translate(x,side*1);if(x>0)c.rotate(r.tyreSteer??r.actualSteer);c.fillStyle='#344c47';c.fillRect(-.38,-.15,.76,.30);c.restore();}
  c.fillStyle='#d8dfd2';c.strokeStyle='#47675d';c.lineWidth=.08;c.beginPath();c.roundRect(-2.45,-.94,4.9,1.88,.28);c.fill();c.stroke();
  c.fillStyle='#728f89';c.beginPath();c.moveTo(.65,-.80);c.lineTo(1.12,-.72);c.lineTo(1.12,.72);c.lineTo(.65,.80);c.closePath();c.fill();c.fillRect(-1.5,-.73,.40,1.46);
  c.fillStyle='#e7eadd';c.fillRect(-.98,-.70,1.56,1.40);c.strokeStyle='#8b9c88';c.beginPath();c.moveTo(-.8,-.48);c.lineTo(.35,-.48);c.moveTo(-.8,.48);c.lineTo(.35,.48);c.stroke();

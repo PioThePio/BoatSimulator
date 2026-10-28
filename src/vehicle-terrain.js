@@ -1,22 +1,20 @@
 import {PARKING,SERVICE_STATION,SAND_PRACTICE,bottomAt,clamp} from './world.js';
+import {YARD_ISLANDS,HANGAR,rectContains as inside,polygonContains} from './port-yard.js';
+import {roadAt} from './port-roads.js';
 export {SAND_PRACTICE};
-const inside=(p,x,y)=>x>=p.x&&x<=p.x+p.w&&y>=p.y&&y<=p.y+p.h;
 export const CURB={height:.07,width:.30,gapMin:119.5,gapMax:130.5};
 export function curbHeight(x,y){
- const p=PARKING,c=CURB;
- if(x<p.x-c.width||x>p.x+p.w+c.width||y<p.y-c.width||y>p.y+p.h+c.width)return 0;
- const north=Math.abs(y-p.y),south=x>c.gapMin&&x<c.gapMax?Infinity:Math.abs(y-p.y-p.h);
- const distance=Math.min(Math.abs(x-p.x),Math.abs(x-p.x-p.w),north,south);
- return c.height*Math.max(0,1-distance/c.width);
+ const p=PARKING,c=CURB;let height=0;
+ if(x>=p.x-c.width&&x<=p.x+p.w+c.width&&y>=p.y-c.width&&y<=p.y+p.h+c.width){
+ const north=x>c.gapMin&&x<c.gapMax?Infinity:Math.abs(y-p.y),south=x>c.gapMin&&x<c.gapMax?Infinity:Math.abs(y-p.y-p.h),west=y> -79&&y< -50?Infinity:Math.abs(x-p.x);
+ const d=Math.min(west,Math.abs(x-p.x-p.w),north,south);height=c.height*Math.max(0,1-d/c.width);}
+ for(const q of YARD_ISLANDS){const dx=Math.max(q.x-x,0,x-q.x-q.w),dy=Math.max(q.y-y,0,y-q.y-q.h);height=Math.max(height,c.height*clamp(1-Math.hypot(dx,dy)/c.width,0,1));}return height;
 }
 export function vehicleSurface(x,y){
- const floor=bottomAt(x,y),r=SERVICE_STATION.slip,depth=Math.max(0,floor.depth);
- const ramp=inside(r,x,y),sand=inside(SAND_PRACTICE,x,y)||(!inside(PARKING,x,y)&&!ramp&&floor.beach&&floor.depth>-.15);
- const material=sand?'sand':ramp||inside(PARKING,x,y)?'concrete':'grass';
- const mu=sand?.45:material==='grass'?.56:depth>.025?.60-.18*clamp(depth/.75,0,1):.80;
- const curb=curbHeight(x,y);
- return{z:-floor.depth+curb,depth,material,mu,soft:sand,curb,rolling:sand?.11:material==='grass'?.045:.014};
+ const floor=bottomAt(x,y),r=SERVICE_STATION.slip,sampled=roadAt(x,y),road=floor.land||sampled?.bridge?sampled:null,ramp=inside(r,x,y),yard=inside(PARKING,x,y)||inside({x:HANGAR.x,y:HANGAR.y,w:26,h:44},x,y),depth=road?.blend===1||yard?0:Math.max(0,floor.depth);
+ const sand=polygonContains(SAND_PRACTICE.outline,x,y)||(!yard&&!ramp&&!road&&floor.beach&&floor.depth>-.15),material=sand?'sand':ramp||yard||road&&(road.bridge||road.distance<=road.width/2)?'concrete':'grass';
+ const mu=sand?.45:material==='grass'?.56:depth>.025?.60-.18*clamp(depth/.75,0,1):.80,curb=curbHeight(x,y);
+ const elevation=-(r.y-r.waterY)*Math.tan(r.angle*Math.PI/180),z=yard?elevation:-floor.depth+(elevation+floor.depth)*(road?.blend??0);
+ return{z:z+curb,depth,material,mu,soft:sand,curb,rolling:sand?.11:material==='grass'?.045:.014};
 }
-// Wheel work against terrain elevation, including the low curb. This replaces
-// a gravity switch at the centre of the SUV, which ignored axle/ramp alignment.
 export function vehicleGradient(x,y){const d=.10;return{x:(vehicleSurface(x+d,y).z-vehicleSurface(x-d,y).z)/(2*d),y:(vehicleSurface(x,y+d).z-vehicleSurface(x,y-d).z)/(2*d)};}

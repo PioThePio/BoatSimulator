@@ -76,7 +76,7 @@ for(const kind of ['banana','mat'])test(`${kind}: powered turn causes physical w
  assert.ok(gain>.5);assert.ok(roll>.01);assert.ok(wake>.005);assert.equal(f.tows[0].broken,false);
 });
 test('append-only sites keep all legacy mooring indices and coordinates unchanged',()=>{
- const fixture=JSON.parse(fs.readFileSync(new URL('./fixtures/legacy-bollards.json',import.meta.url)));assert.equal(fixture.length,332);for(const [i,q]of fixture.entries()){assert.equal(BOLLARDS[i].id,q.id);if(!['wodnik','beach'].includes(BOLLARDS[i].site))assert.deepEqual(({id:BOLLARDS[i].id,x:BOLLARDS[i].x,y:BOLLARDS[i].y}),q);}assert.equal(new Set(BOLLARDS.map(q=>q.id)).size,BOLLARDS.length);
+ const fixture=JSON.parse(fs.readFileSync(new URL('./fixtures/legacy-bollards.json',import.meta.url)));assert.equal(fixture.length,332);for(const [i,q]of fixture.entries()){assert.equal(BOLLARDS[i].id,q.id);if(!['wodnik','beach'].includes(BOLLARDS[i].site)&&!q.id.startsWith('SER'))assert.deepEqual(({id:BOLLARDS[i].id,x:BOLLARDS[i].x,y:BOLLARDS[i].y}),q);}assert.equal(new Set(BOLLARDS.map(q=>q.id)).size,BOLLARDS.length);
 });
 test('island bounding-box rejection preserves exact shore distances compared with unconditional polygon queries',()=>{
  const query=createShoreQuery(EUZEBIA.outline);for(let i=0;i<700;i++){const x=WORLD.left+(i*347%1000)/1000*(WORLD.right-WORLD.left),y=WORLD.top+(i*619%1000)/1000*(WORLD.bottom-WORLD.top);let d=polygonShore(x,y).distance;for(const q of ISLANDS){const value=q.outline?-query(x,y).distance:Math.hypot(x-q.x,y-q.y)-islandRadius(Math.atan2(y-q.y,x-q.x),q);d=Math.min(d,value);}for(const p of COAST_PATCHES)d=Math.min(d,-createShoreQuery(p.outline)(x,y).distance);close(shoreAt(x,y).distance,d);}

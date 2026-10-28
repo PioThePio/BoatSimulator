@@ -1,3 +1,4 @@
+import {ensureSpareTrailers} from './trailer-depot.js';
 import {solidPose} from './solid-geometry.js';
 import {step} from './physics.js';
 import {createFleetCraft,fleetName} from './fleet-craft.js';
@@ -21,7 +22,7 @@ export function createFleet(boat){
 export function syncFleetWorld(fleet){
  const owner=rigBoat(fleet),world=fleet.boats[0];
  for(const b of fleet.boats){b.booms=world.booms;b.buoys=world.buoys;b.traffic=world.traffic;b.worldRig=owner.towRig;b.occupied=b.id===fleet.activeId;
-  b.wakeSources=fleet.boats.filter(q=>q!==b).map(q=>({id:q.id,history:q.wake,braking:q.brakingWaves}));
+  b.wakeSources=fleet.boats.filter(q=>q!==b&&!q.stored).map(q=>({id:q.id,history:q.wake,braking:q.brakingWaves}));
  }
 }
 function overlaps(a,b,margin=.18){
@@ -35,7 +36,7 @@ export function placementStatus(fleet,b,pose,{grounded=false,traffic=true}={}){
  const probe={...b,...pose},samples=[{x:probe.x,y:probe.y},...hullOutline(b.spec).map(q=>point(probe,q.x,q.y))];
  if(samples.some(p=>shoreAt(p.x,p.y).land))return{ok:false,message:'Cały kadłub musi znajdować się nad wodą.'};
  if(SOLIDS.some(d=>overlaps(probe,{...solidPose(d),spec:{length:solidPose(d).length,beam:solidPose(d).width}}))||fleet.boats[0].booms.some(q=>overlaps(probe,{x:q.x1+Math.cos(q.a)*q.length/2,y:q.y1+Math.sin(q.a)*q.length/2,a:q.a,spec:{length:q.length,beam:q.width}})))return{ok:false,message:'To miejsce zajmuje pomost lub przeszkoda.'};
- if([...fleet.boats,...traffic?fleet.boats[0].traffic:[]].some(q=>overlaps(probe,q)))return{ok:false,message:'Zostaw odstęp od pozostałych jednostek.'};
+ if([...fleet.boats.filter(b=>!b.stored),...traffic?fleet.boats[0].traffic:[]].some(q=>overlaps(probe,q)))return{ok:false,message:'Zostaw odstęp od pozostałych jednostek.'};
  if(!grounded&&samples.some(p=>bottomAt(p.x,p.y).depth<b.spec.draft+.08))return{ok:false,message:'Za płytko. Wybierz głębszą wodę albo stan „na mieliźnie”.'};
  if(grounded&&!samples.some(p=>bottomAt(p.x,p.y).depth<b.spec.draft))return{ok:false,message:'Dla osiadłej łodzi wskaż płytką wodę przy brzegu lub mieliznę.'};
  return{ok:true};
@@ -48,21 +49,21 @@ export function addFleetBoat(fleet,kind,pose,options={}){
  fleet.boats.push(b);syncFleetWorld(fleet);return{ok:true,boat:b,message:'Dodano: '+b.name};
 }
 export function selectFleetBoat(fleet,id){
- const b=fleet.boats.find(q=>q.id===id);if(!b)return{ok:false,message:'Nie ma tej jednostki.'};
+ const b=fleet.boats.find(q=>q.id===id);if(!b||b.stored)return{ok:false,message:'Ta łódź została zdana w hangarze.'};
  const old=activeBoat(fleet);old.throttle=old.throttle2=0;old.thrusters.bow=old.thrusters.stern=0;for(const r of old.ropes)r.control=0;
  for(const r of fleet.tows)r.control=0;fleet.activeId=id;syncFleetWorld(fleet);return{ok:true,boat:b,message:'Stanowisko: '+fleetName(b)};
 }
 export function fleetStep(fleet,env,dt){
- syncFleetWorld(fleet);const owner=rigBoat(fleet),rig=owner.towRig;if(rig)towStep(rig,owner,dt);
+ syncFleetWorld(fleet);const owner=rigBoat(fleet),rig=owner.towRig;if(rig){ensureSpareTrailers(rig,owner);towStep(rig,owner,dt);}
  for(const b of fleet.boats){b.maxTowTension=0;b.towHeel=0;}
  vesselInteractions(fleet,env,dt);
  marineTowStep(fleet,dt);
- for(const [i,b]of fleet.boats.entries()){step(b,env,dt,{sharedStep:i===0});if(b===owner&&rig)trailerContact(rig,b,dt);}
- for(let i=0;i<fleet.boats.length;i++)for(let j=i+1;j<fleet.boats.length;j++)fleetContacts(fleet.boats[i],fleet.boats[j],dt);
+ let shared=true;for(const b of fleet.boats){if(b.stored){b.time+=dt;continue;}step(b,env,dt,{sharedStep:shared});shared=false;if(b===owner&&rig)trailerContact(rig,b,dt);}
+ for(let i=0;i<fleet.boats.length;i++)for(let j=i+1;j<fleet.boats.length;j++)if(!fleet.boats[i].stored&&!fleet.boats[j].stored)fleetContacts(fleet.boats[i],fleet.boats[j],dt);
  fleet.time=fleet.boats[0].time;
  rescueStep(fleet,env,dt);
 }
-export function recordFleetTrails(fleet){for(const b of fleet.boats)if(!b.towRig?.boatLoaded)recordTrail(b.trail,b);}
+export function recordFleetTrails(fleet){for(const b of fleet.boats)if(!b.stored&&!b.towRig?.boatLoaded)recordTrail(b.trail,b);}
 
 export function removeFleetBoat(fleet,id){
  const b=fleet.boats.find(q=>q.id===id);if(!b)return{ok:false,message:'Nie ma tej jednostki.'};

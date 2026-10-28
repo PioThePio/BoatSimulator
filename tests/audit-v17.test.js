@@ -95,12 +95,12 @@ test('outboard and Z-drive loaded starts keep every engine fully raised througho
  }
 });
 test('grass and sand have measurably higher rolling resistance than the paved yard',()=>{
- function coast(x){const b=createBoat('lake'),r=createTowRig(b);hitchAction(r);Object.assign(r.car,{x,y:-30,a:-Math.PI/2,vx:0,vy:-1.5});r.gear='N';for(let i=0;i<120;i++)towStep(r,b,dt);return Math.hypot(r.car.vx,r.car.vy);}
- const paved=coast(137),grass=coast(170),sand=coast(182);assert.ok(paved>grass+.2&&grass>sand+.3,`${paved}, ${grass}, ${sand}`);
+ function coast(x,y=-60){const b=createBoat('lake'),r=createTowRig(b);hitchAction(r);Object.assign(r.car,{x,y,a:-Math.PI/2,vx:0,vy:-1.5});r.gear='N';for(let i=0;i<120;i++)towStep(r,b,dt);return Math.hypot(r.car.vx,r.car.vy);}
+ const paved=coast(137),grass=coast(232),sand=coast(249,-86);assert.ok(paved>grass+.2&&grass>sand+.3,`${paved}, ${grass}, ${sand}`);
 });
 test('a low parking curb changes wheel height, SUV pitch and its physical coasting speed',()=>{
  function cross(x){const b=createBoat('lake'),r=createTowRig(b);hitchAction(r);Object.assign(r.car,{x,y:-25,a:0,vx:1.4,vy:0});r.gear='N';let pitch=0;for(let i=0;i<300;i++){towStep(r,b,dt);pitch=Math.max(pitch,Math.abs(r.car.pitch));}return{speed:Math.hypot(r.car.vx,r.car.vy),pitch};}
- const curb=cross(162),flat=cross(140);assert.ok(curb.pitch>.01);assert.ok(curb.speed<flat.speed-.1);assert.ok(vehicleSurface(165,-25).curb>0);
+ const curb=cross(227),flat=cross(215);assert.ok(curb.pitch>.01);assert.ok(curb.speed<flat.speed-.1);assert.ok(vehicleSurface(230,-25).curb>0);
 });
 test('mooring lines allow wave/current/wind-driven movement and yaw with dynamic slack and tension; calm boats stay still',()=>{
  const [calm,rough]=a.mooring;assert.equal(calm.displacement,0);assert.equal(calm.tensionMax,0);assert.ok(rough.displacement>.05&&rough.displacement<1.5);assert.ok(rough.yaw>.02&&rough.yaw<.5);assert.ok(rough.heave>.1);assert.equal(rough.tensionMin,0);assert.ok(rough.tensionMax>100);

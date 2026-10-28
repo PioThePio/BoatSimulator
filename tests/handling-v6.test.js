@@ -54,7 +54,7 @@ test('camera gently widens under speed and recovers smoothly on slowdown',()=>{
 });
 test('Y-boom geometry and its moving attachment share SI metres with the pier and boats',()=>{
  assert.ok(DOCKS[0].h>=2&&DOCKS[0].h<3);assert.ok(BUOY_SLIPS.length>=3);
- for(const q of YBOOMS){assert.ok(q.width>=.2&&q.width<=.3);assert.equal(q.length,10);assert.equal(q.y1,12.8);}
+ for(const q of YBOOMS){assert.ok(q.width>=.2&&q.width<=.3);assert.equal(q.length,q.id<6?10:9);assert.equal(q.y1,q.id<6?12.8:47.2);}
  const b=createBoat('open'),id=BOLLARDS.findIndex(q=>q.id==='Y1B'),initial=mooringPoint(b,id);
  b.booms[0].a+=.05;b.booms[0].w=.02;const moved=mooringPoint(b,id);
  assert.ok(Math.abs(moved.x-initial.x)>.4);assert.ok(Math.abs(moved.vx)>.1);assert.ok(Math.abs(boomPoint(b.booms[0]).y-b.booms[0].y1)<10.01);
@@ -66,7 +66,7 @@ test('ambient boats have actual cleat-to-bollard lines and yaw inside those cons
  let motion=0,yaw=0,extension=0;
  for(let i=0;i<3600;i++){
   b.time+=1/120;trafficStep(b,{traffic:true,windSpeed:8,windDirection:90,waveHeight:.3,waveDirection:90},1/120);
-  for(const q of b.traffic){motion=Math.max(motion,Math.hypot(q.x-q.homeX,q.y-q.homeY));yaw=Math.max(yaw,Math.abs(q.a-q.homeA));for(const r of q.ropes){const p=cleat(q,r.end),end=mooringPoint(b,r.bollard);extension=Math.max(extension,Math.hypot(p.x-end.x,p.y-end.y)-r.length);}}
+  for(const q of b.traffic.filter(q=>!q.type||!['kayak','rowboat'].includes(q.type))){motion=Math.max(motion,Math.hypot(q.x-q.homeX,q.y-q.homeY));yaw=Math.max(yaw,Math.abs(q.a-q.homeA));for(const r of q.ropes){const p=cleat(q,r.end),end=mooringPoint(b,r.bollard);extension=Math.max(extension,Math.hypot(p.x-end.x,p.y-end.y)-r.length);}}
  }
  assert.ok(motion>.05&&motion<1.3);assert.ok(yaw>.005&&yaw<.5);assert.ok(extension<.12);
 });

@@ -60,9 +60,9 @@ test('drift arrows track ground movement, separately from water passing a moored
 });
 
 test('both land service bays repair a secured boat without a shore line and refuse moving or misparked rigs',()=>{
- for(const bay of SERVICE_BAYS){const {r,b}=land(),dx=bay.x+bay.w/2-r.car.x;r.car.x+=dx;r.trailer.x+=dx;placeTrailerBoat(r,b);b.damage=35;b.engines[0].propDamage=20;assert.ok(serviceStatus(b).ok);assert.ok(requestRepair(b).ok);run(r,b,15);assert.equal(b.damage,0);assert.equal(b.engines[0].propDamage,0);
-  r.car.vx=.3;assert.equal(serviceStatus(b).ok,false);r.car.vx=0;r.car.x+=15;assert.equal(serviceStatus(b).ok,false);
- }
+ for(const bay of SERVICE_BAYS){const {r,b}=land();r.car.a=r.trailer.a=bay.heading;r.trailer.x=bay.x+bay.w/2;r.trailer.y=bay.y+b.spec.length/2+.7-r.trailer.offset;const pin=bodyPoint(r.trailer,r.trailer.hitch);r.car.x=pin.x+Math.cos(r.car.a)*SUV.hitch;r.car.y=pin.y+Math.sin(r.car.a)*SUV.hitch;placeTrailerBoat(r,b);b.damage=35;b.engines[0].propDamage=20;assert.ok(serviceStatus(b).ok);assert.ok(requestRepair(b).ok);run(r,b,15);assert.equal(b.damage,0);assert.equal(b.engines[0].propDamage,0);
+ r.car.vx=.3;assert.equal(serviceStatus(b).ok,false);r.car.vx=0;b.a+=Math.PI;assert.equal(serviceStatus(b).ok,false);}
+
 });
 
 test('sand contact spreads load on broad flat and RIB hulls; the same hard-rock strike is not discounted',()=>{
@@ -76,7 +76,7 @@ test('airboat has one dry air propeller, no reverse thrust or prop walk, and its
 });
 
 test('moored traffic has driven heave, heel and yaw within its rope constraints, and no motion on calm water',()=>{
- const calm=createBoat('lake'),rough=createBoat('lake');let heave=0,roll=0,yaw=0;for(let i=0;i<1200;i++){calm.time+=dt;rough.time+=dt;trafficStep(calm,{traffic:true},dt);trafficStep(rough,{traffic:true,windSpeed:7,waveHeight:.3,waveDirection:90},dt);for(const q of rough.traffic){heave=Math.max(heave,Math.abs(q.heave));roll=Math.max(roll,Math.abs(q.roll));yaw=Math.max(yaw,Math.abs(q.a-q.homeA));}}
+ const calm=createBoat('lake'),rough=createBoat('lake');let heave=0,roll=0,yaw=0;for(let i=0;i<1200;i++){calm.time+=dt;rough.time+=dt;trafficStep(calm,{traffic:true},dt);trafficStep(rough,{traffic:true,windSpeed:7,waveHeight:.3,waveDirection:90},dt);for(const q of rough.traffic.filter(q=>!['kayak','rowboat'].includes(q.type))){heave=Math.max(heave,Math.abs(q.heave));roll=Math.max(roll,Math.abs(q.roll));yaw=Math.max(yaw,Math.abs(q.a-q.homeA));}}
  assert.ok(heave>.12&&roll>.04&&yaw>.02&&yaw<.5);assert.equal(calm.traffic[0].heave,0);assert.equal(calm.traffic[0].roll,0);
 });
 

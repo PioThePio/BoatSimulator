@@ -38,7 +38,7 @@ test('every remote pier reaches land and water; the four legacy piers now join r
 test('main port access and service finger touch land; slip crosses the real wet/dry line; fuel stays on its own pier',()=>{
  for(const d of DOCKS.filter(q=>q.access)){const a=d.pose?solidPoint(d,-d.pose.length/2,0):{x:d.x,y:d.y},b=d.pose?solidPoint(d,d.pose.length/2,0):{x:d.x+d.w/2,y:d.y+d.h};assert.ok(shoreAt(a.x,a.y).land,d.id);assert.ok(!shoreAt(b.x,b.y).land,d.id);}
  const s=SERVICE_STATION.slip;assert.ok(bottomAt(s.x+s.w/2,s.y).depth<0);assert.ok(bottomAt(s.x+s.w/2,s.y+s.h).depth>2);
- assert.ok(DOCKS.some(d=>d.service&&d.x===130.5&&d.h===33));
+ assert.ok(DOCKS.some(d=>d.service&&d.site==='technical')&&!DOCKS.some(d=>d.service&&d.x===130.5));
  assert.ok(DOCKS.some(d=>Math.abs(d.x+d.w-FUEL_STATION.x)<1e-8&&d.y<FUEL_STATION.y&&d.y+d.h>FUEL_STATION.y));
  for(const f of FUEL_FENDERS)close(f.x,FUEL_STATION.x);
 });
@@ -54,7 +54,7 @@ test('bridge spans cross water, their piers stay in water and Zegrze bridge no l
 });
 test('water starts clear structures; beach retains shallow sand/tree exercise and lake has no orphan pier',()=>{
  for(const [id,p]of Object.entries(MAP_STARTS)){assert.ok(bottomAt(p.x,p.y).depth>(id==='beach'?.3:1.5),id);for(const d of DOCKS)assert.ok(!(p.x>d.x&&p.x<d.x+d.w&&p.y>d.y&&p.y<d.y+d.h),id);}
- const b=createBoat('lake');assert.ok(bottomAt(b.x,b.y).depth>2);for(const d of DOCKS)if(d.site)assert.ok(Math.hypot(d.x-b.x,d.y-b.y)>500);
+ const b=createBoat('lake');assert.ok(bottomAt(b.x,b.y).depth>2);for(const d of DOCKS)if(d.site&&d.site!=='technical')assert.ok(Math.hypot(d.x-b.x,d.y-b.y)>500);
  for(const shoal of SHOALS){assert.ok(shoreAt(shoal.x,shoal.y).distance>0);assert.ok(bottomAt(shoal.x,shoal.y).depth<5);}
  for(const beach of BEACHES)assert.ok(Math.abs(shoreAt(beach.x,beach.y).distance)<1);
  assert.ok(MAP_POIS.every(p=>p.x>=WORLD.left&&p.x<=WORLD.right&&p.y>=WORLD.top&&p.y<=WORLD.bottom));
