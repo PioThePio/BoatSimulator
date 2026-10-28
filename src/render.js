@@ -54,11 +54,11 @@ export function mapProjection(width,height){const scale=Math.min(width/(WORLD.ri
 function drawBridges(ctx,scale,bounds){
  for(const q of BRIDGES){
   if(bounds&&(Math.max(q.a.x,q.b.x)+q.width<bounds.left||Math.min(q.a.x,q.b.x)-q.width>bounds.right||Math.max(q.a.y,q.b.y)+q.width<bounds.top||Math.min(q.a.y,q.b.y)-q.width>bounds.bottom))continue;
+  for(const d of q.abutments??[]){const p=d.pose;ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.a);ctx.fillStyle='#7c897b';ctx.fillRect(-p.length/2,-p.width/2,p.length,p.width);ctx.restore();}
+  for(const t of q.piers){const x=q.a.x+(q.b.x-q.a.x)*t,y=q.a.y+(q.b.y-q.a.y)*t;ctx.fillStyle='#617b73';ctx.fillRect(x-2.2,y-3.5,4.4,7);}
   ctx.strokeStyle=q.dam?'#8b978b':'#a3aaa0';ctx.lineWidth=q.width;ctx.lineCap='butt';ctx.beginPath();ctx.moveTo(q.a.x,q.a.y);ctx.lineTo(q.b.x,q.b.y);ctx.stroke();
   ctx.strokeStyle='#e9ebd8';ctx.lineWidth=.35;ctx.setLineDash([3,4]);ctx.stroke();ctx.setLineDash([]);
   if(q.rail){const dx=q.b.x-q.a.x,dy=q.b.y-q.a.y,L=Math.hypot(dx,dy),nx=-dy/L,ny=dx/L;ctx.strokeStyle='#59675e';ctx.lineWidth=.25;for(const side of[-1,1]){ctx.beginPath();ctx.moveTo(q.a.x+nx*side*.72,q.a.y+ny*side*.72);ctx.lineTo(q.b.x+nx*side*.72,q.b.y+ny*side*.72);ctx.stroke();}for(let i=0;i<L;i+=1){ctx.beginPath();ctx.moveTo(q.a.x+dx*i/L-nx,q.a.y+dy*i/L-ny);ctx.lineTo(q.a.x+dx*i/L+nx,q.a.y+dy*i/L+ny);ctx.stroke();}}
-  for(const d of q.abutments??[]){const p=d.pose;ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.a);ctx.fillStyle='#7c897b';ctx.fillRect(-p.length/2,-p.width/2,p.length,p.width);ctx.restore();}
-  for(const t of q.piers){const x=q.a.x+(q.b.x-q.a.x)*t,y=q.a.y+(q.b.y-q.a.y)*t;ctx.fillStyle='#617b73';ctx.fillRect(x-2.2,y-3.5,4.4,7);}
  }
 }
 function drawBridgeGuards(c,r,bounds){c.save();for(const rail of BRIDGE_RAILS){if(bounds&&(rail.x+rail.w<bounds.left||rail.x>bounds.right||rail.y+rail.h<bounds.top||rail.y>bounds.bottom))continue;if(r?.guardDamage?.[rail.id]>=1)continue;const p=rail.pose;c.save();c.translate(p.x,p.y);c.rotate(p.a);c.strokeStyle='#566f69';c.lineWidth=.22;c.beginPath();c.moveTo(-p.length/2,0);c.lineTo(p.length/2,0);c.stroke();c.fillStyle='#dae2cd';for(let x=-p.length/2;x<=p.length/2;x+=2)c.fillRect(x-.09,-.24,.18,.48);c.restore();}c.restore();}
