@@ -1,3 +1,5 @@
+import {trafficStep} from './traffic.js';
+import {boomStep} from './marina.js';
 import {ensureSpareTrailers} from './trailer-depot.js';
 import {solidPose} from './solid-geometry.js';
 import {step} from './physics.js';
@@ -59,6 +61,7 @@ export function fleetStep(fleet,env,dt){
  vesselInteractions(fleet,env,dt);
  marineTowStep(fleet,dt);
  let shared=true;for(const b of fleet.boats){if(b.stored){b.time+=dt;continue;}step(b,env,dt,{sharedStep:shared});shared=false;if(b===owner&&rig)trailerContact(rig,b,dt);}
+ if(shared){trafficStep(owner,env,dt);boomStep(owner,env,dt);}
  for(let i=0;i<fleet.boats.length;i++)for(let j=i+1;j<fleet.boats.length;j++)if(!fleet.boats[i].stored&&!fleet.boats[j].stored)fleetContacts(fleet.boats[i],fleet.boats[j],dt);
  fleet.time=fleet.boats[0].time;
  rescueStep(fleet,env,dt);
