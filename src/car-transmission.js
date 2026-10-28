@@ -9,9 +9,6 @@ export function automaticTransmission(r,speed,dt){
  const ratio=AUTO_GEARS[r.autoGear-1].ratio;
  return{gear:r.autoGear,rpm:Math.max(780,v*ratio*115),forceScale:ratio/3.2,powerScale:r.shiftTime?.65:1};
 }
-export function roadSteering(angle,speed,wheelbase,mu){
- // Normal cornering remains below about 0.42 g. Extreme input still produces
- // finite tyre slip, rather than sending a fully locked front axle sideways.
- const max=Math.atan(.42*mu*9.81*wheelbase/Math.max(1,speed*speed));
- return Math.sign(angle)*Math.min(Math.abs(angle),max);
-}
+// Steering geometry is mechanical, independent of speed. The tyre friction
+// circle, not an invisible steering limiter, determines the resulting turn.
+export function roadSteering(angle){return angle;}

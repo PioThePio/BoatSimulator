@@ -5,7 +5,7 @@ import {PORT_ROADS} from '../../src/port-roads.js';
 // so the regression exercises the actual tyres, hitch, grade and collisions.
 export function driveHarbourRoad(){
  const b=createBoat('lake',{profile:'cruiser',coldStart:true}),r=createTowRig(b,{loaded:true,misalignment:0});
- const coarse=PORT_ROADS.flatMap((q,i)=>i?q.points.slice(1):q.points),path=coarse.flatMap((b,i)=>{if(!i)return[b];const a=coarse[i-1],n=Math.ceil(Math.hypot(b.x-a.x,b.y-a.y)/2);return Array.from({length:n},(_,j)=>({x:a.x+(b.x-a.x)*(j+1)/n,y:a.y+(b.y-a.y)*(j+1)/n}));});
+ const coarse=PORT_ROADS.filter(q=>q.id!=='wild-slip-access').flatMap((q,i)=>i?q.points.slice(1):q.points),path=coarse.flatMap((b,i)=>{if(!i)return[b];const a=coarse[i-1],n=Math.ceil(Math.hypot(b.x-a.x,b.y-a.y)/2);return Array.from({length:n},(_,j)=>({x:a.x+(b.x-a.x)*(j+1)/n,y:a.y+(b.y-a.y)*(j+1)/n}));});
  r.engine.key='running';r.gear='D';r.awd=true;let index=0,pitch=0;
  for(let i=0;i<1500*120;i++){
   while(index<path.length-1&&Math.hypot(path[index].x-r.car.x,path[index].y-r.car.y)<8)index++;

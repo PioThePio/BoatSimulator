@@ -16,7 +16,7 @@ const omitted=new Set(['booms','buoys','traffic','towRig','worldRig','wakeSource
 function boatData(b){return Object.fromEntries(Object.entries(b).filter(([key])=>!omitted.has(key)));}
 export function snapshotSession(session,now=Date.now()){
  const {fleet,env,start,boatOptions,vehicle,ui={},weather={}}=session,world=fleet.boats[0],rig=session.towRig??fleet.boats.find(b=>b.id===fleet.rigBoatId)?.towRig;
- return{version:SAVE_VERSION,siteGeometryVersion:3,mainPortVersion:1,fuelBerthVersion:1,worldScale:WORLD_DISTANCE_SCALE,savedAt:now,
+ return{version:SAVE_VERSION,siteGeometryVersion:3,mainPortVersion:2,fuelBerthVersion:1,worldScale:WORLD_DISTANCE_SCALE,savedAt:now,
   fleet:{...fleet,boats:fleet.boats.map(boatData),tows:fleet.tows.map(r=>({...r,control:0,rate:0}))},
   world:{booms:world.booms,buoys:world.buoys,traffic:world.traffic},rig:rig?Object.fromEntries(Object.entries(rig).filter(([key])=>key!=='audioBoat')):null,
   env,start,boatOptions,vehicle,ui,weather};

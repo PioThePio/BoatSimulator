@@ -1,3 +1,4 @@
+import {vehicleSurface} from './vehicle-terrain.js';
 import {bottomAt,clamp,BOLLARDS} from './world.js';
 import {bodyPoint,bodyLocal,bunkZ} from './tow-geometry.js';
 import {driveGeometry} from './drive.js';
@@ -5,7 +6,7 @@ export function towProfile(r,b,{focusCar=false}={}){
  if(focusCar&&!r.attached)return soloCarProfile(r);
  const t=r.trailer,c=r.car,L=b.spec.length,near=Math.hypot(b.x-t.x,b.y-t.y)<L*1.4,showCar=r.attached||Math.hypot(c.x-t.x,c.y-t.y)<20;
  const carU=bodyLocal(t,c).x,boatU=bodyLocal(t,b).x,lo=Math.min(t.offset-L*.57,near?boatU-L*.6:Infinity),hi=Math.max(t.hitch,showCar?carU+2.8:-Infinity,near?boatU+L*.55:-Infinity);
- const ground=Array.from({length:33},(_,i)=>{const u=hi+(lo-hi)*i/32,p=bodyPoint(t,u);return{u,z:-bottomAt(p.x,p.y).depth};});
+ const ground=Array.from({length:33},(_,i)=>{const u=hi+(lo-hi)*i/32,p=bodyPoint(t,u);return{u,z:vehicleSurface(p.x,p.y).z};});
  const high=Math.max(...ground.map(p=>p.z),showCar?c.z+1.6:-10,near?b.heave+b.spec.freeboard:-10),low=Math.min(-.3,...ground.map(p=>p.z),near?b.heave-b.spec.draft:-.3)-.35;
  const scale=Math.min(310/(hi-lo),120/Math.max(2,high-low)),left=(340-(hi-lo)*scale)/2,X=u=>left+(hi-u)*scale,Z=z=>16+(high-z)*scale;
  const group=(name,u,z,pitch,body)=>`<g data-profile-body="${name}" data-pitch="${pitch*180/Math.PI}" transform="translate(${X(u)} ${Z(z)}) scale(${-scale} ${-scale}) rotate(${pitch*180/Math.PI})">${body}</g>`;
@@ -20,7 +21,7 @@ export function towProfile(r,b,{focusCar=false}={}){
  return`<path d="${floorPath}V156H5Z" fill="#c7b997"/><path d="${floorPath}" fill="none" stroke="#8e987d" stroke-width="1"/>${car}${trailer}${boat}${drive}${line}<path d="M4 ${water}H336V156H4Z" fill="#8fc8c338"/><path d="M4 ${water}H336" stroke="#76a9a0" stroke-dasharray="4 3"/><text x="6" y="${clamp(water-4,10,151)}" fill="#6f968d" font-size="7">WODA</text>${supports}<text x="8" y="168" fill="#758c6b" font-size="8">${load} kg na podporach${near&&stern>.3?' · rufa wypierana przez wodę':''}</text>`;
 }
 function soloCarProfile(r){
- const c=r.car,scale=32,ground=Array.from({length:21},(_,i)=>{const x=4-i*.4,p=bodyPoint(c,x);return{x,z:-bottomAt(p.x,p.y).depth};}),high=Math.max(c.z+1.5,...ground.map(p=>p.z)),X=x=>170-x*scale,Z=z=>18+(high-z)*scale;
+ const c=r.car,scale=32,ground=Array.from({length:21},(_,i)=>{const x=4-i*.4,p=bodyPoint(c,x);return{x,z:vehicleSurface(p.x,p.y).z};}),high=Math.max(c.z+1.5,...ground.map(p=>p.z)),X=x=>170-x*scale,Z=z=>18+(high-z)*scale;
  const path='M'+ground.map(p=>`${X(p.x)} ${Z(p.z)}`).join('L'),water=Z(0);
  return`<path d="${path}V155H4Z" fill="#c7b997"/><path d="${path}" fill="none" stroke="#8d987b"/><g data-profile-body="suv" data-pitch="${c.pitch*180/Math.PI}" transform="translate(170 ${Z(c.z)}) scale(-32 -32) rotate(${c.pitch*180/Math.PI})"><path d="M-2.42 .05Q-2.5 .65-2.2 .78L-1.75 .89Q-1.55 1.38-1.24 1.4H.43Q.68 1.38 .98 .91L1.95 .75Q2.38 .68 2.4 .40L2.38 .07Q2.36-.08 2.10-.08H-2.15Q-2.4-.08-2.42 .05Z" fill="#d6dfd1" stroke="#557664" stroke-width=".06"/><path d="M.83 .92 .45 1.24Q.36 1.29 .19 1.29H-1.22Q-1.40 1.28-1.58 .92Z" fill="#789c91"/>${[-1.45,1.45].map(x=>`<circle cx="${x}" cy="-.12" r=".32" fill="#415a50"/><circle cx="${x}" cy="-.12" r=".15" fill="#afc0b5"/>`).join('')}</g><path d="M4 ${water}H336V155H4Z" fill="#8fc8c338"/><path d="M4 ${water}H336" stroke="#76a9a0" stroke-dasharray="4 3"/><text x="8" y="168" font-size="8" fill="#758c6b">SUV solo · przyczepa zaparkowana</text>`;
 }

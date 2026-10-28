@@ -9,7 +9,7 @@ export function zoomAtlas(atlas,factor,x,y,w,h){
  const after=atlasProjection(atlas,w,h);atlas.camera.x=clamp(wx-(x-w/2)/after.scale,WORLD.left,WORLD.right);atlas.camera.y=clamp(wy-(y-h/2)/after.scale,WORLD.top,WORLD.bottom);
 }
 export function installMapGestures(canvas,api){
- const pointers=new Map();let moved=false,pinched=false,start=null,consumeClick=false;
+ const pointers=new Map();let moved=false,pinched=false,start=null,consumeClick=false,lastTap=null;
  const local=e=>{const r=canvas.getBoundingClientRect();return{x:e.clientX-r.left,y:e.clientY-r.top};};
  const stop=e=>{e.preventDefault();e.stopImmediatePropagation();};
  const metrics=()=>{const p=[...pointers.values()];return{x:p.reduce((s,q)=>s+q.x,0)/p.length,y:p.reduce((s,q)=>s+q.y,0)/p.length,d:p.length>1?Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y):0};};
@@ -25,10 +25,11 @@ export function installMapGestures(canvas,api){
  },{capture:true});
  const release=e=>{
   if(!pointers.has(e.pointerId))return;stop(e);pointers.delete(e.pointerId);
-  if(!pointers.size&&!moved&&!pinched&&e.type==='pointerup'){const p=local(e),q=api.labels().find(q=>q.poiId&&p.x>=q.x&&p.x<=q.x+q.w&&p.y>=q.y&&p.y<=q.y+q.h);if(q)api.focus(q);}
+  if(!pointers.size&&!moved&&!pinched&&e.type==='pointerup'){const p=local(e),q=api.labels().find(q=>q.poiId&&p.x>=q.x&&p.x<=q.x+q.w&&p.y>=q.y&&p.y<=q.y+q.h);if(q){lastTap=null;api.focus(q);}else{const now=performance.now();if(lastTap&&now-lastTap.at<340&&Math.hypot(p.x-lastTap.x,p.y-lastTap.y)<22){const{width,height}=api.size(),projection=atlasProjection(api.atlas(),width,height);api.focus({worldX:projection.camera.x+(p.x-width/2)/projection.scale,worldY:projection.camera.y+(p.y-height/2)/projection.scale});lastTap=null;}else lastTap={...p,at:now};}}
  };
  for(const type of ['pointerup','pointercancel','lostpointercapture'])canvas.addEventListener(type,release,{capture:true});
  canvas.addEventListener('click',e=>{if(api.active()||consumeClick){stop(e);consumeClick=false;}},{capture:true});
+ canvas.addEventListener('dblclick',e=>{if(!api.active())return;stop(e);const p=local(e),{width,height}=api.size(),q=atlasProjection(api.atlas(),width,height);api.focus({worldX:q.camera.x+(p.x-width/2)/q.scale,worldY:q.camera.y+(p.y-height/2)/q.scale});},{capture:true});
  canvas.addEventListener('wheel',e=>{if(!api.active())return;stop(e);const p=local(e),{width,height}=api.size();zoomAtlas(api.atlas(),Math.exp(-clamp(e.deltaY,-500,500)*.002),p.x,p.y,width,height);},{capture:true,passive:false});
  return{clear(){pointers.clear();moved=pinched=false;consumeClick=false;}};
 }

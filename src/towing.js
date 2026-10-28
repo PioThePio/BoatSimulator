@@ -1,7 +1,9 @@
+import {bridgeRailContact} from './bridge-road.js';
+import {WILD_SLIP} from './port-yard.js';
 import {automaticTransmission,roadSteering} from './car-transmission.js';
 import {articulationStatus,trailerHitchLength,COUPLER_LIMIT} from './articulation.js';
 import {createOperations,operationsStep,consumeOperatingFuel} from './operations.js';
-import {clamp,bottomAt,SERVICE_STATION,PARKING,BUILDINGS,DOCKS,BOLLARDS} from './world.js';
+import {clamp,bottomAt,SERVICE_STATION,PARKING,BUILDING_SOLIDS,DOCKS,BOLLARDS} from './world.js';
 import {SUV_GEOMETRY,bodyPoint,bodyLocal,kick,frameZ,bunkZ,updateTowGeometry} from './tow-geometry.js';
 import {vehicleSurface,vehicleGradient} from './vehicle-terrain.js';
 import {lockedSupport,trailerBoatContact} from './trailer-support.js';
@@ -131,7 +133,7 @@ export function securingStatus(r,b){
  if(b.ropes.some(q=>q.bollard!==trailerBollardIndex())||b.anchor.mode!=='stowed')return{ok:false,message:'Odepnij cumy od brzegu i wybierz kotwicę przed załadunkiem.'};
  return{ok:true,message:'Gotowa do zabezpieczenia · zapnij pasy',local:p};
 }
-function rampGrade(p){const q=SERVICE_STATION.slip;return p.x>q.x&&p.x<q.x+q.w&&p.y>q.y&&p.y<q.y+q.h?q.angle*Math.PI/180:0;}
+function rampGrade(p){for(const q of[SERVICE_STATION.slip,WILD_SLIP])if(p.x>q.x&&p.x<q.x+q.w&&p.y>q.y&&p.y<q.y+q.h)return q.angle*Math.PI/180;return 0;}
 function tyre(q,x,angle,normal,mu,stiffness,dt){
  const p=bodyPoint(q,x),nx=-Math.sin(angle),ny=Math.cos(angle),rx=p.x-q.x,ry=p.y-q.y,lever=rx*ny-ry*nx,v=p.vx*nx+p.vy*ny;
  const j=clamp(-v/(1/q.mass+lever*lever/q.iz+1/(stiffness*dt)),-mu*normal*dt,mu*normal*dt);kick(q,nx*j,ny*j,rx,ry);
@@ -143,7 +145,7 @@ function hitch(r,dt){
  kick(t,jx,jy,sx,sy);kick(c,-jx,-jy,rx,ry);return Math.hypot(jx,jy)/dt;
 }
 function roadContact(q,length,beam,r,dt){
- const obstacles=[...BUILDINGS,...DOCKS,...(r.parkedTrailers??[]).map(q=>{const t=q.trailer,L=q.boatLength+1;return{pose:{x:t.x,y:t.y,a:t.a,length:L,width:t.beam},x:t.x-L,y:t.y-L,w:L*2,h:L*2};})];
+ const obstacles=[...BUILDING_SOLIDS,...DOCKS,...(r.parkedTrailers??[]).map(q=>{const t=q.trailer,L=q.boatLength+1;return{pose:{x:t.x,y:t.y,a:t.a,length:L,width:t.beam},x:t.x-L,y:t.y-L,w:L*2,h:L*2};})];
  // The training area is bounded on land; the ramp and water remain accessible.
  const parked=q===r.car?r.gear==='P'||r.handbrake:r.trailerPark||r.attached&&(r.gear==='P'||r.handbrake);
  for(const x of [-length*.38,0,length*.38]){const p=bodyPoint(q,x),radius=beam*.48;
@@ -192,8 +194,15 @@ export function towStep(r,b,dt){
  r.surface=sr.material;r.bogged=Math.max(r.frontSink,r.rearSink)>.22&&Math.abs(speed)<.35;
  const foot=r.gear==='P'?1:r.brakePedal,hand=r.handbrake?rearLimit:0,resistance=nf*(sf.rolling+r.frontSink*.65)+nr*(sr.rolling+r.rearSink*.65);
  const engineBrake=running&&direction?Math.min((frontLimit+rearLimit)*.6,Math.max(0,Math.abs(speed)-(r.gear==='R'?2.8:3))*(r.gear==='R'?4000:450))*(1-r.pedal)**2:0;
- const brakeLimit=(frontLimit+rearLimit)*foot+hand+resistance+engineBrake,hold=Math.min(brakeLimit,Math.abs(speed)*c.mass/dt),force=drive-Math.sign(speed)*hold-.45*speed*Math.abs(speed);
+ const brakeLimit=(frontLimit+rearLimit)*foot+hand+resistance+engineBrake,hold=Math.min(brakeLimit,Math.abs(speed)*c.mass/dt),force=-Math.sign(speed)*hold-.45*speed*Math.abs(speed);
  kick(c,Math.cos(c.a)*force*dt,Math.sin(c.a)*force*dt);
+ // Each driven axle pushes along its own wheel heading. Rear saturation
+ // produces power oversteer on loose ground; AWD retains front-wheel pull.
+ for(const [f,x,a]of[[ff,SUV.wb/2,c.a+tyreSteer],[rf,-SUV.wb/2,c.a]]){const p=bodyPoint(c,x);kick(c,Math.cos(a)*f*dt,Math.sin(a)*f*dt,p.x-c.x,p.y-c.y);}
+ // Tyre/suspension deformation dissipates part of a kerb strike. Gravity
+ // still supplies the climb/descent; this finite loss prevents gaining speed.
+ r.curbWheels??={};for(const [key,surface,normal]of[['front',sf,nf],['rear',sr,nr]]){const entered=surface.curb>.008&&!r.curbWheels[key];if(entered&&Math.abs(speed)>.2){const v=Math.hypot(c.vx,c.vy),loss=normal*.07*.6,factor=Math.sqrt(Math.max(0,1-2*loss/(c.mass*v*v)));c.vx*=factor;c.vy*=factor;r.curbEvent=(r.curbEvent??0)+1;r.curbStrength=clamp(Math.abs(speed)*.07,.02,.3);r.lastCurbAt=r.time;}if(surface.curb>.008)r.curbWheels[key]=true;else if(surface.curb<.003)r.curbWheels[key]=false;}
+
  const gf=vehicleGradient(front.x,front.y),gr=vehicleGradient(rear.x,rear.y),gt=vehicleGradient(axle.x,axle.y);
  for(const [body,gradient,normal]of [[c,gf,nf],[c,gr,nr],[t,gt,tn]]){
   const factor=normal*dt/Math.hypot(1,gradient.x,gradient.y);
@@ -203,7 +212,7 @@ export function towStep(r,b,dt){
  const waterDrag=500*clamp((d.frontDepth+d.rearDepth)*.5,0,2)*Math.hypot(c.vx,c.vy);c.vx/=1+waterDrag/c.mass*dt;c.vy/=1+waterDrag/c.mass*dt;
  const ts=t.vx*Math.cos(t.a)+t.vy*Math.sin(t.a),trailerBrake=(r.trailerPark?1:t.braked?foot*.7:0)*st.mu*tn,drag=Math.min(tn*st.rolling+trailerBrake,Math.abs(ts)*t.mass/dt);
  kick(t,-Math.sign(ts)*drag*Math.cos(t.a)*dt,-Math.sign(ts)*drag*Math.sin(t.a)*dt);
- const frontGrip=Math.sqrt(Math.max(.04,1-(ff/Math.max(1,frontLimit))**2)),rearGrip=Math.sqrt(Math.max(.025,1-(rf/Math.max(1,rearLimit))**2))*(r.handbrake?.18:1);
+ const frontGrip=Math.sqrt(Math.max(.04,1-(ff/Math.max(1,frontLimit))**2)),rearGrip=Math.sqrt(Math.max(sr.material==='concrete'?.025:.0025,1-(rf/Math.max(1,rearLimit))**2))*(sr.material==='concrete'?1:1-.65*r.rearSlip)*(r.handbrake?.18:1);
  r.frontGrip=frontGrip;r.rearGrip=rearGrip;
  tyre(c,SUV.wb/2,c.a+tyreSteer,nf,muf*frontGrip,70000,dt);tyre(c,-SUV.wb/2,c.a,nr,mur*rearGrip,80000,dt);tyre(t,t.axleX,t.a,tn,st.mu,22000,dt);
  kick(t,r.ropeForce.x*dt,r.ropeForce.y*dt);t.w+=r.ropeForce.torque/t.iz*dt;r.ropeForce={x:0,y:0,torque:0};
@@ -211,7 +220,7 @@ export function towStep(r,b,dt){
  // Terrain contacts must go through the same finite parking friction. Direct
  // position correction AFTER braking used to walk a skewed, stationary rig
  // down the ramp, even while P and the handbrake held all wheel velocities.
- roadContact(c,SUV.length,SUV.beam,r,dt);roadContact(t,b.spec.length,t.beam,r,dt);
+ roadContact(c,SUV.length,SUV.beam,r,dt);roadContact(t,b.spec.length,t.beam,r,dt);bridgeRailContact(r,c,SUV.length,SUV.beam,dt);bridgeRailContact(r,t,b.spec.length,t.beam,dt);
  // Static braking at very low speed uses the same finite friction budget.
  // It holds a parked rig without integrating a small gravity creep each step.
  const parking=[];
@@ -240,8 +249,8 @@ export function towStep(r,b,dt){
  en.rpm+=(rpmTarget-en.rpm)*(1-Math.exp(-dt/(running?.28:.12)));if(en.rpm<1)en.rpm=0;en.n=clamp(en.rpm/6000,0,1);en.temperature+=((running?87:18)-en.temperature)*dt/(running?100:450);
  en.fuelFlow=running?1.2+Math.abs(drive*speed)/735.5*.24+r.pedal*3:0;
  consumeOperatingFuel(r.fuel,[en],r.operations,dt);operationsStep(r.operations,[en],c,dt);
- r.tyreSlip=r.slip*r.pedal*clamp(Math.max(d.frontDepth,d.rearDepth)/.08,0,1);
+ r.tyreSlip=r.slip*r.pedal*(r.surface==='concrete'?clamp(Math.max(d.frontDepth,d.rearDepth)/.08,.15,1):.7);
  updateTowGeometry(r);if(r.boatLoaded&&r.secured)placeTrailerBoat(r,b);
 }
 export function trailerContact(r,b,dt){winchStep(r,b,dt);trailerBoatContact(r,b,dt);loadingScoreStep(r,b,dt);}
-export function towAudioBoat(r,b){let voice=audioBoats.get(r);if(!voice){voice={};audioBoats.set(r,voice);}return Object.assign(voice,{...b,tyreSlip:r.tyreSlip??0,suppressIgnitionAlarm:true,spec:{...b.spec,profile:'suv',jet:false,racing:false,diesel:false},time:r.time,engines:[r.engine],throttle:r.pedal,throttle2:0,planing:0,telemetry:{surge:0,sway:0,thrust:0},thrusters:{},fuel:{refueling:false}});}
+export function towAudioBoat(r,b){let voice=audioBoats.get(r);if(!voice){voice={};audioBoats.set(r,voice);}return Object.assign(voice,{...b,tyreSlip:r.tyreSlip??0,curbEvent:r.curbEvent??0,curbStrength:r.curbStrength??0,suppressIgnitionAlarm:true,spec:{...b.spec,profile:'suv',jet:false,racing:false,diesel:false},time:r.time,engines:[r.engine],throttle:r.pedal,throttle2:0,planing:0,telemetry:{surge:0,sway:0,thrust:0},thrusters:{},fuel:{refueling:false}});}

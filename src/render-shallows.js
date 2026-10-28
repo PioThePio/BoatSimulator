@@ -1,4 +1,4 @@
-import {EUZEBIA,NIEPORET_SURVEY_BOUNDS,bottomAt} from './world.js';
+import {EUZEBIA,NIEPORET_SURVEY_BOUNDS,SERVICE_STATION,bottomAt} from './world.js';
 let image;
 // A small cached bathymetry raster is interpolated by Canvas. Colour and
 // contacts query the exact same bottomAt; dry land is painted over it afterwards.
@@ -16,4 +16,12 @@ export function drawNieporetDepths(ctx,bounds){
  if(bounds&&(bounds.right<left||bounds.left>left+width||bounds.bottom<top||bounds.top>top+height))return;
  if(!surveyImage){const canvas=document.createElement('canvas');canvas.width=Math.ceil(width/cell);canvas.height=Math.ceil(height/cell);const c=canvas.getContext('2d');for(let y=0;y<canvas.height;y++)for(let x=0;x<canvas.width;x++){const q=bottomAt(left+(x+.5)*cell,top+(y+.5)*cell);if(q.land)continue;c.fillStyle=q.depth<.2?'#c0d7c5':q.depth<.6?'#afd0ce':q.depth<1.2?'#a0c8cb':q.depth<2?'#92bdc5':'#8bb5c0';c.globalAlpha=Math.max(0,Math.min(1,x*cell/35,y*cell/35,(width-x*cell)/35,(height-y*cell)/35));c.fillRect(x,y,1,1);}surveyImage=canvas;}
  ctx.save();ctx.imageSmoothingEnabled=true;ctx.drawImage(surveyImage,left,top,width,height);ctx.restore();
+}
+
+let portImage,portAngle;
+export function drawMainPortDepths(ctx,bounds){
+ const left=-115,top=-35,width=410,height=180,cell=2;
+ if(bounds&&(bounds.right<left||bounds.left>left+width||bounds.bottom<top||bounds.top>top+height))return;
+ if(!portImage||portAngle!==SERVICE_STATION.slip.angle){const canvas=document.createElement('canvas');canvas.width=width/cell;canvas.height=height/cell;const c=canvas.getContext('2d');for(let y=0;y<canvas.height;y++)for(let x=0;x<canvas.width;x++){const q=bottomAt(left+(x+.5)*cell,top+(y+.5)*cell);if(q.land)continue;c.fillStyle=q.depth<.15?'#c6d8bd':q.depth<.4?'#b5d2c5':q.depth<.8?'#a6cccd':q.depth<1.4?'#97c1c9':q.depth<2.2?'#8eb9c3':'#8bb5c0';c.globalAlpha=Math.min(1,x*cell/15,y*cell/12,(width-x*cell)/15,(height-y*cell)/15);c.fillRect(x,y,1,1);}portImage=canvas;portAngle=SERVICE_STATION.slip.angle;}
+ ctx.save();ctx.imageSmoothingEnabled=true;ctx.drawImage(portImage,left,top,width,height);ctx.restore();
 }

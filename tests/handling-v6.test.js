@@ -54,7 +54,7 @@ test('camera gently widens under speed and recovers smoothly on slowdown',()=>{
 });
 test('Y-boom geometry and its moving attachment share SI metres with the pier and boats',()=>{
  assert.ok(DOCKS[0].h>=2&&DOCKS[0].h<3);assert.ok(BUOY_SLIPS.length>=3);
- for(const q of YBOOMS){assert.ok(q.width>=.2&&q.width<=.3);assert.equal(q.length,q.id<6?10:9);assert.equal(q.y1,q.id<6?12.8:47.2);}
+ for(const q of YBOOMS){assert.ok(q.width>=.2&&q.width<=.3);assert.equal(q.length,q.id<6||q.id>=9?10:9);assert.equal(q.y1,q.id<6?12.8:47.2);}
  const b=createBoat('open'),id=BOLLARDS.findIndex(q=>q.id==='Y1B'),initial=mooringPoint(b,id);
  b.booms[0].a+=.05;b.booms[0].w=.02;const moved=mooringPoint(b,id);
  assert.ok(Math.abs(moved.x-initial.x)>.4);assert.ok(Math.abs(moved.vx)>.1);assert.ok(Math.abs(boomPoint(b.booms[0]).y-b.booms[0].y1)<10.01);

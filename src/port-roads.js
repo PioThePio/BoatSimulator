@@ -14,6 +14,7 @@ const canalBridge=BRIDGES.find(q=>q.id==='nieporet'),west=canalBridge.b,east=can
 PORT_ROADS.push({id:'canal-west-access',width:8,points:roundRoad([coast.at(-1),{x:-270,y:1350},{x:-270,y:1450},{x:-175,y:1453},west],25)},
  {id:'canal-road-crossing',width:8,bridge:true,deckWidth:canalBridge.width,points:[west,east]},
  {id:'eastern-marinas',width:8,points:roundRoad([east,{x:20,y:1465},{x:120,y:1472},...[[21.0406,52.432],[21.0425,52.434],[21.0431,52.436],[21.0435,52.438]].map(p=>{const q=projectNieporet(p);return{x:q.x+90,y:q.y};})],30)});
+PORT_ROADS.push({id:'wild-slip-access',width:5,material:'gravel',points:roundRoad([{x:227,y:-54},{x:249,y:-44},{x:249,y:-31}],9)});
 const segments=PORT_ROADS.flatMap(road=>road.points.slice(1).map((b,i)=>{const a=road.points[i],dx=b.x-a.x,dy=b.y-a.y;return{road,a,dx,dy,length2:dx*dx+dy*dy,half:(road.deckWidth??road.width)/2,left:Math.min(a.x,b.x)-40,right:Math.max(a.x,b.x)+40,top:Math.min(a.y,b.y)-40,bottom:Math.max(a.y,b.y)+40};}));
 const roadGrid=new Map(),CELL=64;
 for(const q of segments)for(let y=Math.floor(q.top/CELL);y<=Math.floor(q.bottom/CELL);y++)for(let x=Math.floor(q.left/CELL);x<=Math.floor(q.right/CELL);x++){const key=x+','+y;if(!roadGrid.has(key))roadGrid.set(key,[]);roadGrid.get(key).push(q);}

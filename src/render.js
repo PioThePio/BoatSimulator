@@ -1,3 +1,5 @@
+import {BRIDGE_RAILS,onBridge} from './bridge-road.js';
+import {buildingWalls} from './port-yard.js';
 import {mooringGear} from './mooring-gear.js';
 import {solidPose} from './solid-geometry.js';
 import {heelProjection} from './attitude.js';
@@ -10,7 +12,7 @@ import {cachedTerrain} from './terrain-cache.js';
 import {drawBrakingWaves} from './braking-waves.js';
 import {drawWeatherSurface} from './render-weather.js';
 import {drawNavigation} from './render-navigation.js';
-import {drawEuzebiaShallows,drawNieporetDepths} from './render-shallows.js';
+import {drawEuzebiaShallows,drawNieporetDepths,drawMainPortDepths} from './render-shallows.js';
 import {euzebiaBeachWeight} from './island-approach.js';
 import {attachmentNames} from './attachment-points.js';
 import {LAKE,COAST_PATCHES,REEDS,SWIM_BUOYS,SERVICE_TOW_ZONE,FUEL_STATION,FUEL_STATIONS,ALL_FUEL_FENDERS,SERVICE_STATION,BUILDINGS,WORLD,ISLAND,ISLANDS,BRIDGES,REMOTE_HARBORS,MAP_POIS,DOCKS,BOLLARDS,BEACHES,islandOutline,islandRadius,shoreAt,bottomAt,environment,weatherAt,waveHeight,reflectionFacesNear,clamp} from './world.js';
@@ -41,7 +43,7 @@ function drawTerrain(ctx,bounds=null,detailed=true){
  const lake=shapePath(LAKE);ctx.fillStyle='#8bb5c0';ctx.fill(lake);ctx.save();ctx.clip(lake);
  for(const [width,color]of [[180,'#92bdc5'],[70,'#a0c8cb'],[22,'#afd0ce'],[4,'#bfd9d1']]){ctx.lineJoin='round';ctx.lineWidth=width;ctx.strokeStyle=color;ctx.stroke(lake);}
  if(detailed)drawNieporetDepths(ctx,bounds);
- const harbour=ctx.createRadialGradient(78,28,15,78,28,95);harbour.addColorStop(0,'#7dabb750');harbour.addColorStop(1,'#7dabb700');ctx.fillStyle=harbour;ctx.beginPath();ctx.ellipse(78,28,95,60,0,0,Math.PI*2);ctx.fill();
+ if(detailed)drawMainPortDepths(ctx,bounds);
  for(const patch of COAST_PATCHES){ctx.fillStyle='#aec59b';ctx.fill(shapePath(patch.outline));ctx.strokeStyle='#c8c6aa';ctx.lineWidth=1;ctx.stroke(shapePath(patch.outline));}
  for(const q of ISLANDS){const r=Math.max(q.rx,q.ry)+50;if(bounds&&(q.x+r<bounds.left||q.x-r>bounds.right||q.y+r<bounds.top||q.y-r>bounds.bottom))continue;
   if(q.id==='euzebia'){drawEuzebiaShallows(ctx);const land=shapePath(outline(q));ctx.fillStyle='#9bb58a';ctx.fill(land);ctx.save();ctx.clip(land);ctx.strokeStyle='#e0ce9f';ctx.lineWidth=14;ctx.lineJoin='round';ctx.lineCap='round';ctx.beginPath();let active=false;for(let i=0;i<=q.outline.length;i++){const p=q.outline[i%q.outline.length];if(euzebiaBeachWeight(Math.atan2(p.y-q.y,p.x-q.x))<.3){active=false;continue;}if(active)ctx.lineTo(p.x,p.y);else ctx.moveTo(p.x,p.y);active=true;}ctx.stroke();ctx.restore();}
@@ -49,8 +51,9 @@ function drawTerrain(ctx,bounds=null,detailed=true){
  }ctx.restore();
 }
 export function mapProjection(width,height){const scale=Math.min(width/(WORLD.right-WORLD.left),height/(WORLD.bottom-WORLD.top));return{scale,x:(width-(WORLD.right-WORLD.left)*scale)/2,y:(height-(WORLD.bottom-WORLD.top)*scale)/2};}
-function drawBridges(ctx,scale){
+function drawBridges(ctx,scale,bounds){
  for(const q of BRIDGES){
+  if(bounds&&(Math.max(q.a.x,q.b.x)+q.width<bounds.left||Math.min(q.a.x,q.b.x)-q.width>bounds.right||Math.max(q.a.y,q.b.y)+q.width<bounds.top||Math.min(q.a.y,q.b.y)-q.width>bounds.bottom))continue;
   ctx.strokeStyle=q.dam?'#8b978b':'#a3aaa0';ctx.lineWidth=q.width;ctx.lineCap='butt';ctx.beginPath();ctx.moveTo(q.a.x,q.a.y);ctx.lineTo(q.b.x,q.b.y);ctx.stroke();
   ctx.strokeStyle='#e9ebd8';ctx.lineWidth=.35;ctx.setLineDash([3,4]);ctx.stroke();ctx.setLineDash([]);
   if(q.rail){const dx=q.b.x-q.a.x,dy=q.b.y-q.a.y,L=Math.hypot(dx,dy),nx=-dy/L,ny=dx/L;ctx.strokeStyle='#59675e';ctx.lineWidth=.25;for(const side of[-1,1]){ctx.beginPath();ctx.moveTo(q.a.x+nx*side*.72,q.a.y+ny*side*.72);ctx.lineTo(q.b.x+nx*side*.72,q.b.y+ny*side*.72);ctx.stroke();}for(let i=0;i<L;i+=1){ctx.beginPath();ctx.moveTo(q.a.x+dx*i/L-nx,q.a.y+dy*i/L-ny);ctx.lineTo(q.a.x+dx*i/L+nx,q.a.y+dy*i/L+ny);ctx.stroke();}}
@@ -58,6 +61,7 @@ function drawBridges(ctx,scale){
   for(const t of q.piers){const x=q.a.x+(q.b.x-q.a.x)*t,y=q.a.y+(q.b.y-q.a.y)*t;ctx.fillStyle='#617b73';ctx.fillRect(x-2.2,y-3.5,4.4,7);}
  }
 }
+function drawBridgeGuards(c,r,bounds){c.save();for(const rail of BRIDGE_RAILS){if(bounds&&(rail.x+rail.w<bounds.left||rail.x>bounds.right||rail.y+rail.h<bounds.top||rail.y>bounds.bottom))continue;if(r?.guardDamage?.[rail.id]>=1)continue;const p=rail.pose;c.save();c.translate(p.x,p.y);c.rotate(p.a);c.strokeStyle='#566f69';c.lineWidth=.22;c.beginPath();c.moveTo(-p.length/2,0);c.lineTo(p.length/2,0);c.stroke();c.fillStyle='#dae2cd';for(let x=-p.length/2;x<=p.length/2;x+=2)c.fillRect(x-.09,-.24,.18,.48);c.restore();}c.restore();}
 let wake=[],previousBoat=null,lastWake=0;
 function path(ctx,points){ctx.beginPath();points.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.closePath();}
 function island(ctx,padding,color){path(ctx,islandOutline(padding));ctx.fillStyle=color;ctx.fill();}
@@ -165,6 +169,7 @@ export function renderWorld(ctx,state){
  // Small shore settlement and a concrete slip next to the service fingers.
  for(const house of BUILDINGS){
   if(!visible(house.x,house.y,20))continue;
+  if(house.hangar){ctx.fillStyle='#9fa99a';ctx.fillRect(house.x,house.y,house.w,house.h);ctx.fillStyle='#657a6b';for(const wall of buildingWalls(house))ctx.fillRect(wall.x,wall.y,wall.w,wall.h);ctx.font='bold 1.2px system-ui';ctx.fillStyle='#edf2dc';ctx.fillText('HANGAR',house.x+10,house.y+4);continue;}
   ctx.fillStyle='#68807130';ctx.fillRect(house.x+.5,house.y+.6,house.w,house.h);
   ctx.fillStyle=house.roof;ctx.fillRect(house.x,house.y,house.w,house.h);ctx.strokeStyle='#65796a';ctx.lineWidth=.12;ctx.strokeRect(house.x,house.y,house.w,house.h);
   ctx.strokeStyle='#edf0db88';ctx.beginPath();ctx.moveTo(house.x+.5,house.y+house.h/2);ctx.lineTo(house.x+house.w-.5,house.y+house.h/2);ctx.stroke();
@@ -201,7 +206,7 @@ export function renderWorld(ctx,state){
   ctx.beginPath();ctx.moveTo(0,-.7);ctx.lineTo(1.7,-q.width/2);ctx.moveTo(0,.7);ctx.lineTo(1.7,q.width/2);ctx.stroke();
   ctx.fillStyle='#e4e6ce';ctx.fillRect(0,-.20,1.4,.40);ctx.restore();
  }
- for(const rect of DOCKS){if(rect.x+rect.w<bounds.left-2||rect.x>bounds.right+2||rect.y+rect.h<bounds.top-2||rect.y>bounds.bottom+2)continue;ctx.save();let d=rect;if(rect.pose){const p=solidPose(rect);ctx.translate(p.x,p.y);ctx.rotate(p.a);d={x:-p.length/2,y:-p.width/2,w:p.length,h:p.width};}ctx.fillStyle='#73908722';ctx.fillRect(d.x+.3,d.y+.4,d.w,d.h);ctx.fillStyle=b.dockDamage>=100?'#9e8273':rect.finger?'#c5c4a5':'#bda783';ctx.fillRect(d.x,d.y,d.w,d.h);ctx.strokeStyle='#9f8b70';ctx.lineWidth=.07;ctx.strokeRect(d.x,d.y,d.w,d.h);ctx.beginPath();if(d.w>d.h){for(let x=d.x+.5;x<d.x+d.w;x+=.65){ctx.moveTo(x,d.y);ctx.lineTo(x,d.y+d.h);}}else for(let y=d.y+.5;y<d.y+d.h;y+=.65){ctx.moveTo(d.x,y);ctx.lineTo(d.x+d.w,y);}ctx.stroke();ctx.restore();}
+ for(const rect of DOCKS){if(rect.x+rect.w<bounds.left-2||rect.x>bounds.right+2||rect.y+rect.h<bounds.top-2||rect.y>bounds.bottom+2)continue;ctx.save();let d=rect;if(rect.pose){const p=solidPose(rect);ctx.translate(p.x,p.y);ctx.rotate(p.a);d={x:-p.length/2,y:-p.width/2,w:p.length,h:p.width};}ctx.fillStyle='#73908722';ctx.fillRect(d.x+.3,d.y+.4,d.w,d.h);ctx.fillStyle=b.dockDamage>=100?'#9e8273':rect.material==='concrete'?'#a5b3a9':rect.finger?'#c5c4a5':'#bda783';ctx.fillRect(d.x,d.y,d.w,d.h);ctx.strokeStyle=rect.material==='concrete'?'#82968c':'#9f8b70';ctx.lineWidth=.07;ctx.strokeRect(d.x,d.y,d.w,d.h);ctx.beginPath();if(d.w>d.h){for(let x=d.x+.5;x<d.x+d.w;x+=(rect.material==='concrete'?4:.65)){ctx.moveTo(x,d.y);ctx.lineTo(x,d.y+d.h);}}else for(let y=d.y+.5;y<d.y+d.h;y+=(rect.material==='concrete'?4:.65)){ctx.moveTo(d.x,y);ctx.lineTo(d.x+d.w,y);}ctx.stroke();ctx.restore();}
  if(overview){ctx.fillStyle='#d0a14a';for(const q of REMOTE_HARBORS){ctx.beginPath();ctx.arc(q.x,q.y,3/scale,0,Math.PI*2);ctx.fill();}}
  for(const FUEL_STATION of FUEL_STATIONS){ ctx.fillStyle='#93692c';ctx.fillRect(FUEL_STATION.pumpX-.45,FUEL_STATION.pumpY-.55,.9,1.1);ctx.font='1.1px system-ui';ctx.fillText('⛽',FUEL_STATION.pumpX-.5,FUEL_STATION.pumpY-1);const f=fuelFrame(FUEL_STATION);ctx.save();ctx.translate(FUEL_STATION.x,FUEL_STATION.y);ctx.rotate(Math.atan2(f.ty,f.tx)-Math.PI/2);ctx.fillStyle='#d5bf75';ctx.fillRect(-.45,-f.halfLength,.4,f.halfLength*2);ctx.translate(-1.3,5);ctx.rotate(-Math.PI/2);ctx.font='bold .9px system-ui';ctx.fillStyle='#72613d';ctx.fillText('PALIWO · CUMUJ BURTĄ',0,0);ctx.restore(); if(FUEL_STATION.id==='pilawa-fuel'){ctx.fillStyle='#bc443b';ctx.fillRect(FUEL_STATION.pumpX-.65,FUEL_STATION.pumpY-.7,1.3,.4);ctx.font='bold .7px system-ui';ctx.fillText('ORLEN',FUEL_STATION.pumpX-1.1,FUEL_STATION.pumpY-1.5);}}
 
@@ -248,7 +253,10 @@ export function renderWorld(ctx,state){
  ctx.save();ctx.strokeStyle='#d8e8c7';ctx.lineWidth=.10;ctx.setLineDash([.5,.7]);ctx.strokeRect(SERVICE_TOW_ZONE.x,SERVICE_TOW_ZONE.y,SERVICE_TOW_ZONE.w,SERVICE_TOW_ZONE.h);ctx.setLineDash([]);ctx.fillStyle='#4e7765';ctx.font='1px system-ui';ctx.fillText('HOLOWANIE · SERWIS',SERVICE_TOW_ZONE.x+1,SERVICE_TOW_ZONE.y+SERVICE_TOW_ZONE.h-1);
  ctx.strokeStyle='#dfddaa';ctx.lineWidth=.05;ctx.beginPath();SWIM_BUOYS.forEach((q,i)=>i?ctx.lineTo(q.x,q.y):ctx.moveTo(q.x,q.y));ctx.stroke();for(const q of SWIM_BUOYS){const bob=.12*Math.sin(b.time*2+q.x*.2);ctx.fillStyle='#f2d765';ctx.beginPath();ctx.ellipse(q.x+bob*.25,q.y+bob,.22,.17,0,0,Math.PI*2);ctx.fill();}ctx.restore();
  drawNavigation(ctx,b,env,visible,scale);drawRescue(ctx,state.fleet,scale,overview,state.vehicle==='suv'?null:b);drawTowRig(ctx,state.towRig,state.rigBoat??b);drawFleet(ctx,state.fleet,b,drawBoat,visible,scale,overview);drawBoat(ctx,b);
- drawBridges(ctx,scale);
+ drawBridges(ctx,scale,bounds);
+ drawTowRig(ctx,state.towRig,state.rigBoat??b,{bridgeOnly:true});
+ if(state.towRig?.boatLoaded&&state.towRig.secured&&onBridge(state.rigBoat??b,(state.rigBoat??b).spec.length*.6))drawBoat(ctx,state.rigBoat??b);
+ drawBridgeGuards(ctx,state.towRig,bounds);
  const bow=cleat(b,'bow');ctx.fillStyle='#cfb56d';ctx.beginPath();ctx.arc(bow.x,bow.y,.22,0,Math.PI*2);ctx.fill();
  ctx.restore();
  if(!state.hideScale){const metres=overview?1000:scale<1?100:5;ctx.strokeStyle='#4f756d';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(22,height-52);ctx.lineTo(22+metres*scale,height-52);ctx.moveTo(22,height-56);ctx.lineTo(22,height-49);ctx.moveTo(22+metres*scale,height-56);ctx.lineTo(22+metres*scale,height-49);ctx.stroke();ctx.fillStyle='#4f756d';ctx.font='10px system-ui';ctx.fillText(metres+' m',24,height-60);}
@@ -287,11 +295,12 @@ function drawBoat(ctx,b){if(b.stored)return;
  ctx.fillStyle='#d5a64f';for(const end of Object.keys(attachmentNames(b))){const p=cleatLocal(b.spec,end);ctx.fillStyle=end==='stern'?'#152f2b':'#d5a64f';ctx.beginPath();ctx.arc(p.x*5.5/b.spec.length,p.y*2.1/b.spec.beam,end==='stern'?.20:.10,0,Math.PI*2);ctx.fill();}ctx.restore();
 }
 export function renderMinimap(canvas,b,view){
- const c=canvas.getContext('2d'),w=canvas.width,h=canvas.height,p=minimapProjection(w,h,b),scale=p.scale;
+ const c=canvas.getContext('2d'),w=canvas.width,h=canvas.height,span=Math.max(55,(view.bounds.right-view.bounds.left)*2.5),p=minimapProjection(w,h,view.camera??b,span),scale=p.scale;
  c.clearRect(0,0,w,h);c.fillStyle='#aec59b';c.fillRect(0,0,w,h);c.save();c.scale(scale,scale);c.translate(-p.left,-p.top);cachedTerrain(c,{left:p.left,top:p.top,right:p.left+w/scale,bottom:p.top+h/scale},(context,box)=>drawTerrain(context,box,false));
  c.lineWidth=1/scale;for(const q of BRIDGES){c.strokeStyle=q.dam?'#8e785d':'#789385';c.beginPath();c.moveTo(q.a.x,q.a.y);c.lineTo(q.b.x,q.b.y);c.stroke();}
+ c.fillStyle='#a88f6c';for(const d of DOCKS){if(d.x+d.w<p.left||d.x>p.left+p.worldWidth||d.y+d.h<p.top||d.y>p.top+p.worldHeight)continue;if(d.pose){c.save();c.translate(d.pose.x,d.pose.y);c.rotate(d.pose.a);c.fillRect(-d.pose.length/2,-d.pose.width/2,d.pose.length,d.pose.width);c.restore();}else c.fillRect(d.x,d.y,d.w,d.h);}
  c.fillStyle='#607e65';for(const q of [{x:80,y:15},...REMOTE_HARBORS])c.fillRect(q.x-2/scale,q.y-2/scale,4/scale,4/scale);
  c.fillStyle='#c39d4b';for(const q of FUEL_STATIONS){c.beginPath();c.arc(q.x,q.y,3/scale,0,Math.PI*2);c.fill();}
  c.strokeStyle='#f5f7df';c.lineWidth=1.2/scale;c.strokeRect(view.bounds.left,view.bounds.top,view.bounds.right-view.bounds.left,view.bounds.bottom-view.bounds.top);
- c.restore();drawPositionMarker(c,b,{scale,camera:{x:p.left+w/scale/2,y:p.top+h/scale/2}},w,h,false);c.font='12px system-ui';c.fillStyle='#355f5a';c.fillText('OKOLICA · 3,5 km',7,h-7);return p;
+ c.restore();drawPositionMarker(c,b,{scale,camera:{x:p.left+w/scale/2,y:p.top+h/scale/2}},w,h,false);c.font='12px system-ui';c.fillStyle='#355f5a';c.fillText('OKOLICA · '+Math.round(p.worldWidth)+' m',7,h-7);return p;
 }

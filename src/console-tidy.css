@@ -127,3 +127,12 @@
 #map-ropes[data-kind=barge] .diagram-cleat{inset:auto;width:100%}
 #map-ropes[data-kind=barge] .mooring-hull{transform:none}
 @media(max-width:650px){#mooring-picker{width:min(280px,max(240px,calc(100% - 112px)))}}
+
+/* Situational chart follows the live camera, including manual pan and zoom. */
+#minimap{width:210px!important;height:145px!important}
+#traffic-mooring{position:absolute;z-index:35;width:270px;max-width:calc(100% - 16px);padding:12px;background:#f7f8eeed;border:1px solid #b8c9aa;border-radius:10px;box-shadow:0 5px 20px #284b4033;font-size:11px}
+#traffic-mooring[hidden]{display:none}
+#traffic-mooring .popup-handle{display:flex;justify-content:space-between;cursor:move;touch-action:none}
+#traffic-mooring .npc-lines>div{display:flex;gap:6px;margin-top:8px}
+#traffic-mooring .npc-lines button{padding:7px;border:1px solid #aec6a4;border-radius:4px;background:#eef3e3}
+@media(max-width:650px){#minimap{width:146px!important;height:104px!important}}

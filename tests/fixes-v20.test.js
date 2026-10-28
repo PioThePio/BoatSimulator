@@ -37,8 +37,8 @@ test('actual throttle surge creates a finite foam pulse; normal steady running c
 });
 test('a wake reaches a mooring after travelling, then physically rocks, yaws and tensions the tied boats in otherwise calm weather',()=>{
  const b=createBoat('lake');b.wake=passage(33);let early=0,heave=0,yaw=0,tension=0;
- for(let i=0;i<26*120;i++){b.time=i*dt;trafficStep(b,{traffic:true},dt);for(const q of b.traffic){if(b.time<1)early=Math.max(early,Math.abs(q.heave),Math.abs(q.w));heave=Math.max(heave,Math.abs(q.heave));yaw=Math.max(yaw,Math.abs(q.w));tension=Math.max(tension,...q.ropes.map(r=>r.tension));}}
- assert.equal(early,0);assert.ok(heave>.05);assert.ok(yaw>.01);assert.ok(tension>20);for(const q of b.traffic)assert.ok(Math.hypot(q.x-q.homeX,q.y-q.homeY)<.8);
+ for(let i=0;i<26*120;i++){b.time=i*dt;trafficStep(b,{traffic:true},dt);for(const q of b.traffic.filter(q=>!q.shoreCraft)){if(b.time<1)early=Math.max(early,Math.abs(q.heave),Math.abs(q.w));heave=Math.max(heave,Math.abs(q.heave));yaw=Math.max(yaw,Math.abs(q.w));tension=Math.max(tension,...q.ropes.map(r=>r.tension));}}
+ assert.equal(early,0);assert.ok(heave>.05);assert.ok(yaw>.01);assert.ok(tension>20);for(const q of b.traffic.filter(q=>!q.shoreCraft))assert.ok(Math.hypot(q.x-q.homeX,q.y-q.homeY)<.8);
 });
 test('a finite pier reflects a weaker wake back after impact, reverses orbital direction, and adds no pre-arrival motion',()=>{
  const h=passage(),face={a:{x:-100,y:10},b:{x:200,y:10},nx:0,ny:-1,coefficient:.42};

@@ -144,10 +144,11 @@ export function createSoundscape({context=null}={}){
     let release=0;
     b.engines.forEach((en,i)=>{const old=previous.engines[i];if(!old)return;const command=i?b.throttle2:b.throttle;if(b.spec.racing){const turbo=turboParameters(en,{...old,command:old.commandValue});if(turbo.bov)release=Math.max(release,turbo.bovStrength);}if(values.commandClick&&Math.sign(command)!==old.command)pulse(900,.085,.055);if(en.key!==old.key)pulse(650,.09,.065);if(en.gear!==old.gear){pulse(en.gear?650:850,.22,.10,true);pulse(en.gear?155:210,.09,.08);}});
     if(release)blowOff(release);
+    if(b.curbEvent&&b.curbEvent!==previous.curbEvent){pulse(110,.06+Math.min(.05,b.curbStrength),.13);pulse(550,.035,.07,true);}
     if(b.lastImpact&&b.lastImpact!==previous.impact){const q=b.lastImpact,level=clamp(.12+Math.sqrt(q.energy)*.003,.12,.30);pulse(q.protectedContact?145:105,level,q.protectedContact?.17:.24);pulse(q.protectedContact?600:1400,level*(q.protectedContact?.5:1),q.protectedContact?.10:.20,true);}
     if(b.events[0]!==previous.event&&/pękła|zerw|Zerw/.test(b.events[0]?.message??''))pulse(1900,.22,.12,true);
    }
-   previous={engines:b.engines.map((en,i)=>({boost:b.spec.racing?turboParameters(en).boost:0,bovSequence:en.bovSequence??0,key:en.key,gear:en.gear,commandValue:en.command,command:Math.sign(i?b.throttle2:b.throttle)})),impact:b.lastImpact,event:b.events[0]};
+   previous={engines:b.engines.map((en,i)=>({boost:b.spec.racing?turboParameters(en).boost:0,bovSequence:en.bovSequence??0,key:en.key,gear:en.gear,commandValue:en.command,command:Math.sign(i?b.throttle2:b.throttle)})),curbEvent:b.curbEvent,impact:b.lastImpact,event:b.events[0]};
   },
  };
 }

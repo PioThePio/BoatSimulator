@@ -1,4 +1,4 @@
-import {SPARE_TRAILER_BAYS,RETURN_BAY,rectContains} from './port-yard.js';
+import {SPARE_TRAILER_BAYS,RETURN_BAY,HANGAR,rectContains} from './port-yard.js';
 import {rigBoat,syncFleetWorld} from './fleet.js';
 import {bodyPoint,hitchStatus,hitchAction,placeTrailerBoat} from './towing.js';
 export function ensureSpareTrailers(r,b){
@@ -16,9 +16,10 @@ export function spareHitchAction(r,b){
 }
 export function depotStatus(fleet){
  const b=rigBoat(fleet),r=b.towRig;if(!r?.boatLoaded||!r.secured)return{ok:false,message:'Przywieź zabezpieczoną łódź na przyczepie.'};
- if(r.attached)return{ok:false,message:'Zatrzymaj zestaw przed hangarem i odczep przyczepę.'};
+ if(r.attached)return{ok:false,message:'Zatrzymaj zestaw w hangarze i odczep przyczepę.'};
  const p=bodyPoint(r.trailer,r.trailer.offset),q=RETURN_BAY;
- if(!rectContains(q,p.x,p.y)||Math.cos(r.trailer.a-q.heading)<.94)return{ok:false,message:'Cofnij przyczepę w białe stanowisko przed bramą hangaru.'};
+ if(!rectContains(q,p.x,p.y)||Math.cos(r.trailer.a-q.heading)<.94)return{ok:false,message:'Cofnij przyczepę w białe stanowisko wewnątrz hangaru.'};
+ const tail=bodyPoint(r.trailer,r.trailer.offset-b.spec.length*.52),front=bodyPoint(r.trailer,r.trailer.hitch);if(![tail,front].every(p=>rectContains({x:HANGAR.x+.5,y:HANGAR.y+.5,w:HANGAR.w-1,h:HANGAR.h-1},p.x,p.y)))return{ok:false,message:'Cofnij całą przyczepę do środka hangaru.'};
  if(Math.hypot(r.car.vx,r.car.vy)>.1||Math.hypot(r.trailer.vx,r.trailer.vy)>.05)return{ok:false,message:'Zatrzymaj pojazd i przyczepę.'};
  if(b.engines.some(en=>en.key!=='off'))return{ok:false,message:'Wyłącz silniki oddawanej łodzi.'};
  return{ok:true,message:'Łódź gotowa do zdania w hangarze.'};

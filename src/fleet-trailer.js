@@ -3,7 +3,7 @@ import {MAX_FLEET,rigBoat,syncFleetWorld} from './fleet.js';
 import {createTowRig,placeTrailerBoat,trailerBollardIndex,bodyPoint,SUV} from './towing.js';
 import {attachRope} from './rigging.js';
 import {connectWinch} from './trailer-winch.js';
-import {bottomAt,BUILDINGS,DOCKS} from './world.js';
+import {bottomAt,BUILDING_SOLIDS,DOCKS} from './world.js';
 import {hullContactSamples} from './hull-geometry.js';
 import {circleSolidHit} from './solid-geometry.js';
 import {vehicleSurface} from './vehicle-terrain.js';
@@ -24,7 +24,7 @@ export function spawnFleetTrailer(fleet,kind,options={}){
  const candidate=createTowRig(b),angle=r.trailer.a,pin=r.attached?bodyPoint(r.car,-SUV.hitch):bodyPoint(r.trailer,r.trailer.hitch),t=candidate.trailer;
  t.a=angle;t.x=pin.x-Math.cos(angle)*t.hitch;t.y=pin.y-Math.sin(angle)*t.hitch;
  for(const x of[t.offset-b.spec.length*.52,t.offset,t.offset+b.spec.length*.52]){const p=bodyPoint(t,x);if(bottomAt(p.x,p.y).depth>0)return{ok:false,message:'Za mało suchego miejsca na tę łódź. Przestaw przyczepę dalej na parking.'};}
- const target=bodyPoint(t,t.offset);const probe={...b,...target,a:angle};for(const sample of hullContactSamples(b.spec)){const p=bodyPoint(probe,sample.x,sample.y);if([...BUILDINGS,...DOCKS].some(d=>circleSolidHit(p,sample.radius,d)))return{ok:false,message:'Za mało miejsca na kadłub. Przestaw pustą przyczepę dalej od budynku lub pomostu.'};}if(fleet.boats.some(q=>!q.stored&&Math.hypot(q.x-target.x,q.y-target.y)<(q.spec.length+b.spec.length)/2+1))return{ok:false,message:'Miejsce nowej łodzi zajmuje inna jednostka.'};
+ const target=bodyPoint(t,t.offset);const probe={...b,...target,a:angle};for(const sample of hullContactSamples(b.spec)){const p=bodyPoint(probe,sample.x,sample.y);if([...BUILDING_SOLIDS,...DOCKS].some(d=>circleSolidHit(p,sample.radius,d)))return{ok:false,message:'Za mało miejsca na kadłub. Przestaw pustą przyczepę dalej od budynku lub pomostu.'};}if(fleet.boats.some(q=>!q.stored&&Math.hypot(q.x-target.x,q.y-target.y)<(q.spec.length+b.spec.length)/2+1))return{ok:false,message:'Miejsce nowej łodzi zajmuje inna jednostka.'};
  delete old.towRig;delete old.trailerSupport;old.launchMotion=false;
  Object.assign(r,{trailer:t,boatLength:b.spec.length,boatLoaded:true,secured:true,securedPose:undefined,winch:candidate.winch,loadingScore:candidate.loadingScore,geometryVersion:1,ropeForce:{x:0,y:0,torque:0},postBroken:false,trailerDamage:0,hitchDamage:0});
  Object.assign(b,{booms:old.booms,buoys:old.buoys,traffic:old.traffic,id:'boat-'+fleet.nextId++,time:fleet.time,trail:[],towRig:r,occupied:false});b.name=fleetName(b)+' · '+b.id.slice(5);

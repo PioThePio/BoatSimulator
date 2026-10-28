@@ -1,3 +1,4 @@
+import {groundContact} from './ground.js';
 import {contacts} from './contacts.js';
 import {nearbySolids} from './solid-index.js';
 import {bodyAtRest,waterAtRest} from './rest-state.js';
@@ -13,7 +14,7 @@ import {recordImpact} from './impacts.js';
 import {currentShear} from './current-shear.js';
 export function createTraffic(){return TRAFFIC.map(q=>{
  const spec={profile:q.type==='sail'?'cruiser':q.type==='pwc'?'pwc':'runabout',windageFactor:q.type==='sail'?1:q.type==='pwc'?.3:.6,length:q.length,beam:q.beam,mass:q.mass,draft:['kayak','rowboat'].includes(q.type)?.14:q.type==='sail'?.65:q.type==='pwc'?.2:.38,freeboard:q.type==='sail'?1.1:q.type==='pwc'?.3:.65,mx:q.mass*1.08,my:q.mass*1.65,iz:1.55*q.mass*((q.length*.27)**2+(q.beam*.22)**2)};
- const boat={...q,spec,fenders:true,fenderContacts:{},damage:0,dockDamage:0,events:[],homeX:q.x,homeY:q.y,homeA:q.a,vx:0,vy:0,w:0,heave:0,roll:0,pitch:0,heaveVelocity:0,rollVelocity:0,pitchVelocity:0};
+ const boat={...q,spec,fleetKind:q.type,groundEvent:-10,bottomDamage:{},sectionDamage:{},fenders:true,fenderContacts:{},damage:0,dockDamage:0,events:[],homeX:q.x,homeY:q.y,homeA:q.a,vx:0,vy:0,w:0,heave:0,roll:0,pitch:0,heaveVelocity:0,rollVelocity:0,pitchVelocity:0};
  boat.ropes=q.ties.map(([end,id])=>{const p=cleat(boat,end),bollard=BOLLARDS.findIndex(q=>q.id===id),target=BOLLARDS[bollard];return{end,bollard,length:Math.hypot(p.x-target.x,p.y-target.y)+.12,tension:0};});
  return boat;
 });}
@@ -34,7 +35,7 @@ export function trafficStep(b,e,dt,{integrate=true}={}){
   q.time=b.time;beginFenderStep(q);
   // Only new marina boats sample external fields at 20 Hz. Integration of
   // inertia, damping, contact and individual rope tension remains at 120 Hz.
-  const cached=q.site==='pilawa'||q.site==='nieporet';
+  const cached=['pilawa','nieporet','main'].includes(q.site);
   if(!cached||!q.fieldCache||b.time>=q.fieldAt){
    const faces=wakeHistories(b).some(h=>h.length>1)?reflectionFacesNear(q.x,q.y):[],sample=(x,y)=>sampleWater(b,x,y,e,faces),fore=point(q,.35*q.length,0),aft=point(q,-.35*q.length,0);
    q.fieldCache={flow:environment(b.time,e,q.x,q.y),wave:sample(q.x,q.y),ends:[sample(aft.x,aft.y),sample(fore.x,fore.y)]};q.fieldAt=b.time+.05;
@@ -56,6 +57,7 @@ export function trafficStep(b,e,dt,{integrate=true}={}){
   q.w+=(N/q.spec.iz-q.w*.18-500*q.beam*q.length**4*.006*q.w*Math.abs(q.w)/q.spec.iz)*dt;
   moorTraffic(b,q,dt);
   q.x+=q.vx*dt;q.y+=q.vy*dt;q.a+=q.w*dt;
+  if(q.shoreCraft)groundContact(q,wave,dt,()=>{});
   const candidates=cached?nearbySolids(SOLIDS,q.x,q.y,q.spec.length*.65+1):null;
   const before={x:q.x,y:q.y,a:q.a};if(!clearOfStaticSolids(q,SOLIDS))contacts(q,dt,candidates);
   q.restPose=still&&bodyAtRest(q)&&q.x===before.x&&q.y===before.y?{...before,targets:q.ropes.map(r=>{const p=mooringPoint(b,r.bollard);return{x:p.x,y:p.y,length:r.length};})}:null;

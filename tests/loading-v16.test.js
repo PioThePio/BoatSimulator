@@ -60,7 +60,7 @@ test('drift arrows track ground movement, separately from water passing a moored
 });
 
 test('both land service bays repair a secured boat without a shore line and refuse moving or misparked rigs',()=>{
- for(const bay of SERVICE_BAYS){const {r,b}=land();r.car.a=r.trailer.a=bay.heading;r.trailer.x=bay.x+bay.w/2;r.trailer.y=bay.y+b.spec.length/2+.7-r.trailer.offset;const pin=bodyPoint(r.trailer,r.trailer.hitch);r.car.x=pin.x+Math.cos(r.car.a)*SUV.hitch;r.car.y=pin.y+Math.sin(r.car.a)*SUV.hitch;placeTrailerBoat(r,b);b.damage=35;b.engines[0].propDamage=20;assert.ok(serviceStatus(b).ok);assert.ok(requestRepair(b).ok);run(r,b,15);assert.equal(b.damage,0);assert.equal(b.engines[0].propDamage,0);
+ for(const bay of SERVICE_BAYS){const {r,b}=land();r.car.a=r.trailer.a=bay.heading;r.trailer.x=bay.x+bay.w/2;r.trailer.y=bay.y+bay.h/2-Math.sin(bay.heading)*r.trailer.offset;const pin=bodyPoint(r.trailer,r.trailer.hitch);r.car.x=pin.x+Math.cos(r.car.a)*SUV.hitch;r.car.y=pin.y+Math.sin(r.car.a)*SUV.hitch;placeTrailerBoat(r,b);b.damage=35;b.engines[0].propDamage=20;assert.ok(serviceStatus(b).ok);assert.ok(requestRepair(b).ok);run(r,b,15);assert.equal(b.damage,0);assert.equal(b.engines[0].propDamage,0);
  r.car.vx=.3;assert.equal(serviceStatus(b).ok,false);r.car.vx=0;b.a+=Math.PI;assert.equal(serviceStatus(b).ok,false);}
 
 });
