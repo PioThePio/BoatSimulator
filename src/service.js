@@ -1,4 +1,4 @@
-import {SERVICE_BAYS,DOCKS,clamp} from './world.js';
+import {SERVICE_BAYS,SERVICE_TOW_ZONE,DOCKS,clamp} from './world.js';
 import {cleat} from './rigging.js';
 import {mooringPoint} from './marina.js';
 import {updateMass} from './craft.js';
@@ -29,6 +29,7 @@ export function serviceStatus(b){
 export function isServicePoint(p){return ['bollard','buoy'].includes(p?.kind)&&!p.trailer&&(p.service||DOCKS.some(d=>d.service&&p.x>=d.x-.2&&p.x<=d.x+d.w+.2&&p.y>=d.y-.2&&p.y<=d.y+d.h+.2));}
 export function nearService(b){
  if(b.towRig?.boatLoaded)return SERVICE_BAYS.some(q=>Math.hypot(b.x-clamp(b.x,q.x,q.x+q.w),b.y-clamp(b.y,q.y,q.y+q.h))<5);
+ const z=SERVICE_TOW_ZONE;if(b.x>=z.x&&b.x<=z.x+z.w&&b.y>=z.y&&b.y<=z.y+z.h)return true;
  return DOCKS.some(q=>q.service&&Math.hypot(b.x-clamp(b.x,q.x,q.x+q.w),b.y-clamp(b.y,q.y,q.y+q.h))<Math.min(12,b.spec.length*.5+6));
 }
 export function requestRepair(b){
