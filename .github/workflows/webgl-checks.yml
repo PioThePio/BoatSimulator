@@ -1,0 +1,30 @@
+name: Verify WebGL development track
+on:
+  push:
+    branches: [experimental/webgl]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: webgl-checks-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  verify:
+    if: github.ref == 'refs/heads/experimental/webgl'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - name: Build and verify standalone application
+        run: |
+          if command -v google-chrome >/dev/null 2>&1; then
+            export CHROMIUM_PATH="$(command -v google-chrome)"
+          else
+            npx playwright install --with-deps chromium
+          fi
+          npm run test:production

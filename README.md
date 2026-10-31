@@ -1,6 +1,10 @@
-# Przystań — symulator manewrów na Zegrzu
+# Przystań — eksperymentalna odnoga WebGL
 
-**[Uruchom w przeglądarce](https://piothepio.github.io/BoatSimulator/?v=34.0.0)** · komputer, telefon lub tablet, bez konta i instalowania gry.
+**Gałąź `experimental/webgl`.** Osobne miejsce rozwoju przyszłego renderera PixiJS/WebGL. Obecnie działa tu kopia bazowej wersji Canvas; migracja renderera nie została jeszcze wykonana. [Zasady równoległego rozwoju i uruchamianie](docs/ROZWOJ-WEBGL.md).
+
+Wersja stabilna jest rozwijana osobno na `main` i pozostaje pod dotychczasowym adresem.
+
+**[Uruchom stabilną wersję Canvas](https://piothepio.github.io/BoatSimulator/?v=34.0.0)** · komputer, telefon lub tablet, bez konta i instalowania gry.
 
 Symulator z widokiem z góry do ćwiczenia manewrów, cumowania, kotwiczenia,
 holowania i wodowania z przyczepy. Ma dziewięć profili łodzi, pięć rodzajów

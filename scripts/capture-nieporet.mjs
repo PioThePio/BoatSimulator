@@ -1,7 +1,7 @@
 import {chromium} from '@playwright/test';
 import {mkdir,writeFile} from 'node:fs/promises';
 import path from 'node:path';
-const output=path.resolve(process.argv[2]??'docs/images'),base=process.env.SIMULATOR_URL??'http://127.0.0.1:5173';
+const output=path.resolve(process.argv[2]??'docs/images'),base=process.env.SIMULATOR_URL??'http://127.0.0.1:5174';
 await mkdir(output,{recursive:true});const browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH??'/usr/bin/chromium',args:['--no-sandbox']});
 try{const page=await browser.newPage({viewport:{width:1440,height:1000}});await page.goto(base);await page.locator('#start-location').selectOption('nieporet');await page.locator('#begin-session').click();
  for(const kind of['overview','nieporet','pilawa']){const image=await page.evaluate(async kind=>{
