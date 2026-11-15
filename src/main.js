@@ -7,6 +7,7 @@ import {dieselAvailable} from './combustion.js';
 import {compactPropulsion} from './helm-refinements.js';
 import {placeMapMessage} from './map-messages.js';
 import {installScreenLayout} from './screen-layout.js';
+import {createFpsMeter} from './fps-meter.js';
 import {installRestoreHistory} from './restore-history.js';
 import {installMapAlerts} from './map-alerts.js';
 import {installNavigationLegend} from './render-navigation.js';
@@ -47,6 +48,7 @@ import {SUV,createTowRig,towAudioBoat,selectCarGear,stepCarGear,toggleHandbrake}
 import {installTowCockpit} from './tow-cockpit.js';
 const $=s=>document.querySelector(s);
 $('#app').innerHTML=markup();
+const fpsMeter=createFpsMeter($('#fps-meter'));
 const sound=createSoundscape();
 const steeringSettings=installControlSettings();
 try{const saved=JSON.parse(localStorage.getItem('przystan-sound')||'null');if(saved){$('#sound-toggle').checked=saved.enabled;$('#sound-volume').value=saved.volume;$('#engine-volume').value=saved.engineVolume??100;}}catch{}
@@ -309,6 +311,7 @@ function telemetry(){
  updateCockpit();updateTowCockpit();if(vehicle==='suv'){$('#speed').innerHTML=`${(Math.hypot(towRig.car.vx,towRig.car.vy)*(speedUnit==='kn'?1.94384:3.6)).toFixed(1)} <small>${speedUnit}</small>`;$('#water-speed').innerHTML='—';$('#heading').textContent=Math.round((towRig.car.a*180/Math.PI+450)%360)+'°';$('#yaw').innerHTML=`${(towRig.car.w*180/Math.PI).toFixed(1)} <small>°/s</small>`;}updateOperations();updatePowerPanel();updateDepot();updateRescue();fleetUI.refresh();if(boat.electrics.powered.sonar)drawSonar();if(!$('#anchor-picker').hidden)drawAnchorProfile();screenUI?.refreshFuel();
 }
 function frame(now){
+ if(sessionReady&&!document.hidden)fpsMeter.sample(now);else fpsMeter.reset();
  if(now-soundAt>=33){soundAt=now;sound.update(vehicle==='suv'?towAudioBoat(towRig,boat):boat,env,!paused&&!$('#info').open&&!$('#setup-dialog').open&&!$('#fleet-dialog').open&&!($('#logbook-dialog')?.open||$('#navigation-legend')?.open)&&!document.hidden&&document.hasFocus(),{boats:fleet.boats,listener:vehicle==='suv'?towRig.car:boat,listenerId:vehicle==='suv'?'suv':boat.id,rescue:fleet.rescue});$('#sound-status').textContent=({waiting:'Włącz po dotknięciu ekranu',suspended:'Dotknij ekranu, aby włączyć dźwięk',interrupted:'Dotknij ekranu, aby wznowić dźwięk',unsupported:'Dźwięk niedostępny',muted:'Wyciszony'})[sound.state()]??'';$('#sound-toggle').dataset.state=sound.state();
  }
  const dt=Math.min((now-last)/1000,.1);last=now;
