@@ -1,45 +1,67 @@
 name: Publish simulator
 on:
   push:
-    branches: [main]
+    branches: [main, experimental/webgl]
   workflow_dispatch:
 permissions:
   contents: read
   pages: write
   id-token: write
+# Both branches publish one Pages site. Runs are serialized, and each run
+# checks out the current tip of each branch when it starts.
 concurrency:
-  group: pages-${{ github.ref }}
-  cancel-in-progress: true
+  group: boat-simulator-pages
+  cancel-in-progress: false
 jobs:
   publish:
-    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: main
+          path: stable
+      - uses: actions/checkout@v4
+        with:
+          ref: experimental/webgl
+          path: webgl
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-          cache: npm
-      - run: npm ci
-      - run: npm test
-      - run: npm run build
-      - name: Verify standalone production startup
+      - name: Install, test, and build stable
+        working-directory: stable
+        run: |
+          npm ci
+          npm test
+          npm run build
+      - name: Install, test, and build experiment
+        working-directory: webgl
+        run: |
+          npm ci
+          npm test
+          npm run build
+      - name: Prepare one Pages artifact
+        run: mkdir -p stable/dist/webgl && cp webgl/dist/index.html stable/dist/webgl/index.html
+      - name: Verify production builds and shared origin
         run: |
           if command -v google-chrome >/dev/null 2>&1; then
             export CHROMIUM_PATH="$(command -v google-chrome)"
           else
-            npx playwright install --with-deps chromium
+            cd stable && npx playwright install --with-deps chromium && cd ..
           fi
+          cd stable
+          npx playwright test --config playwright.production.config.js
+          npx playwright test --config playwright.combined.config.js
+          cd ../webgl
           npx playwright test --config playwright.production.config.js
       - uses: actions/configure-pages@v5
         with:
           enablement: true
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: dist
+          path: stable/dist
       - name: Deploy
         id: deployment
         uses: actions/deploy-pages@v4

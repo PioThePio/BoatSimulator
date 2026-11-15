@@ -1,5 +1,5 @@
 import {restoreSession} from './session-save.js';
-export const HISTORY_KEY='przystan-restore-history-v1',RESTORE_AGES=[30,180,300];
+export const HISTORY_KEY='przystan:webgl:restore-history-v1',RESTORE_AGES=[30,180,300];
 const budget=1_400_000;
 export function readRestoreHistory(storage){try{const q=JSON.parse(storage.getItem(HISTORY_KEY));if(q?.version===1&&Array.isArray(q.items)&&q.items.length<=13&&q.items.every(r=>Number.isFinite(r.at)&&r.at>=0&&['gzip','raw'].includes(r.encoding)&&typeof r.data==='string'&&r.data.length<=budget))return q.items;}catch{}return[];}
 const base64=bytes=>{let s='';for(let i=0;i<bytes.length;i+=8192)s+=String.fromCharCode(...bytes.subarray(i,i+8192));return btoa(s);};

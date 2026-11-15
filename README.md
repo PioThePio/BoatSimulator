@@ -1,6 +1,6 @@
 # Przystań — eksperymentalna odnoga WebGL
 
-**Gałąź `experimental/webgl`.** Osobne miejsce rozwoju przyszłego renderera PixiJS/WebGL. Obecnie działa tu kopia bazowej wersji Canvas; migracja renderera nie została jeszcze wykonana. [Zasady równoległego rozwoju i uruchamianie](docs/ROZWOJ-WEBGL.md).
+**Gałąź `experimental/webgl` · [publiczny podgląd](https://piothepio.github.io/BoatSimulator/webgl/).** Osobne miejsce rozwoju przyszłego renderera PixiJS/WebGL. Obecnie działa tu kopia bazowej wersji Canvas; migracja renderera nie została jeszcze wykonana. [Zasady równoległego rozwoju i uruchamianie](docs/ROZWOJ-WEBGL.md).
 
 Wersja stabilna jest rozwijana osobno na `main` i pozostaje pod dotychczasowym adresem.
 

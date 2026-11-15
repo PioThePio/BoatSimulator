@@ -3,10 +3,10 @@
 ## Co jest przygotowane
 
 - `main`: aktualna stabilna aplikacja Canvas, działająca pod dotychczasowym publicznym adresem.
-- `experimental/webgl`: niezależna gałąź dla prac nad PixiJS/WebGL, oparta na tej samej bazie kodu i zapisie sesji.
+- `experimental/webgl`: niezależna gałąź dla prac nad PixiJS/WebGL, oparta na tej samej bazie kodu, z osobną przestrzenią zapisów.
 - Dwa katalogi robocze pozwalają jednocześnie edytować i uruchamiać obie gałęzie.
 - Oddzielne porty deweloperskie i produkcyjne zapobiegają pomyleniu aplikacji w testach oraz rozdzielają lokalne dane przeglądarki.
-- Gałąź eksperymentalna ma własne sprawdzenia CI. Nie publikuje niczego pod adresem wersji stabilnej, także po ręcznym uruchomieniu odziedziczonego workflow publikacji.
+- Gałąź eksperymentalna ma własne sprawdzenia CI. Workflow Pages na obu gałęziach buduje wspólny artefakt: `main` w katalogu głównym, `experimental/webgl` w `webgl/`.
 
 **Renderer w tej gałęzi jest jeszcze oparty na Canvas. Samo utworzenie odnogi nie wdraża WebGL ani nie poprawia wydajności.** PixiJS nie jest jeszcze zależnością projektu. To gotowa baza do oddzielnej migracji i pomiarów porównawczych.
 
@@ -42,7 +42,7 @@ git worktree add ../BoatSimulator-webgl experimental/webgl
 
 ## Przenoszenie zmian między gałęziami
 
-Gałęzie mają wspólnego przodka, ale nie synchronizują się automatycznie. Ulepszenia stabilnej wersji wprowadzamy na `main`, a następnie włączamy przez `git merge origin/main` w gałęzi eksperymentalnej. Zmiany renderera pozostają w eksperymencie. Przy scalaniu trzeba zachować eksperymentalne porty, oznaczenie gałęzi i brak publikacji do stabilnego adresu.
+Gałęzie mają wspólnego przodka, ale nie synchronizują się automatycznie. Ulepszenia stabilnej wersji wprowadzamy na `main`, a następnie włączamy przez `git merge origin/main` w gałęzi eksperymentalnej. Zmiany renderera pozostają w eksperymencie. Przy scalaniu trzeba zachować eksperymentalne porty, oznaczenie gałęzi, izolację zapisów i wspólny workflow publikacji.
 
 Poprawki wspólnej fizyki, mapy lub zapisu powinny mieć oddzielne commity od zmian renderera. Pozwala to przenieść konkretną poprawkę przez `git cherry-pick`, bez kopiowania całych plików i bez przenoszenia nowego renderera do wersji stabilnej. Po integracji wykonujemy odpowiednie regresje; konflikty rozwiązujemy w kodzie, nie przez reset gałęzi.
 
@@ -52,6 +52,6 @@ Poprawki wspólnej fizyki, mapy lub zapisu powinny mieć oddzielne commity od zm
 2. Usunąć potwierdzone nadmiarowe obliczenia wspólnego modelu. Zachować czas i zachowanie fizyki; sam nowy renderer nie naprawi przeciążonej pętli obliczeń.
 3. Wydzielić interfejs renderera: stan świata i kamera na wejściu; obraz oraz przeliczenie kliknięć na wyjściu. Renderowanie nie może zmieniać fizyki ani formatu zapisu.
 4. Podpiąć PixiJS/WebGL przy zachowaniu Canvas jako punktu odniesienia. Porównywać identyczne scenariusze, mapę, skalę, kolejność warstw, hit-testing oraz czasy klatek.
-5. Dodać publiczny, osobny adres demonstracyjny. Przed publikacją pod ścieżką tej samej domeny rozdzielić wszystkie klucze localStorage, historię cofnięć i Logbook: same różne ścieżki URL nie izolują danych.
+5. Utrzymywać publiczny podgląd pod `/BoatSimulator/webgl/` i osobną przestrzeń localStorage `przystan:webgl:` dla sesji, kopii, historii, logbooka i ustawień. Wspólny origin nie izoluje danych według ścieżki URL.
 
-Nowy publiczny adres nie został jeszcze uruchomiony. Zapisów nie należy przenosić w obie strony automatycznie: ewentualny import musi kopiować dane i zachować oryginał, a zgodność schematu należy sprawdzać testami.
+Publiczny podgląd jest wdrażany we wspólnym artefakcie Pages razem z wersją stabilną po zmianach obu gałęzi. Zapisów nie przenosi się automatycznie w żadną stronę.

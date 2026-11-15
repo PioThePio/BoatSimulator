@@ -11,7 +11,7 @@ import {BOLLARDS,MAP_STARTS,shoreAt,bottomAt,SOLIDS,NIEPORET} from './world.js';
 import {WORLD_DISTANCE_SCALE} from './zegrze.js';
 import {createRescue,validRescueState} from './rescue.js';
 
-export const SAVE_KEY='przystan-session-v1',BACKUP_KEY=SAVE_KEY+'-backup',SAVE_VERSION=1,AUTOSAVE_SECONDS=30;
+export const SAVE_KEY='przystan:webgl:session-v1',BACKUP_KEY=SAVE_KEY+'-backup',SAVE_VERSION=1,AUTOSAVE_SECONDS=30;
 const omitted=new Set(['booms','buoys','traffic','towRig','worldRig','wakeSources']);
 function boatData(b){return Object.fromEntries(Object.entries(b).filter(([key])=>!omitted.has(key)));}
 export function snapshotSession(session,now=Date.now()){

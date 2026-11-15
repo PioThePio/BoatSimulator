@@ -11,7 +11,7 @@ async function load(page,mode){
    if(mode==='far')b.vx=1;
    else{f.time=b.time=12;o.contactMetrics={[b.id]:{peakForce:300,peakSpeed:.4,contacts:1,inGear:false,lastAt:10}};b.engines[0].key='running';b.engines[0].cooling=.65;}
   }
-  localStorage.setItem('przystan-session-v1',JSON.stringify(snapshotSession({fleet:f,env:{traffic:false,windSpeed:0,currentSpeed:0,waveHeight:0},start:'lake',vehicle:'boat'})));
+  localStorage.setItem('przystan:webgl:session-v1',JSON.stringify(snapshotSession({fleet:f,env:{traffic:false,windSpeed:0,currentSpeed:0,waveHeight:0},start:'lake',vehicle:'boat'})));
  },mode);await page.reload();await page.locator('#continue-session').click();
 }
 test('physical bottom load stays visible beside draft after a saved grounded state, and bottom mooring controls are removed',async({page})=>{

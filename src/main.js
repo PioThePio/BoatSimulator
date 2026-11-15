@@ -49,8 +49,8 @@ const $=s=>document.querySelector(s);
 $('#app').innerHTML=markup();
 const sound=createSoundscape();
 const steeringSettings=installControlSettings();
-try{const saved=JSON.parse(localStorage.getItem('przystan-sound')||'null');if(saved){$('#sound-toggle').checked=saved.enabled;$('#sound-volume').value=saved.volume;$('#engine-volume').value=saved.engineVolume??100;}}catch{}
-function soundSettings(){sound.setEnabled($('#sound-toggle').checked);sound.setVolume(+$('#sound-volume').value/100);sound.setEngineVolume(+$('#engine-volume').value/100);$('#engine-volume-value').textContent=$('#engine-volume').value+'%';try{localStorage.setItem('przystan-sound',JSON.stringify({enabled:$('#sound-toggle').checked,volume:+$('#sound-volume').value,engineVolume:+$('#engine-volume').value}));}catch{}}
+try{const saved=JSON.parse(localStorage.getItem('przystan:webgl:sound')||'null');if(saved){$('#sound-toggle').checked=saved.enabled;$('#sound-volume').value=saved.volume;$('#engine-volume').value=saved.engineVolume??100;}}catch{}
+function soundSettings(){sound.setEnabled($('#sound-toggle').checked);sound.setVolume(+$('#sound-volume').value/100);sound.setEngineVolume(+$('#engine-volume').value/100);$('#engine-volume-value').textContent=$('#engine-volume').value+'%';try{localStorage.setItem('przystan:webgl:sound',JSON.stringify({enabled:$('#sound-toggle').checked,volume:+$('#sound-volume').value,engineVolume:+$('#engine-volume').value}));}catch{}}
 soundSettings();document.addEventListener('pointerdown',()=>sound.unlock(),{capture:true});document.addEventListener('keydown',()=>sound.unlock(),{capture:true});
 window.addEventListener('blur',()=>sound.setActive(false));document.addEventListener('visibilitychange',()=>{if(document.hidden)sound.setActive(false);});
 $('#sound-toggle').onchange=()=>{soundSettings();sound.unlock();};$('#sound-volume').oninput=$('#engine-volume').oninput=soundSettings;
@@ -61,9 +61,9 @@ $('#steering-settings').insertAdjacentHTML('beforeend',`<fieldset id="twin-steer
 $('#link-steering').onchange=e=>{for(const en of boat.engines)en.steerTarget=e.target.checked?null:boat.actualSteer;syncControls();};
 for(const i of [0,1])$('#drive-steer-'+i).oninput=e=>{if(boat.engines[i])boat.engines[i].steerTarget=+e.target.value*Math.PI/180;syncControls();};
 let speedUnit='km/h';const flowUnits={wind:'m/s',current:'m/s'};
-try{speedUnit=localStorage.getItem('przystan-speed-unit')==='kn'?'kn':'km/h';for(const key of ['wind','current'])flowUnits[key]=localStorage.getItem('przystan-'+key+'-unit')==='km/h'?'km/h':'m/s';}catch{}
-$('.telemetry').onclick=e=>{if(e.target.closest('button'))return;speedUnit=speedUnit==='km/h'?'kn':'km/h';try{localStorage.setItem('przystan-speed-unit',speedUnit);}catch{}telemetry();};$('.telemetry').onkeydown=e=>{if(e.target===$('.telemetry')&&['Enter',' '].includes(e.key)){e.preventDefault();e.stopPropagation();$('.telemetry').click();}};
-document.addEventListener('click',e=>{const button=e.target.closest('[data-flow-unit]');if(!button)return;const key=button.dataset.flowUnit;flowUnits[key]=flowUnits[key]==='m/s'?'km/h':'m/s';try{localStorage.setItem('przystan-'+key+'-unit',flowUnits[key]);}catch{}telemetry();});
+try{speedUnit=localStorage.getItem('przystan:webgl:speed-unit')==='kn'?'kn':'km/h';for(const key of ['wind','current'])flowUnits[key]=localStorage.getItem('przystan:webgl:'+key+'-unit')==='km/h'?'km/h':'m/s';}catch{}
+$('.telemetry').onclick=e=>{if(e.target.closest('button'))return;speedUnit=speedUnit==='km/h'?'kn':'km/h';try{localStorage.setItem('przystan:webgl:speed-unit',speedUnit);}catch{}telemetry();};$('.telemetry').onkeydown=e=>{if(e.target===$('.telemetry')&&['Enter',' '].includes(e.key)){e.preventDefault();e.stopPropagation();$('.telemetry').click();}};
+document.addEventListener('click',e=>{const button=e.target.closest('[data-flow-unit]');if(!button)return;const key=button.dataset.flowUnit;flowUnits[key]=flowUnits[key]==='m/s'?'km/h':'m/s';try{localStorage.setItem('przystan:webgl:'+key+'-unit',flowUnits[key]);}catch{}telemetry();});
 let atlas=createAtlas();
 let paused=false,zoom=1,follow=true,overview=false,manualCenter=null,centerReference={x:boat.x,y:boat.y},selectedEngine=0,selectedTarget=null;
 let trail=boat.trail,view=null,sonarHistory=[],sonarTime=0,lastEvent=null,last=performance.now(),accumulator=0,telemetryAt=0,soundAt=-Infinity;
@@ -117,7 +117,7 @@ function saveGame(){
  boat.navigationTarget=$('#destination').value;
  const weather=Object.fromEntries(weatherFields.map(id=>{const el=$('#'+id);return[id,el.type==='checkbox'?el.checked:el.value];}));
  let result;try{result=writeAutosave(localStorage,{fleet,towRig,env,start,boatOptions,vehicle,weather,ui:{zoom,follow,overview,manualCenter,centerReference,atlas,showTrail,selectedEngine,sonarHistory,sonarTime}});}catch{result={ok:false,message:'Przeglądarka blokuje zapis lokalny.'};}
- if(result.ok&&restoreHistory)try{restoreHistory.record(localStorage.getItem('przystan-session-v1'),result.savedAt);}catch{}
+ if(result.ok&&restoreHistory)try{restoreHistory.record(localStorage.getItem('przystan:webgl:session-v1'),result.savedAt);}catch{}
  logbook.persist();
  $('#autosave-state').textContent=result.ok?'Zapisano lokalnie · '+new Date(result.savedAt).toLocaleTimeString('pl-PL',{hour:'2-digit',minute:'2-digit'}):result.message;$('#autosave-state').classList.toggle('danger',!result.ok);lastAutosave=performance.now();
 }

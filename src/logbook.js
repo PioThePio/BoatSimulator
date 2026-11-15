@@ -1,5 +1,5 @@
 import {operationalSeconds} from './operations.js';
-export const LOGBOOK_KEY='przystan-logbook-v1';
+export const LOGBOOK_KEY='przystan:webgl:logbook-v1';
 export const createLogbook=()=>({version:1,enabled:true,totals:{distance:0,hours:0,fuel:0,collisions:0},sessions:[],events:[]});
 const number=x=>Number.isFinite(x)?Math.max(0,x):0;
 export function captureLogbook(input,fleet,now=Date.now()){
