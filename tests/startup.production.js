@@ -7,6 +7,9 @@ test('production main scene uses WebGL2',async({page})=>{
  expect(result.webgl).toBe(true);
  expect(result.canvas2d).toBeNull();
  await expect(page.locator('#fps-meter')).toHaveText(/^FPS \d+ · \d+ ms$/,{timeout:10000});
+ await expect(page.locator('#map-labels')).toBeVisible();
+ await page.locator('#overview').click();
+ await expect(page.locator('#overview')).toHaveAttribute('aria-pressed','true');
 });
 test('production restores a local fleet and tow through Continue without extra assets or offline simulation',async({page})=>{
  const errors=[];page.on('pageerror',e=>errors.push(e.message));await page.goto('./?v=25.0.0');await page.locator('#begin-session').click();await page.locator('#fleet-open').click();await page.locator('#fleet-kind').selectOption('banana');await page.locator('#fleet-place').click();const c=page.locator('#lake'),r=await c.boundingBox(),scale=Math.min(r.width/140,r.height/80);await c.click({position:{x:r.width/2-18*scale,y:r.height/2}});await expect(page.locator('#fleet-open')).toContainText('2');await c.click({position:{x:r.width/2+(-18+4.8*.39)*scale,y:r.height/2}});await page.locator('#map-ropes [data-cleat=stern]').click();await page.locator('#close-mooring').click();await page.reload();await expect(page.locator('#continue-session')).toBeVisible();await page.locator('#continue-session').click();await expect(page.locator('#paused-label')).toBeVisible();await expect(page.locator('#fleet-open')).toContainText('2');expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('przystan:webgl:session-v1')).fleet.tows.length)).toBe(1);expect(errors).toEqual([]);

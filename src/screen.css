@@ -57,3 +57,4 @@ body[data-vehicle=boat] #tow-summary{display:none}
 #fps-meter{display:inline-block;min-width:108px;padding:6px 8px;border:1px solid #c5d5bf;border-radius:5px;background:#eaf1e4;color:#356145;font-size:10px;font-variant-numeric:tabular-nums;text-align:center;white-space:nowrap}
 #fps-meter.uneven{background:#fff2d7;border-color:#d7bc7c;color:#805e24}
 #fps-meter.slow{background:#ffe5df;border-color:#d9a69a;color:#9b4534}
+#map-labels{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}

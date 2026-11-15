@@ -8,7 +8,7 @@
 - Oddzielne porty deweloperskie i produkcyjne zapobiegają pomyleniu aplikacji w testach oraz rozdzielają lokalne dane przeglądarki.
 - Gałąź eksperymentalna ma własne sprawdzenia CI. Workflow Pages uruchamiany z `main` po zmianach stabilnej wersji i po sprawdzeniach eksperymentu buduje wspólny artefakt: `main` w katalogu głównym, `experimental/webgl` w `webgl/`.
 
-**Główna scena używa WebGL2.** Adapter `src/webgl-context.js` rysuje geometrię, tekst, łodzie i efekty przez WebGL; statyczne kafle terenu są przygotowywane przez Canvas 2D i przesyłane jako tekstury. Minimapę, echosondę i wykres kotwicy nadal rysuje Canvas 2D. Używamy surowego WebGL2 z triangulacją `earcut`, bez PixiJS. Programowy SwiftShader renderuje w niższej rozdzielczości wewnętrznej. Zmiana renderera nie przyspiesza automatycznie fizyki ani słabego sterownika GPU.
+**Scena podczas pływania używa WebGL2.** Adapter `src/webgl-context.js` rysuje geometrię, łodzie i efekty przez WebGL; statyczne kafle terenu są przygotowywane przez Canvas 2D i przesyłane jako tekstury. Etykiety mapy są osobną, ostrą warstwą Canvas 2D. Widok całego akwenu używa Canvas 2D, ponieważ programowy WebGL był na nim znacznie wolniejszy. Minimapę, echosondę i wykres kotwicy nadal rysuje Canvas 2D. Używamy surowego WebGL2 z triangulacją `earcut`, bez PixiJS. Programowy SwiftShader renderuje w niższej rozdzielczości wewnętrznej. Zmiana renderera nie przyspiesza automatycznie fizyki ani słabego sterownika GPU.
 
 ## Uruchamianie i sprawdzenia
 

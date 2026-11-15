@@ -116,11 +116,12 @@ function drawMapNames(ctx,state,view){
  if(overview)names.push({...project(b),text:'TWOJA ŁÓDŹ',priority:10});
  if(Number.isInteger(state.selected)){const q=mooringPoint(b,state.selected);if(!q.trailer)names.push({...project(q),text:q.id,priority:9});}
  const blocked=state.labelBlocked??[{x:0,y:0,w:width,h:100},{x:width-130,y:85,w:130,h:115},...(!overview?[{x:0,y:height-185,w:205,h:185},{x:width-145,y:height-145,w:145,h:145}]:[])];
- ctx.save();ctx.font='10px system-ui';ctx.textBaseline='top';
- const placed=placeMapLabels(names,t=>ctx.measureText(t).width,width,height,blocked);
+ const labels=state.labelContext??ctx;
+ labels.save();labels.font='10px system-ui';labels.textBaseline='top';
+ const placed=placeMapLabels(names,t=>labels.measureText(t).width,width,height,blocked);
  for(const q of placed){
-  ctx.fillStyle=q.priority>=3?'#f4f6e6ee':'#eff3e4b5';ctx.beginPath();ctx.roundRect(q.x,q.y,q.w,q.h,3);ctx.fill();ctx.fillStyle=q.priority===10?'#a55628':'#476b5b';ctx.fillText(q.text,q.x+4,q.y+2);
- }ctx.restore();return placed;
+  labels.fillStyle=q.priority>=3?'#f4f6e6ee':'#eff3e4b5';labels.beginPath();labels.roundRect(q.x,q.y,q.w,q.h,3);labels.fill();labels.fillStyle=q.priority===10?'#a55628':'#476b5b';labels.fillText(q.text,q.x+4,q.y+2);
+ }labels.restore();return placed;
 }
 function drawSurfaceFlow(ctx,b,e,bounds,scale){
  const flow=environment(b.time,e,b.x,b.y),current=Math.hypot(flow.current.x,flow.current.y),spacing=Math.max(12,70/scale);
