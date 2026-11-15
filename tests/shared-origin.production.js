@@ -1,0 +1,45 @@
+import {test,expect} from '@playwright/test';
+
+const stable='/BoatSimulator/',experiment='/BoatSimulator/webgl/';
+const stableKey='przystan-session-v1',experimentKey='przystan:webgl:session-v1';
+const save=page=>page.evaluate(()=>window.dispatchEvent(new Event('pagehide')));
+
+test('stable and experimental sessions remain independent on one origin',async({page})=>{
+ const errors=[];page.on('pageerror',error=>errors.push(error.message));
+ await page.goto(stable);
+ await expect(page.locator('#lake')).toBeVisible();
+ await page.locator('#begin-session').click();
+ await page.keyboard.press('ArrowUp');
+ await expect(page.locator('#gear')).toContainText('PEŁZAJĄCY');
+ await save(page);
+ const first=await page.evaluate(key=>localStorage.getItem(key),stableKey);
+ expect(first).toBeTruthy();
+ await page.reload();
+ await expect(page.locator('#continue-session')).toBeVisible();
+ await page.locator('#continue-session').click();
+ await expect(page.locator('#paused-label')).toBeVisible();
+ await page.goto(experiment);
+ await expect(page.locator('#lake')).toBeVisible();
+ await expect(page.locator('#continue-session')).toBeHidden();
+ const stableBeforeExperiment=await page.evaluate(key=>localStorage.getItem(key),stableKey);
+ await page.locator('#begin-session').click();
+ await page.keyboard.press('ArrowUp');
+ await expect(page.locator('#gear')).toContainText('PEŁZAJĄCY');
+ await save(page);
+ const separate=await page.evaluate(([stable,experimental])=>({stable:localStorage.getItem(stable),experimental:localStorage.getItem(experimental),keys:Object.keys(localStorage)}),[stableKey,experimentKey]);
+ expect(separate.stable).toBe(stableBeforeExperiment);
+ expect(separate.experimental).toBeTruthy();
+ expect(separate.experimental).not.toBe(first);
+ expect(separate.keys.filter(key=>key.startsWith('przystan:')&&!key.startsWith('przystan:webgl:'))).toEqual([]);
+ await page.reload();
+ await expect(page.locator('#continue-session')).toBeVisible();
+ await page.locator('#continue-session').click();
+ await expect(page.locator('#paused-label')).toBeVisible();
+ await page.goto(stable);
+ const experimentalBeforeStable=await page.evaluate(key=>localStorage.getItem(key),experimentKey);
+ await expect(page.locator('#continue-session')).toBeVisible();
+ await page.locator('#continue-session').click();
+ await expect(page.locator('#paused-label')).toBeVisible();
+ expect(await page.evaluate(key=>localStorage.getItem(key),experimentKey)).toBe(experimentalBeforeStable);
+ expect(errors).toEqual([]);
+});

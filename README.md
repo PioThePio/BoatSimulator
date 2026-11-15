@@ -72,3 +72,5 @@ ustawić zmienną `CHROMIUM_PATH`. Szczegóły pomiarów i zakres testów opisuj
 Aby odtworzyć trzy widoki porównawcze mapy, uruchom serwer `npm run dev`,
 a następnie `npm run capture:map`. Zrzuty trafiają do `docs/images/`.
 Pomiar klatek: `npm run benchmark:browser -- --cpu=4`.
+
+Eksperymentalna odnoga (nadal Canvas, przygotowana pod WebGL): https://piothepio.github.io/BoatSimulator/webgl/. Obie wersje są publikowane razem po zmianach każdej z gałęzi.
