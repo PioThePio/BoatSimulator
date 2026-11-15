@@ -186,7 +186,7 @@ export function renderWorld(ctx,state){
  }
  // Clip water effects once; thousands of visual ripples need no physical shore queries.
  if(!waterMask){waterMask=new Path2D();waterMask.addPath(shapePath(LAKE));for(const q of ISLANDS)waterMask.addPath(shapePath(outline(q)));for(const q of COAST_PATCHES)waterMask.addPath(shapePath(q.outline));}
- ctx.save();ctx.clip(shapePath(LAKE));ctx.clip(waterMask,'evenodd');
+ ctx.save();if(ctx.clipPolygons){ctx.clipPolygons([LAKE]);ctx.clipPolygons([LAKE,...ISLANDS.map(q=>outline(q)),...COAST_PATCHES.map(q=>q.outline)],true);}else{ctx.clip(shapePath(LAKE));ctx.clip(waterMask,'evenodd');}
  drawWeatherSurface(ctx,b,env,bounds,scale);
  for(const history of wakeHistories(b))if(history.length){drawHullWake(ctx,history,b.time);drawReflectedWake(ctx,history,b.time,reflectionFacesNear(camera.x,camera.y));}
  for(const h of [b.brakingWaves??[],...(b.wakeSources??[]).map(q=>q.braking??[])])drawBrakingWaves(ctx,h,b.time);

@@ -1,6 +1,6 @@
 # Przystań — eksperymentalna odnoga WebGL
 
-**Gałąź `experimental/webgl` · [publiczny podgląd](https://piothepio.github.io/BoatSimulator/webgl/).** Osobne miejsce rozwoju przyszłego renderera PixiJS/WebGL. Obecnie działa tu kopia bazowej wersji Canvas; migracja renderera nie została jeszcze wykonana. [Zasady równoległego rozwoju i uruchamianie](docs/ROZWOJ-WEBGL.md).
+**Gałąź `experimental/webgl` · [publiczny podgląd](https://piothepio.github.io/BoatSimulator/webgl/).** Główna scena jest rysowana przez WebGL2: geometria, łodzie, fale i tekstury mapy trafiają do GPU. Statyczne tekstury mapy oraz pomocnicze widoki (minimapa, echosonda i wykres kotwicy) nadal powstają przez Canvas 2D. Fizykę i sterowanie zachowano. W przeglądarkach z programowym SwiftShader scena używa niższej rozdzielczości wewnętrznej, bo samo WebGL nie gwarantuje wyższej liczby FPS. [Zasady równoległego rozwoju i uruchamianie](docs/ROZWOJ-WEBGL.md).
 
 Wersja stabilna jest rozwijana osobno na `main` i pozostaje pod dotychczasowym adresem.
 

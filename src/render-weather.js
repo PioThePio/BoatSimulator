@@ -11,7 +11,7 @@ function crestPath(path,c,offset=0,thickness=.15){
 export function drawWeatherSurface(ctx,b,e,bounds,scale){
  const weather=weatherAt(b.time,e),reference=waveReference(e),angle=waveDirection(e,b.time),H=waveHeight(e,b.time),ca=reference.currentDirection*Math.PI/180,nx=Math.sin(angle),ny=-Math.cos(angle),spectrum=waveCurrent(2.8,3,reference.currentSpeed*(Math.sin(ca)*nx-Math.cos(ca)*ny)),wind=windSurface(weather.windSpeed,e.windVisuals!==false);
  if(wind.tint){ctx.fillStyle=`rgba(100,114,124,${wind.tint})`;ctx.fillRect(bounds.left,bounds.top,bounds.right-bounds.left,bounds.bottom-bounds.top);}
- const crests=waveCrests(bounds,scale,b.time,angle,spectrum,H*spectrum.heightScale),bands=[new Path2D(),new Path2D(),new Path2D()],shadows=[new Path2D(),new Path2D(),new Path2D()];
+ const crests=waveCrests(bounds,scale,b.time,angle,spectrum,H*spectrum.heightScale),newPath=()=>ctx.createPath?.()??new Path2D(),bands=[newPath(),newPath(),newPath()],shadows=[newPath(),newPath(),newPath()];
  for(const c of crests){const band=clamp(Math.floor(c.opacity*12),0,2);crestPath(bands[band],c,0,.14+H*.40);crestPath(shadows[band],c,.30,.22+H*.45);}
  for(let i=0;i<3;i++){ctx.fillStyle=`rgba(47,104,122,${.025+i*.022})`;ctx.fill(shadows[i]);ctx.fillStyle=`rgba(202,229,225,${.10+i*.065})`;ctx.fill(bands[i]);}
  // Foam is a short-lived patch on a crest, not a field of bright rain strokes.

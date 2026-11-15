@@ -3,12 +3,12 @@
 ## Co jest przygotowane
 
 - `main`: aktualna stabilna aplikacja Canvas, działająca pod dotychczasowym publicznym adresem.
-- `experimental/webgl`: niezależna gałąź dla prac nad PixiJS/WebGL, oparta na tej samej bazie kodu, z osobną przestrzenią zapisów.
+- `experimental/webgl`: niezależna gałąź z rendererem WebGL2, oparta na tej samej bazie kodu, z osobną przestrzenią zapisów.
 - Dwa katalogi robocze pozwalają jednocześnie edytować i uruchamiać obie gałęzie.
 - Oddzielne porty deweloperskie i produkcyjne zapobiegają pomyleniu aplikacji w testach oraz rozdzielają lokalne dane przeglądarki.
 - Gałąź eksperymentalna ma własne sprawdzenia CI. Workflow Pages uruchamiany z `main` po zmianach stabilnej wersji i po sprawdzeniach eksperymentu buduje wspólny artefakt: `main` w katalogu głównym, `experimental/webgl` w `webgl/`.
 
-**Renderer w tej gałęzi jest jeszcze oparty na Canvas. Samo utworzenie odnogi nie wdraża WebGL ani nie poprawia wydajności.** PixiJS nie jest jeszcze zależnością projektu. To gotowa baza do oddzielnej migracji i pomiarów porównawczych.
+**Główna scena używa WebGL2.** Adapter `src/webgl-context.js` rysuje geometrię, tekst, łodzie i efekty przez WebGL; statyczne kafle terenu są przygotowywane przez Canvas 2D i przesyłane jako tekstury. Minimapę, echosondę i wykres kotwicy nadal rysuje Canvas 2D. Używamy surowego WebGL2 z triangulacją `earcut`, bez PixiJS. Programowy SwiftShader renderuje w niższej rozdzielczości wewnętrznej. Zmiana renderera nie przyspiesza automatycznie fizyki ani słabego sterownika GPU.
 
 ## Uruchamianie i sprawdzenia
 
@@ -51,7 +51,7 @@ Poprawki wspólnej fizyki, mapy lub zapisu powinny mieć oddzielne commity od zm
 1. Zbudować powtarzalny benchmark jednej łodzi podczas pływania, manewrów w porcie i generowania fal. Osobno mierzyć fizykę, rysowanie, panele oraz dłuższą sesję z autozapisem.
 2. Usunąć potwierdzone nadmiarowe obliczenia wspólnego modelu. Zachować czas i zachowanie fizyki; sam nowy renderer nie naprawi przeciążonej pętli obliczeń.
 3. Wydzielić interfejs renderera: stan świata i kamera na wejściu; obraz oraz przeliczenie kliknięć na wyjściu. Renderowanie nie może zmieniać fizyki ani formatu zapisu.
-4. Podpiąć PixiJS/WebGL przy zachowaniu Canvas jako punktu odniesienia. Porównywać identyczne scenariusze, mapę, skalę, kolejność warstw, hit-testing oraz czasy klatek.
+4. Porównywać renderery Canvas i WebGL2 na identycznych scenariuszach: mapę, skalę, kolejność warstw, hit-testing i czasy klatek. Portować pozostałe pomocnicze widoki, gdy pomiary uzasadnią tę zmianę.
 5. Utrzymywać publiczny podgląd pod `/BoatSimulator/webgl/` i osobną przestrzeń localStorage `przystan:webgl:` dla sesji, kopii, historii, logbooka i ustawień. Wspólny origin nie izoluje danych według ścieżki URL.
 
 Publiczny podgląd jest wdrażany we wspólnym artefakcie Pages razem z wersją stabilną po zmianach obu gałęzi. Zapisów nie przenosi się automatycznie w żadną stronę.
