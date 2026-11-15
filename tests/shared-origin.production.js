@@ -9,6 +9,7 @@ test('stable and experimental sessions remain independent on one origin',async({
  await page.goto(stable);
  await expect(page.locator('#lake')).toBeVisible();
  await page.locator('#begin-session').click();
+ await expect(page.locator('#fps-meter')).toHaveText(/^FPS \d+ · \d+ ms$/,{timeout:5000});
  await page.keyboard.press('ArrowUp');
  await expect(page.locator('#gear')).toContainText('PEŁZAJĄCY');
  await save(page);
@@ -23,6 +24,7 @@ test('stable and experimental sessions remain independent on one origin',async({
  await expect(page.locator('#continue-session')).toBeHidden();
  const stableBeforeExperiment=await page.evaluate(key=>localStorage.getItem(key),stableKey);
  await page.locator('#begin-session').click();
+ await expect(page.locator('#fps-meter')).toHaveText(/^FPS \d+ · \d+ ms$/,{timeout:5000});
  await page.keyboard.press('ArrowUp');
  await expect(page.locator('#gear')).toContainText('PEŁZAJĄCY');
  await save(page);
