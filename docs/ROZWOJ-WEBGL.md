@@ -6,7 +6,7 @@
 - `experimental/webgl`: niezależna gałąź dla prac nad PixiJS/WebGL, oparta na tej samej bazie kodu, z osobną przestrzenią zapisów.
 - Dwa katalogi robocze pozwalają jednocześnie edytować i uruchamiać obie gałęzie.
 - Oddzielne porty deweloperskie i produkcyjne zapobiegają pomyleniu aplikacji w testach oraz rozdzielają lokalne dane przeglądarki.
-- Gałąź eksperymentalna ma własne sprawdzenia CI. Workflow Pages na obu gałęziach buduje wspólny artefakt: `main` w katalogu głównym, `experimental/webgl` w `webgl/`.
+- Gałąź eksperymentalna ma własne sprawdzenia CI. Workflow Pages uruchamiany z `main` po zmianach stabilnej wersji i po sprawdzeniach eksperymentu buduje wspólny artefakt: `main` w katalogu głównym, `experimental/webgl` w `webgl/`.
 
 **Renderer w tej gałęzi jest jeszcze oparty na Canvas. Samo utworzenie odnogi nie wdraża WebGL ani nie poprawia wydajności.** PixiJS nie jest jeszcze zależnością projektu. To gotowa baza do oddzielnej migracji i pomiarów porównawczych.
 
